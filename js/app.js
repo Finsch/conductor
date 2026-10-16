@@ -286,7 +286,7 @@
     const src = album.cover || (album.serverCover && Server.isConfigured() ? Server.coverUrl(album.serverCover, 600) : "");
     if (src) {
       const img = el("img");
-      img.src = src;
+      img.src = localUrl(src);
       img.alt = album.title + " — " + album.artist;
       img.loading = "lazy";
       img.onerror = () => img.remove(); // image introuvable → carré gris
@@ -297,7 +297,7 @@
 
   function albumLink(album, cls) {
     const a = el("a", cls);
-    a.href = "album.html?id=" + encodeURIComponent(album.id);
+    a.href = "pages/album.html?id=" + encodeURIComponent(album.id);
     return a;
   }
 

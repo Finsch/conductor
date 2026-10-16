@@ -141,7 +141,7 @@ const Disk = (function () {
   }
 
   function lyricsPath(albumId) {
-    return "../datastorage/lyrics/" + safeName(albumId) + ".js";
+    return APP_ROOT + "../datastorage/lyrics/" + safeName(albumId) + ".js";
   }
 
   // Paroles pas encore écrites sur le disque (pour les afficher quand même)

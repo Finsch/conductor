@@ -9,11 +9,16 @@ HTML, CSS et JavaScript, sans serveur ni installation : on ouvre `index.html` da
 conductor/
 ├── app/            ← ce dépôt (le code)
 │   ├── index.html      accueil : collection, tri, filtres
-│   ├── album.html      page album : lecteur, titres, paroles, fiche
-│   ├── library.html    audio-files : connexion à Navidrome
-│   ├── css/  js/
-│   ├── navidrome-man.md    mode d'emploi du serveur sur le téléphone
-│   └── toolkit.md          dépendances, matériel, coûts
+│   ├── README.md
+│   ├── pages/
+│   │   ├── album.html      page album : lecteur, titres, paroles, fiche
+│   │   └── library.html    audio-files : connexion à Navidrome
+│   ├── css/            style.css
+│   ├── js/             scripts (config.js : réglages personnels, non publié)
+│   ├── assets/         favicon
+│   └── docs/
+│       ├── navidrome-man.md    mode d'emploi du serveur sur le téléphone
+│       └── toolkit.md          dépendances, matériel, coûts
 └── datastorage/    ← vos données, hors du dépôt
     ├── collection.js   la collection
     ├── covers/         pochettes
@@ -28,4 +33,4 @@ Le code lit et écrit les données dans `../datastorage/` : les deux dossiers do
 2. En bas à gauche : « Choisir le dossier datastorage » → `conductor/datastorage`.
 3. Facultatif : copier `js/config.example.js` en `js/config.js` et y mettre un jeton Discogs.
 
-Voir `toolkit.md` pour les services utilisés et `navidrome-man.md` pour l'écoute de vos fichiers.
+Voir `docs/toolkit.md` pour les services utilisés et `docs/navidrome-man.md` pour l'écoute de vos fichiers.

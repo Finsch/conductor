@@ -11,14 +11,14 @@
   // (même page, mêmes filtres, même recherche)
   try {
     const home = sessionStorage.getItem("conductor01.home");
-    if (home && home.startsWith(location.href.replace(/[^/]*$/, ""))) $("back-link").href = home;
+    if (home && home.startsWith(new URL(APP_ROOT || "./", location.href).href)) $("back-link").href = home;
   } catch (e) {}
 
   // Alt+N : ajouter un album (ouvre la fenêtre d'ajout sur l'accueil)
   document.addEventListener("keydown", e => {
     if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyN" || e.key.toLowerCase() === "n")) {
       e.preventDefault();
-      location.href = "index.html#ajouter";
+      location.href = "../index.html#ajouter";
     }
   });
 
@@ -52,7 +52,7 @@
   const longDuration = formatLength;
 
   function searchLink(q) {
-    return "index.html?q=" + encodeURIComponent(q);
+    return "../index.html?q=" + encodeURIComponent(q);
   }
 
   function el(tag, cls, text) {
@@ -88,7 +88,7 @@
     const coverSrc = album.cover || (album.serverCover ? Server.coverUrl(album.serverCover, 600) : "");
     if (coverSrc) {
       const img = el("img");
-      img.src = coverSrc;
+      img.src = localUrl(coverSrc);
       img.alt = album.title + " — " + album.artist;
       img.onerror = () => img.remove();
       cover.appendChild(img);
@@ -429,7 +429,7 @@
     box.replaceChildren();
     if (src) {
       const img = el("img");
-      img.src = src;
+      img.src = localUrl(src);
       img.alt = "";
       img.onerror = () => img.remove();
       box.appendChild(img);
@@ -539,7 +539,7 @@
   });
   $("delete-yes").addEventListener("click", () => {
     Store.remove(album.id);
-    location.href = "index.html";
+    location.href = "../index.html";
   });
 
   // ---------- Vos fichiers (Navidrome) ----------

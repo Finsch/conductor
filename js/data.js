@@ -45,6 +45,17 @@ function cleanAlbumTitle(raw) {
   return title || (raw || "").trim();
 }
 
+// ---------- Chemins ----------
+// Les pages album et audio-files sont dans app/pages/ : un niveau plus bas que l'accueil.
+// APP_ROOT ramène à app/ depuis n'importe quelle page.
+const APP_ROOT = /\/pages\/[^\/]*$/.test(location.pathname) ? "../" : "";
+
+// Fichiers de datastorage : enregistrés relativement à app/ ("../datastorage/…"),
+// ajustés ici selon la page qui les affiche.
+function localUrl(path) {
+  return path && path.startsWith("../datastorage/") ? APP_ROOT + path : path;
+}
+
 // ---------- Durées ----------
 // 2505 → "41 min 45 s" ; 3840 → "1 h 4 min"
 function formatLength(sec) {

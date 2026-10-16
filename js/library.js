@@ -18,7 +18,7 @@
 
   try {
     const home = sessionStorage.getItem("conductor01.home");
-    if (home && home.startsWith(location.href.replace(/[^/]*$/, ""))) $("back-link").href = home;
+    if (home && home.startsWith(new URL(APP_ROOT || "./", location.href).href)) $("back-link").href = home;
   } catch (e) {}
 
   // ---------- Connexion ----------
@@ -124,7 +124,7 @@
     row.href = "album.html?id=" + encodeURIComponent(a.id);
     const text = el("div", "row-text");
     text.append(el("p", "row-title", a.title), el("p", "row-artist", [a.artist, a.year].filter(Boolean).join(" · ")));
-    row.append(coverThumb(a.cover), text);
+    row.append(coverThumb(localUrl(a.cover)), text);
     return row;
   }
 
