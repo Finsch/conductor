@@ -10,47 +10,72 @@ Installation : une seule fois, 15 à 20 minutes (voir plus bas).
 
 ## Daily — écouter vos fichiers
 
-### 1. Lancer le serveur (A12)
+### 1. A12 : lancer Navidrome
 
-Termux → `~/navidrome.sh` → laissez Termux ouvert.
+Termux :
+```sh
+~/navidrome.sh
+```
+Laissez Termux ouvert.
 
-### 2. Choisir le réseau
+### 2. Trouver l'adresse du A12 — selon le réseau
 
-**A. Même wifi** (box, résidence) — PC et A12 connectés au même réseau
-1. Adresse du A12 : Termux → `ifconfig` → ligne `inet` de `wlan0`
-   (ex. `10.188.202.114`). Ignorez `127.0.0.1` et `192.0.0.4`.
-2. Test sur le PC : `http://10.188.202.114:4533` dans Chrome → la page Navidrome s'affiche.
-3. Si rien ne s'affiche : ouvrez `http://localhost:4533` **sur le A12**.
-   - Ça marche sur le A12, pas sur le PC → le wifi bloque les échanges entre appareils
-     (fréquent en résidence) → passez au cas B.
-   - Rien non plus sur le A12 → Navidrome ne tourne pas : regardez Termux.
+**A. Même wifi (box, résidence)**
+1. Termux → `ifconfig` → ligne `inet` (ex. `10.188.202.114`).
+   Ignorez `127.0.0.1` et `192.0.0.4`.
+2. Adresse à utiliser : `10.188.202.114:4533`
 
-**B. Point d'accès du A12** — quand le wifi bloque ou qu'il n'y a pas de wifi
+**B. Partage de connexion de l'iPhone** (PC et A12 connectés à l'iPhone)
+1. A12 : Paramètres → Wi-Fi → ⚙️ du réseau → **IP address**.
+2. Prenez l'adresse qui contient **`ff:fe`** (celle du milieu), ex. :
+   `2a04:cec0:1014:6130:d0c0:a0ff:fe7c:e1e9`
+   (ni celle en `fe80`, ni la 3ᵉ, temporaire).
+   Si une adresse courte `172.20.10.x` apparaît, elle marche aussi : `172.20.10.x:4533`.
+3. L'adresse change quand l'iPhone change de préfixe réseau : relevez-la à chaque session.
+
+**C. Point d'accès du A12** (quand le wifi bloque, ou pas de wifi)
 1. A12 : Paramètres → Connexions → **Point d'accès mobile** → activer.
 2. PC : se connecter à ce point d'accès.
-3. PC : Invite de commandes → `ipconfig` → **Passerelle par défaut** = adresse du A12
-   (souvent `192.168.43.1`).
-4. Test : `http://192.168.43.1:4533` dans Chrome.
+3. PC : Invite de commandes → `ipconfig` → **Passerelle par défaut** (souvent `192.168.43.1`).
+4. Adresse à utiliser : `192.168.43.1:4533`
+   La musique ne consomme pas de données ; internet sur le PC passe par les données du A12.
 
-La musique ne consomme pas de données ; la navigation internet du PC passe en revanche
-par les données mobiles du A12.
+### 3. PC : tester dans Chrome
 
-**C. Partage de connexion de l'iPhone** — PC et A12 connectés à l'iPhone
-1. Adresse du A12 : Paramètres → Wi-Fi → ⚙️ → **Adresse IP**
-   (`172.20.10.x`, ou seulement des adresses IPv6 : voir étape 7 plus bas).
-2. Test : `http://172.20.10.x:4533` dans Chrome.
-3. Ne s'affiche pas : iPhone → Réglages → Partage de connexion → « Maximiser la compatibilité ».
+```
+http://10.188.202.114:4533                                  (A, C : adresse:4533)
+http://[2a04:cec0:1014:6130:d0c0:a0ff:fe7c:e1e9]:4533       (B en IPv6 : avec crochets)
+```
+La page de connexion Navidrome s'affiche → passez à l'étape 4.
 
-### 3. Connecter conductor.
+### 4. conductor. : se connecter
 
-conductor. → **audio-files**
-- **Même adresse que la dernière fois** : rien à faire, ou **Actualiser**.
-- **Adresse différente** : **Déconnecter** → adresse (`xxx:4533`), utilisateur,
-  mot de passe Navidrome → **Se connecter**.
+**audio-files**
+- Déjà connecté avec la même adresse : rien à faire (ou **Actualiser**).
+- Autre adresse : **Déconnecter**, puis :
+  - Adresse : collez-la telle quelle (IPv6 sans crochets acceptée, port ajouté tout seul).
+  - Utilisateur / mot de passe : ceux du compte Navidrome.
+  - **Se connecter**.
 
-### 4. Fin de session
+### 5. Fin de session
 
-Termux → `Ctrl` + `C` (ou « Exit » dans la notification). Coupez le point d'accès si vous l'aviez activé.
+Termux → `Ctrl` + `C`. Coupez le point d'accès (C) si besoin.
+
+### Si le test de l'étape 3 échoue
+
+- **Sur le A12**, ouvrez `http://localhost:4533` :
+  - rien ne s'affiche → Navidrome ne tourne pas : regardez Termux ;
+  - ça s'affiche → c'est le réseau.
+- **A (wifi)** : le wifi bloque les échanges entre appareils (fréquent en résidence) → passez en **C**.
+- **B (iPhone, IPv6)** :
+  1. PC → `ipconfig` → il doit y avoir une « Adresse IPv6 » qui commence comme celle du A12.
+     Sinon : iPhone → Réglages → Partage de connexion → **Maximiser la compatibilité**,
+     reconnectez le PC ; toujours rien → passez en **C**.
+  2. L'IPv6 est là mais ça ne répond pas → forcez l'écoute IPv6 (une fois) :
+     ```sh
+     sed -i 's/^navidrome$/export ND_ADDRESS="::"\nnavidrome/' ~/navidrome.sh
+     ~/navidrome.sh
+     ```
 
 ---
 
