@@ -129,7 +129,7 @@ C'est le cas sur votre réseau actuel (réseau « IPv6 seulement »).
 - Prenez l'adresse qui contient **`ff:fe`** (elle ne change pas sur ce réseau).
   N'utilisez ni celle qui commence par `fe80`, ni l'autre adresse `2a04:…` (temporaire).
 - Dans le navigateur, l'adresse IPv6 se met **entre crochets** :
-  `http://[2a04:cec0:1011:45c4:d0c0:a0ff:fe7c:e1e9]:4533`
+  `http://[2a04:cec0:1011:6130:d0c0:a0ff:fe7c:e1e9]:4533`
 - Dans conductor., vous pouvez la coller telle quelle : crochets et port sont ajoutés tout seuls.
 - `ifconfig` dans Termux affiche `v4-wlan0 … 192.0.0.4` : ce n'est **pas** une adresse utilisable
   (passerelle interne d'Android).
