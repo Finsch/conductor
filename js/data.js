@@ -56,6 +56,14 @@ function localUrl(path) {
   return path && path.startsWith("../datastorage/") ? APP_ROOT + path : path;
 }
 
+// ---------- Ressenti (ambiance) ----------
+// Tags qui décrivent une ambiance plutôt qu'un genre : rangés dans "ressenti"
+const MOOD_WORDS = /\b(mellow|chill|chillout|chill-out|laid[- ]?back|relax(ed|ing)?|calm|peaceful|soothing|serene|dreamy|ethereal|atmospheric|ambient mood|melanchol(y|ic)|sad|dark|moody|brooding|gloomy|haunting|somber|sombre|energetic|upbeat|uplifting|happy|joyful|euphoric|aggressive|angry|intense|romantic|sensual|sexy|nostalgic|groovy|groove|tropical|summer(y)?|sunny|warm|cold|introspective|emotional|bittersweet|hypnotic|trippy|playful|quirky|whimsical|epic|cinematic|lush|nocturnal|night|late night|party|danceable|catchy|meditative|spiritual|anxious|lonely|heartbreak|fun|feel good|feel-good|smooth|hazy|lazy|breezy|cozy|cosy|raw|gritty|menacing|tense|eerie|spooky|triumphant|anthemic|wistful|tender|sentimental|mysterious)\b/i;
+
+function isMood(tag) {
+  return MOOD_WORDS.test(tag || "");
+}
+
 // ---------- Durées ----------
 // 2505 → "41 min 45 s" ; 3840 → "1 h 4 min"
 function formatLength(sec) {
@@ -101,6 +109,18 @@ const Store = (function () {
     // Nettoie aussi les titres des albums déjà enregistrés
     albums.forEach(a => {
       a.title = cleanAlbumTitle(a.title);
+      // Styles toujours en minuscules ("Psychedelic Indie Pop" → "psychedelic indie pop")
+      if (Array.isArray(a.styles)) a.styles = a.styles.map(st => String(st).toLowerCase());
+      // Anciens "mots-clés" : les ambiances vont dans le ressenti, le reste dans les styles
+      if (Array.isArray(a.keywords) && a.keywords.length) {
+        const low = x => String(x).toLowerCase();
+        const genre = low(a.genre || "");
+        a.moods = [...new Set((a.moods || []).map(low).concat(a.keywords.filter(isMood).map(low)))];
+        a.styles = [...new Set((a.styles || []).map(low).concat(a.keywords.filter(k => !isMood(k)).map(low)))]
+          .filter(st => st !== genre);
+        a.keywords = [];
+      }
+      if (Array.isArray(a.moods)) a.moods = a.moods.map(m => String(m).toLowerCase());
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
     });
@@ -155,6 +175,7 @@ const Store = (function () {
       const album = albums.find(a => a.id === id);
       if (!album) return null;
       Object.assign(album, patch);
+      if (Array.isArray(album.styles)) album.styles = album.styles.map(st => String(st).toLowerCase());
       save(albums);
       return album;
     },

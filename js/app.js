@@ -110,7 +110,7 @@
   function matchesSearch(a, q) {
     if (!q) return true;
     return [a.title, a.artist, a.genre, a.label]
-      .concat(a.styles || [], a.keywords || [])
+      .concat(a.styles || [], a.keywords || [], a.moods || [])
       .some(v => normalize(v).includes(q));
   }
 

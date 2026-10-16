@@ -177,7 +177,8 @@ const Enrich = (function () {
             (mb.releaseDate.slice(0, 4) === current.slice(0, 4) && mb.releaseDate.length > current.length))) {
           patch.releaseDate = mb.releaseDate;
         }
-        fill("keywords", mb.keywords);
+        // Tags d'ambiance → ressenti ; les autres complètent les styles (plus bas)
+        fill("moods", mb.keywords.filter(isMood));
       }
       if (dg) {
         // Le genre Discogs (Rock, Jazz…) est plus parlant que celui de Deezer
@@ -185,9 +186,14 @@ const Enrich = (function () {
         fill("styles", dg.styles);
         fill("label", dg.label);
       }
-      // Sans Discogs, les styles viennent des genres MusicBrainz
-      if (mb && isEmpty(album.styles) && isEmpty(patch.styles)) {
-        fill("styles", mb.genres.slice(0, 5));
+      // Styles : ceux de Discogs, complétés par les tags MusicBrainz (hors ressenti)
+      if (isEmpty(album.styles)) {
+        const genreKey = String(patch.genre || album.genre || "").toLowerCase();
+        const merged = [...new Set([].concat(patch.styles || [], mb ? mb.keywords.filter(k => !isMood(k)) : [])
+          .map(st => String(st).toLowerCase()))]
+          .filter(st => st && st !== genreKey)
+          .slice(0, 8);
+        if (merged.length) patch.styles = merged;
       }
       patch.enrichedAt = new Date().toISOString();
     }

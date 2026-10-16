@@ -94,13 +94,31 @@
       cover.appendChild(img);
     }
 
-    // Fiche
-    const sheet = [
-      ["genre", album.genre],
-      ["style", (album.styles || []).join(", ")],
-      ["label", album.label]
-    ].filter(([, v]) => v);
-    $("a-sheet").replaceChildren(...sheet.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+    // Fiche : genre et styles cliquables (= chercher dans la collection)
+    const links = list => {
+      const dd = el("dd");
+      list.forEach((v, i) => {
+        if (i) dd.appendChild(document.createTextNode(", "));
+        const a = el("a", "sheet-link", v);
+        a.href = searchLink(v);
+        dd.appendChild(a);
+      });
+      return dd;
+    };
+    const rows = [];
+    if (album.genre) rows.push(el("dt", null, "genre"), links([album.genre]));
+    if ((album.styles || []).length) rows.push(el("dt", null, "styles"), links(album.styles));
+    if (album.label) rows.push(el("dt", null, "label"), el("dd", null, album.label));
+    $("a-sheet").replaceChildren(...rows);
+
+    // Ressenti : étiquettes sous la liste des titres (cliquer = chercher dans la collection)
+    const moods = album.moods || [];
+    $("moods-block").hidden = !moods.length;
+    $("a-moods").replaceChildren(...moods.map(m => {
+      const a = el("a", "tag", m);
+      a.href = searchLink(m);
+      return a;
+    }));
 
     // Liens externes (nouvel onglet)
     const q = encodeURIComponent(album.artist + " " + album.title);
@@ -108,14 +126,6 @@
     $("a-wiki").href = "https://fr.wikipedia.org/w/index.php?search=" +
       encodeURIComponent(album.title + " " + album.artist + " album");
 
-    // Mots-clés (cliquer = chercher dans la collection)
-    const kw = album.keywords || [];
-    $("keywords-block").hidden = !kw.length;
-    $("a-keywords").replaceChildren(...kw.map(k => {
-      const a = el("a", "tag", k);
-      a.href = searchLink(k);
-      return a;
-    }));
   }
 
   // ---------- Titres ----------
@@ -445,7 +455,7 @@
     $("e-genre").value = album.genre || "";
     $("e-styles").value = (album.styles || []).join(", ");
     $("e-label").value = album.label || "";
-    $("e-keywords").value = (album.keywords || []).join(", ");
+    $("e-moods").value = (album.moods || []).join(", ");
     $("e-cover-server").hidden = !serverCoverId();
     $("e-cover-status").hidden = true;
     dialog.showModal();
@@ -518,7 +528,8 @@
         genre: $("e-genre").value.trim(),
         styles: splitList($("e-styles").value),
         label: $("e-label").value.trim(),
-        keywords: splitList($("e-keywords").value).map(k => k.toLowerCase())
+        keywords: [],
+        moods: splitList($("e-moods").value).map(k => k.toLowerCase())
       });
     } catch (err) {
       alert("Enregistrement impossible : l'image est peut-être trop lourde pour le stockage du navigateur.");

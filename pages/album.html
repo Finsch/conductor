@@ -71,10 +71,10 @@
         <table class="tracklist" id="tracklist"></table>
         <p class="hint" id="tracks-status"></p>
 
-        <!-- Mots-clés -->
-        <section class="block" id="keywords-block" hidden>
-          <h2 class="block-title">mots-clés</h2>
-          <div class="tags" id="a-keywords"></div>
+        <!-- Ressenti : l'ambiance de l'album (tropical, hypnotic, dreamy…) -->
+        <section class="block" id="moods-block" hidden>
+          <h2 class="block-title">ressenti</h2>
+          <div class="tags" id="a-moods"></div>
         </section>
 
         <!-- Votre avis -->
@@ -176,16 +176,17 @@
       </div>
       <div class="form-row">
         <label class="label" for="e-styles">Styles <span class="optional">(séparés par des virgules)</span></label>
-        <input class="field" id="e-styles" placeholder="punk rock, dance rock, noise rock">
+        <input class="field" id="e-styles" placeholder="psychedelic pop, trip-hop, electronica">
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-moods">Ressenti <span class="optional">(séparés par des virgules)</span></label>
+        <input class="field" id="e-moods" placeholder="tropical, hypnotic, dreamy, laid-back">
       </div>
       <div class="form-row">
         <label class="label" for="e-label">Label</label>
         <input class="field" id="e-label">
       </div>
-      <div class="form-row">
-        <label class="label" for="e-keywords">Mots-clés <span class="optional">(séparés par des virgules)</span></label>
-        <input class="field" id="e-keywords" placeholder="new wave, post-punk, Bristol">
-      </div>
+
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="edit-cancel">Annuler</button>
         <button type="submit" class="btn">Enregistrer</button>
