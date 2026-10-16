@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>conductor.</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">conductor.</a>
+
+      <form class="search" role="search" onsubmit="return false;">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="library.html" class="header-link">audio-files</a>
+      <button type="button" class="btn" id="add-album-btn" title="Raccourci : Alt+N">Ajouter un album</button>
+    </div>
+  </header>
+
+  <main class="page home">
+
+    <div class="home-main">
+      <div class="toolbar">
+        <p class="stats" id="stats"></p>
+        <div class="toolbar-right">
+          <button type="button" class="btn btn-ghost btn-small filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters">Filtres</button>
+          <div class="view-switch" role="group" aria-label="Affichage">
+            <button type="button" class="view-btn" data-view="grid" aria-label="Vue grille" title="Grille">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 2h7v7H2zM11 2h7v7h-7zM2 11h7v7H2zM11 11h7v7h-7z"/></svg>
+            </button>
+            <button type="button" class="view-btn" data-view="list" aria-label="Vue liste" title="Liste">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 3h4v4H2zM8 4h10v2H8zM2 13h4v4H2zM8 14h10v2H8zM2 8h4v4H2zM8 9h10v2H8z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="album-grid" id="album-grid" aria-label="Albums"></section>
+
+      <p class="empty" id="empty" hidden></p>
+
+      <nav class="pager" id="pager" aria-label="Pages" hidden>
+        <button type="button" class="btn btn-ghost btn-small" id="page-prev">← Précédent</button>
+        <span class="pager-info" id="page-info"></span>
+        <button type="button" class="btn btn-ghost btn-small" id="page-next">Suivant →</button>
+      </nav>
+    </div>
+
+    <!-- Colonne filtres -->
+    <aside class="filters" id="filters" aria-label="Tri et filtres">
+      <section class="filter-group">
+        <h2 class="filter-title">Trier par</h2>
+        <div class="sort-list" id="sort-list" role="radiogroup" aria-label="Trier par"></div>
+      </section>
+
+      <!-- Alphabet : visible avec les tris Titre A → Z et Artiste A → Z -->
+      <section class="filter-group" id="letter-group" hidden>
+        <h2 class="filter-title" id="letter-title">Lettre</h2>
+        <div class="letter-list" id="letter-list"></div>
+      </section>
+
+      <section class="filter-group">
+        <h2 class="filter-title">Genres</h2>
+        <div class="check-list" id="genre-list"></div>
+      </section>
+
+      <section class="filter-group">
+        <h2 class="filter-title">Décennies</h2>
+        <div class="chip-list" id="decade-list"></div>
+      </section>
+
+      <section class="filter-group">
+        <h2 class="filter-title">Intensité</h2>
+        <div class="intensity-list" id="intensity-list"></div>
+      </section>
+
+      <section class="filter-group" id="files-group" hidden>
+        <h2 class="filter-title">Fichiers</h2>
+        <label class="check">
+          <input type="checkbox" id="files-only">
+          <span class="check-name">Sur le téléphone</span>
+          <span class="count" id="files-count"></span>
+        </label>
+      </section>
+
+      <button type="button" class="text-btn" id="filters-reset" hidden>Réinitialiser les filtres</button>
+    </aside>
+  </main>
+
+  <!-- Fenêtre d'ajout d'album -->
+  <dialog class="modal" id="add-dialog" aria-labelledby="add-dialog-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="add-dialog-title">Ajouter un album</h2>
+      <button type="button" class="icon-btn" id="add-close" aria-label="Fermer">×</button>
+    </div>
+
+    <!-- Étape 1 : recherche -->
+    <div class="modal-step" id="step-search">
+      <label for="catalog-input" class="visually-hidden">Nom de l'album</label>
+      <input type="search" class="field" id="catalog-input" placeholder="Nom de l'album ou de l'artiste" autocomplete="off">
+      <p class="hint" id="catalog-status">Commencez à taper le nom d'un album.</p>
+      <ul class="results" id="catalog-results" role="listbox" aria-label="Résultats"></ul>
+    </div>
+
+    <!-- Étape 2 : log -->
+    <form class="modal-step" id="step-log" hidden>
+      <div class="selected">
+        <div class="selected-cover" id="sel-cover"></div>
+        <div>
+          <p class="selected-title" id="sel-title"></p>
+          <p class="selected-meta" id="sel-artist"></p>
+          <p class="selected-meta" id="sel-info"></p>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="log-date" class="label">Date d'écoute</label>
+        <input type="date" class="field field-date" id="log-date" required>
+      </div>
+
+      <div class="form-row">
+        <span class="label" id="rating-label">Note</span>
+        <div class="stars" id="log-rating" role="radiogroup" aria-labelledby="rating-label"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="log-review" class="label">Commentaire <span class="optional">(facultatif)</span></label>
+        <textarea class="field" id="log-review" rows="4"></textarea>
+      </div>
+
+      <p class="error" id="log-error" hidden></p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="log-back">Retour</button>
+        <button type="submit" class="btn">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Scripts classiques (pas de modules) pour fonctionner en ouvrant directement le fichier -->
+  <script src="js/config.js"></script>
+  <!-- Votre collection, lue depuis le disque (fonctionne sans internet) -->
+  <script src="../datastorage/collection.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/navidrome.js"></script>
+  <script src="js/disk.js"></script>
+  <script src="js/add-album.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Jeton Discogs personnel : ne jamais publier
+js/config.js
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini

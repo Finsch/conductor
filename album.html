@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>conductor.</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">conductor.</a>
+
+      <!-- La recherche renvoie vers l'accueil filtré -->
+      <form class="search" role="search" action="index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="index.html#ajouter" class="btn" title="Raccourci : Alt+N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <a href="index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <p class="empty" id="not-found" hidden>
+      Cet album n'est pas dans votre collection. <a href="index.html" class="text-link">Retour à l'accueil</a>
+    </p>
+
+    <div class="album-page" id="album-page" hidden>
+
+      <!-- Colonne 1 : infos, lecteur, titres, mots-clés, votre avis -->
+      <div class="album-main">
+        <h1 class="album-heading" id="a-title"></h1>
+        <p class="album-by">par <a class="text-link" id="a-artist"></a></p>
+        <p class="album-facts" id="a-facts"></p>
+
+        <!-- Lecteur -->
+        <div class="player" id="player">
+          <button type="button" class="player-play" id="p-play" aria-label="Lecture">
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          </button>
+          <div class="player-body">
+            <p class="player-line">
+              <span class="player-track" id="p-track"></span>
+              <span class="player-time" id="p-time">00:00 / 00:00</span>
+            </p>
+            <div class="player-controls">
+              <div class="player-bar" id="p-bar" role="slider" aria-label="Position" tabindex="0">
+                <div class="player-bar-fill" id="p-fill"></div>
+              </div>
+              <button type="button" class="player-skip" id="p-prev" aria-label="Titre précédent">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h2.5v14H5zM20 5v14L8.5 12z"/></svg>
+              </button>
+              <button type="button" class="player-skip" id="p-next" aria-label="Titre suivant">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 5H19v14h-2.5zM4 5l11.5 7L4 19z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="player-note" id="p-note"></p>
+
+        <!-- Titres -->
+        <table class="tracklist" id="tracklist"></table>
+        <p class="hint" id="tracks-status"></p>
+
+        <!-- Mots-clés -->
+        <section class="block" id="keywords-block" hidden>
+          <h2 class="block-title">mots-clés</h2>
+          <div class="tags" id="a-keywords"></div>
+        </section>
+
+        <!-- Votre avis -->
+        <section class="block">
+          <h2 class="block-title">votre écoute</h2>
+
+          <div class="aggro">
+            <p class="label">Intensité <span class="optional" id="aggro-value"></span></p>
+            <div class="aggro-scale" id="aggro-scale" role="radiogroup" aria-label="Intensité de 1 à 10"></div>
+            <div class="aggro-ends">
+              <span>1 · Ambient 1: Music for Airports, Brian Eno</span>
+              <span>10 · Joy as an Act of Resistance., IDLES / 10,000 gecs, 100 gecs</span>
+            </div>
+          </div>
+
+          <ul class="logs" id="a-logs"></ul>
+        </section>
+      </div>
+
+      <!-- Colonne 2 : pochette et fiche -->
+      <aside class="album-side">
+        <div class="album-art" id="a-cover"></div>
+
+        <dl class="facts" id="a-sheet"></dl>
+
+        <p class="ext-links">
+          <a class="text-link" id="a-genius" target="_blank" rel="noopener">Genius</a>
+          <a class="text-link" id="a-wiki" target="_blank" rel="noopener">Wikipédia</a>
+        </p>
+
+        <p class="files-line" id="a-files"></p>
+
+        <div class="entry-actions" id="entry-actions">
+          <button type="button" class="btn btn-ghost btn-small" id="edit-btn">Modifier la fiche</button>
+          <button type="button" class="btn btn-ghost btn-small" id="delete-btn">Supprimer</button>
+        </div>
+        <div class="entry-actions" id="delete-confirm" hidden>
+          <span class="hint-inline">Supprimer cet album et ses écoutes ?</span>
+          <button type="button" class="btn btn-small" id="delete-yes">Supprimer</button>
+          <button type="button" class="btn btn-ghost btn-small" id="delete-no">Annuler</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Fenêtre "Relier à vos fichiers" -->
+  <dialog class="modal" id="link-dialog" aria-labelledby="link-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="link-title">Relier à vos fichiers</h2>
+      <button type="button" class="icon-btn" id="link-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-step">
+      <label for="link-input" class="visually-hidden">Album sur le téléphone</label>
+      <input type="search" class="field" id="link-input" placeholder="Nom de l'album ou de l'artiste" autocomplete="off">
+      <p class="hint" id="link-status"></p>
+      <ul class="results" id="link-results"></ul>
+    </div>
+  </dialog>
+
+  <!-- Fenêtre de modification -->
+  <dialog class="modal" id="edit-dialog" aria-labelledby="edit-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="edit-title">Modifier la fiche</h2>
+      <button type="button" class="icon-btn" id="edit-close" aria-label="Fermer">×</button>
+    </div>
+    <form class="modal-step" id="edit-form">
+      <div class="form-row">
+        <label class="label" for="e-title">Titre</label>
+        <input class="field" id="e-title" required>
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-artist">Artiste</label>
+        <input class="field" id="e-artist" required>
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-date">Date de sortie <span class="optional">(AAAA-MM-JJ ou AAAA)</span></label>
+        <input class="field" id="e-date" pattern="\d{4}(-\d{2}(-\d{2})?)?" placeholder="1977-02-04">
+      </div>
+      <div class="form-row">
+        <span class="label">Pochette</span>
+        <div class="cover-edit">
+          <div class="cover-preview" id="e-cover-preview"></div>
+          <div class="cover-inputs">
+            <input class="field" id="e-cover" placeholder="Adresse de l'image, ou covers/nom.jpg">
+            <div class="cover-buttons">
+              <label class="btn btn-ghost btn-small file-btn">
+                Choisir une image…
+                <input type="file" id="e-cover-file" accept="image/*" hidden>
+              </label>
+              <button type="button" class="btn btn-ghost btn-small" id="e-cover-server" hidden>Pochette de vos fichiers</button>
+            </div>
+            <p class="hint" id="e-cover-status" hidden></p>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-genre">Genre</label>
+        <input class="field" id="e-genre" placeholder="Rock">
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-styles">Styles <span class="optional">(séparés par des virgules)</span></label>
+        <input class="field" id="e-styles" placeholder="punk rock, dance rock, noise rock">
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-label">Label</label>
+        <input class="field" id="e-label">
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-keywords">Mots-clés <span class="optional">(séparés par des virgules)</span></label>
+        <input class="field" id="e-keywords" placeholder="new wave, post-punk, Bristol">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="edit-cancel">Annuler</button>
+        <button type="submit" class="btn">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <!-- Votre collection, lue depuis le disque (fonctionne sans internet) -->
+  <script src="../datastorage/collection.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/navidrome.js"></script>
+  <script src="js/disk.js"></script>
+  <script src="js/enrich.js"></script>
+  <script src="js/lyrics.js"></script>
+  <script src="js/album.js"></script>
+</body>
+</html>

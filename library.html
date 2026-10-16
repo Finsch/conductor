@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>audio-files · conductor.</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">conductor.</a>
+
+      <form class="search" role="search" action="index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="library.html" class="header-link is-current">audio-files</a>
+      <a href="index.html#ajouter" class="btn" title="Raccourci : Alt+N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page lib">
+    <a href="index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <h1 class="album-heading">audio-files</h1>
+    <p class="album-facts">Vos fichiers MP3 et FLAC, servis en wifi par Navidrome depuis votre téléphone.</p>
+
+    <!-- Connexion -->
+    <section class="block" id="connect-block" hidden>
+      <h2 class="block-title">connexion au serveur</h2>
+      <form class="connect-form" id="connect-form">
+        <div class="form-row">
+          <label class="label" for="c-url">Adresse du serveur</label>
+          <input class="field" id="c-url" placeholder="192.168.1.23:4533 ou adresse IPv6" required autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label class="label" for="c-user">Utilisateur</label>
+          <input class="field" id="c-user" required autocomplete="username">
+        </div>
+        <div class="form-row">
+          <label class="label" for="c-pass">Mot de passe</label>
+          <input class="field" id="c-pass" type="password" required autocomplete="current-password">
+        </div>
+        <p class="error" id="c-error" hidden></p>
+        <button type="submit" class="btn" id="c-submit">Se connecter</button>
+      </form>
+    </section>
+
+    <!-- État du serveur -->
+    <section class="block" id="status-block" hidden>
+      <div class="server-status">
+        <p class="server-line">
+          <span class="dot" id="s-dot"></span>
+          <span id="s-text"></span>
+        </p>
+        <div class="server-actions">
+          <button type="button" class="btn btn-ghost btn-small" id="s-refresh">Actualiser</button>
+          <button type="button" class="btn btn-ghost btn-small" id="s-logout">Déconnecter</button>
+        </div>
+      </div>
+      <p class="hint" id="s-summary"></p>
+    </section>
+
+    <!-- Sur le téléphone, pas dans la collection -->
+    <section class="block" id="missing-block" hidden>
+      <div class="block-head">
+        <h2 class="block-title" id="missing-title"></h2>
+        <input type="search" class="field field-small" id="missing-filter" placeholder="Filtrer" autocomplete="off">
+      </div>
+      <div class="lib-list" id="missing-list"></div>
+      <button type="button" class="text-btn" id="missing-more" hidden>Afficher plus</button>
+    </section>
+
+    <!-- Dans la collection, sans fichiers -->
+    <section class="block" id="nofiles-block" hidden>
+      <h2 class="block-title" id="nofiles-title"></h2>
+      <p class="hint">Si l'album est bien sur votre téléphone sous un autre nom, ouvrez sa page et utilisez « Relier à vos fichiers ».</p>
+      <div class="lib-list" id="nofiles-list"></div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <!-- Votre collection, lue depuis le disque (fonctionne sans internet) -->
+  <script src="../datastorage/collection.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/navidrome.js"></script>
+  <script src="js/disk.js"></script>
+  <script src="js/library.js"></script>
+</body>
+</html>
