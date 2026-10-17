@@ -64,6 +64,43 @@ function isMood(tag) {
   return MOOD_WORDS.test(tag || "");
 }
 
+// ---------- Familles de genres ----------
+// Grandes familles pour rendre le filtre lisible. Le genre précis de l'album
+// ne change pas ; la famille est déduite du genre (ou choisie à la main dans
+// « Modifier la fiche », champ album.family).
+// Ordre des règles important : "soul jazz" → Jazz, "trip-hop" → Electronic
+// (et non Hip-hop), "post-punk" / "dance-punk" → Punk (et non Rock),
+// "Folk, World, & Country" (Discogs) → Folk.
+
+const GENRE_FAMILIES = ["Black music", "Jazz", "Rock", "Punk", "Pop", "Hip-hop",
+                        "Electronic", "Folk", "World music", "Autres"];
+
+const FAMILY_RULES = [
+  ["Jazz", /jazz|swing|bebop|bossa/],
+  ["Electronic", /trip-?hop|electro|techno|house|ambient|downtempo|idm|dubstep|drum ?(&|and|n) ?bass|edm|trance|breakbeat|synthwave|chillwave|glitch|garage/],
+  ["Hip-hop", /hip ?-?hop|rap|trap|drill|grime|boom bap/],
+  ["Punk", /punk|hardcore|emo|oi!|riot grrrl/],
+  ["Rock", /rock|metal|grunge|shoegaze|new wave|no wave|krautrock/],
+  ["Black music", /blues|soul|funk|r&b|rnb|rhythm and blues|disco|gospel|motown|doo-?wop/],
+  ["Folk", /folk|country|bluegrass|americana|singer-songwriter/],
+  ["World music", /world|reggae|dub|dancehall|ska|afro|latin|samba|salsa|cumbia|tropicalia|zouk|kompa|highlife|rumba|flamenco|fado/],
+  ["Pop", /pop|chanson|variété|cabaret/]
+];
+
+function autoFamily(genre) {
+  const g = (genre || "").toLowerCase();
+  if (!g) return "";
+  const rule = FAMILY_RULES.find(([, re]) => re.test(g));
+  return rule ? rule[0] : "Autres";
+}
+
+// Famille d'un album : choix manuel, sinon déduite du genre ("" si pas de genre)
+function familyOf(album) {
+  const manual = album && album.family;
+  if (manual && GENRE_FAMILIES.includes(manual)) return manual;   // ancien nom de famille : ignoré
+  return autoFamily(album && album.genre);
+}
+
 // ---------- Durées ----------
 // 2505 → "41 min 45 s" ; 3840 → "1 h 4 min"
 function formatLength(sec) {

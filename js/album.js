@@ -14,14 +14,6 @@
     if (home && home.startsWith(new URL(APP_ROOT || "./", location.href).href)) $("back-link").href = home;
   } catch (e) {}
 
-  // Alt+N : ajouter un album (ouvre la fenêtre d'ajout sur l'accueil)
-  document.addEventListener("keydown", e => {
-    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyN" || e.key.toLowerCase() === "n")) {
-      e.preventDefault();
-      location.href = "../index.html#ajouter";
-    }
-  });
-
   if (!album) {
     $("not-found").hidden = false;
     return;
@@ -106,7 +98,24 @@
       return dd;
     };
     const rows = [];
-    if (album.genre) rows.push(el("dt", null, "genre"), links([album.genre]));
+    const family = familyOf(album);
+    if (family) {
+      const dd = el("dd");
+      const a = el("a", "sheet-link", family);
+      a.href = "../index.html?famille=" + encodeURIComponent(family);
+      a.title = "Voir la famille " + family + " dans la collection";
+      dd.appendChild(a);
+      rows.push(el("dt", null, "famille"), dd);
+    }
+    if (album.genre) {
+      // Genre → filtre « Genres » de la collection (et non la recherche)
+      const dd = el("dd");
+      const a = el("a", "sheet-link", album.genre);
+      a.href = "../index.html?genre=" + encodeURIComponent(album.genre);
+      a.title = "Filtrer la collection sur " + album.genre;
+      dd.appendChild(a);
+      rows.push(el("dt", null, "genre"), dd);
+    }
     if ((album.styles || []).length) rows.push(el("dt", null, "styles"), links(album.styles));
     if (album.label) rows.push(el("dt", null, "label"), el("dd", null, album.label));
     $("a-sheet").replaceChildren(...rows);
@@ -117,6 +126,15 @@
     $("a-moods").replaceChildren(...moods.map(m => {
       const a = el("a", "tag", m);
       a.href = searchLink(m);
+      return a;
+    }));
+
+    // Tags personnalisés : les vôtres, juste en dessous
+    const tags = album.tags || [];
+    $("tags-block").hidden = !tags.length;
+    $("a-tags").replaceChildren(...tags.map(t => {
+      const a = el("a", "tag", t);
+      a.href = searchLink(t);
       return a;
     }));
 
@@ -291,6 +309,7 @@
 
   const audio = new Audio();
   audio.preload = "none";
+  if (window.Volume) Volume.attach(audio);   // volume global du lecteur (js/volume.js)
   let current = -1;
 
   function playable(i) {
@@ -367,6 +386,15 @@
   $("p-play").addEventListener("click", toggle);
   $("p-next").addEventListener("click", next);
   $("p-prev").addEventListener("click", prev);
+
+  // Pour les raccourcis clavier (js/shortcuts.js) : Espace, ← →
+  window.Player = {
+    toggle,
+    next,
+    prev,
+    active: () => current > -1,
+    hasAudio: () => tracks.some(t => t.preview)
+  };
   audio.addEventListener("timeupdate", updateTime);
   audio.addEventListener("loadedmetadata", updateTime);
   audio.addEventListener("play", updatePlayerUI);
@@ -453,9 +481,12 @@
     $("e-cover").value = album.cover && !album.cover.startsWith("data:") ? album.cover : "";
     setCoverPreview(album.cover || "");
     $("e-genre").value = album.genre || "";
+    fillFamilySelect();
+    $("e-family").value = GENRE_FAMILIES.includes(album.family) ? album.family : "";
     $("e-styles").value = (album.styles || []).join(", ");
     $("e-label").value = album.label || "";
     $("e-moods").value = (album.moods || []).join(", ");
+    $("e-tags").value = (album.tags || []).join(", ");
     $("e-cover-server").hidden = !serverCoverId();
     $("e-cover-status").hidden = true;
     dialog.showModal();
@@ -513,6 +544,17 @@
   $("edit-cancel").addEventListener("click", closeEdit);
   dialog.addEventListener("click", e => { if (e.target === dialog) closeEdit(); });
 
+  // Famille : « Automatique » (déduite du genre tapé) ou choix manuel
+  function fillFamilySelect() {
+    const sel = $("e-family");
+    const auto = autoFamily($("e-genre").value);
+    const keep = sel.value;
+    sel.replaceChildren(new Option("Automatique" + (auto ? " (" + auto + ")" : ""), ""),
+      ...GENRE_FAMILIES.map(f => new Option(f, f)));
+    sel.value = keep;
+  }
+  $("e-genre").addEventListener("input", fillFamilySelect);
+
   const splitList = s => s.split(",").map(x => x.trim()).filter(Boolean);
 
   $("edit-form").addEventListener("submit", e => {
@@ -526,10 +568,12 @@
         year: date ? Number(date.slice(0, 4)) : null,
         cover: editCover,
         genre: $("e-genre").value.trim(),
+        family: $("e-family").value,
         styles: splitList($("e-styles").value),
         label: $("e-label").value.trim(),
         keywords: [],
-        moods: splitList($("e-moods").value).map(k => k.toLowerCase())
+        moods: splitList($("e-moods").value).map(k => k.toLowerCase()),
+        tags: [...new Set(splitList($("e-tags").value))]
       });
     } catch (err) {
       alert("Enregistrement impossible : l'image est peut-être trop lourde pour le stockage du navigateur.");

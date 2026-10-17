@@ -12,7 +12,7 @@
 
   <header class="site-header">
     <div class="header-inner">
-      <a href="../index.html" class="logo">conductor.</a>
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
 
       <!-- La recherche renvoie vers l'accueil filtré -->
       <form class="search" role="search" action="../index.html" method="get">
@@ -21,7 +21,7 @@
       </form>
 
       <a href="library.html" class="header-link">audio-files</a>
-      <a href="../index.html#ajouter" class="btn" title="Raccourci : Alt+N">Ajouter un album</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
     </div>
   </header>
 
@@ -75,6 +75,12 @@
         <section class="block" id="moods-block" hidden>
           <h2 class="block-title">ressenti</h2>
           <div class="tags" id="a-moods"></div>
+        </section>
+
+        <!-- Tags personnalisés : les vôtres, jamais modifiés automatiquement -->
+        <section class="block" id="tags-block" hidden>
+          <h2 class="block-title">tags personnalisés</h2>
+          <div class="tags" id="a-tags"></div>
         </section>
 
         <!-- Votre avis -->
@@ -171,6 +177,10 @@
         </div>
       </div>
       <div class="form-row">
+        <label class="label" for="e-family">Famille <span class="optional">(regroupe les genres dans le filtre)</span></label>
+        <select class="field" id="e-family"></select>
+      </div>
+      <div class="form-row">
         <label class="label" for="e-genre">Genre</label>
         <input class="field" id="e-genre" placeholder="Rock">
       </div>
@@ -181,6 +191,10 @@
       <div class="form-row">
         <label class="label" for="e-moods">Ressenti <span class="optional">(séparés par des virgules)</span></label>
         <input class="field" id="e-moods" placeholder="tropical, hypnotic, dreamy, laid-back">
+      </div>
+      <div class="form-row">
+        <label class="label" for="e-tags">Tags personnalisés <span class="optional">(séparés par des virgules)</span></label>
+        <input class="field" id="e-tags" placeholder="été 2024, vinyle, à réécouter">
       </div>
       <div class="form-row">
         <label class="label" for="e-label">Label</label>
@@ -203,6 +217,8 @@
   <script src="../js/disk.js"></script>
   <script src="../js/enrich.js"></script>
   <script src="../js/lyrics.js"></script>
+  <script src="../js/volume.js"></script>
   <script src="../js/album.js"></script>
+  <script src="../js/shortcuts.js"></script>
 </body>
 </html>

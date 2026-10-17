@@ -28,7 +28,8 @@
   const state = {
     view: prefs.view === "list" ? "list" : "grid",
     sort: prefs.sort || "added-desc",
-    genres: new Set(),
+    genres: new Set(),          // clés "famille|genre" (voir genreKey)
+    openFamilies: new Set(),    // familles dépliées dans le filtre
     decades: new Set(),
     filesOnly: false,
     intensities: new Set(),
@@ -109,8 +110,8 @@
 
   function matchesSearch(a, q) {
     if (!q) return true;
-    return [a.title, a.artist, a.genre, a.label]
-      .concat(a.styles || [], a.keywords || [], a.moods || [])
+    return [a.title, a.artist, a.genre, familyOf(a), a.label]
+      .concat(a.styles || [], a.keywords || [], a.moods || [], a.tags || [])
       .some(v => normalize(v).includes(q));
   }
 
@@ -133,9 +134,28 @@
     if (skip !== "letter" && state.letter && letterField() && letterOf(a[letterField()]) !== state.letter) return false;
     if (skip !== "intensity" && state.intensities.size && !state.intensities.has(a.aggressivity || 0)) return false;
     if (skip !== "files" && state.filesOnly && !onPhone(a)) return false;
-    if (skip !== "genre" && state.genres.size && !state.genres.has(a.genre || "")) return false;
+    if (skip !== "genre" && state.genres.size && !state.genres.has(genreKey(a))) return false;
     if (skip !== "decade" && state.decades.size && !state.decades.has(decadeOf(a))) return false;
     return true;
+  }
+
+  // Un genre peut apparaître sous deux familles (famille choisie à la main) :
+  // le filtre travaille donc sur le couple famille + genre.
+  function genreKey(a) {
+    return a.genre ? familyOf(a) + "|" + a.genre : "";
+  }
+
+  function familyCheck(name, count, keys, onChange) {
+    const box = el("input");
+    box.type = "checkbox";
+    const picked = keys.filter(k => state.genres.has(k)).length;
+    box.checked = picked > 0 && picked === keys.length;
+    box.indeterminate = picked > 0 && picked < keys.length;
+    box.addEventListener("change", () => {
+      keys.forEach(k => box.checked ? state.genres.add(k) : state.genres.delete(k));
+      onChange();
+    });
+    return box;
   }
 
   const DECADES = ["1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"];
@@ -159,24 +179,62 @@
     // Les compteurs tiennent compte de la recherche et de l'autre filtre
     const base = all.filter(a => matchesSearch(a, q));
 
-    // Genres présents dans la collection
-    const genreCount = new Map();
-    all.forEach(a => { if (a.genre) genreCount.set(a.genre, 0); });
+    // Genres présents dans la collection, rangés par famille (dépliables)
+    const genreCount = new Map();   // "famille|genre" → nombre
+    all.forEach(a => { const k = genreKey(a); if (k) genreCount.set(k, 0); });
     base.filter(a => matchesFilters(a, "genre")).forEach(a => {
-      if (a.genre) genreCount.set(a.genre, genreCount.get(a.genre) + 1);
+      const k = genreKey(a);
+      if (k) genreCount.set(k, genreCount.get(k) + 1);
     });
-    const genres = [...genreCount.keys()].sort((a, b) => a.localeCompare(b, "fr"));
-    genreList.replaceChildren(...(genres.length ? genres.map(g => {
-      const label = el("label", "check" + (genreCount.get(g) ? "" : " is-empty"));
-      const box = el("input");
-      box.type = "checkbox";
-      box.checked = state.genres.has(g);
-      box.addEventListener("change", () => {
-        box.checked ? state.genres.add(g) : state.genres.delete(g);
-        refresh();
+    const byFamily = new Map();
+    [...genreCount.keys()].forEach(k => {
+      const fam = k.slice(0, k.indexOf("|"));
+      if (!byFamily.has(fam)) byFamily.set(fam, []);
+      byFamily.get(fam).push(k);
+    });
+    // Ordre alphabétique (familles et genres) ; « Autres » toujours en dernier
+    const families = [...byFamily.keys()].sort((a, b) =>
+      (a === "Autres") - (b === "Autres") || a.localeCompare(b, "fr", { sensitivity: "base" }));
+
+    genreList.replaceChildren(...(families.length ? families.map(fam => {
+      const keys = byFamily.get(fam).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+      const total = keys.reduce((s, k) => s + genreCount.get(k), 0);
+      const open = state.openFamilies.has(fam);
+      const group = el("div", "family" + (open ? " is-open" : ""));
+
+      const head = el("div", "check family-head" + (total ? "" : " is-empty"));
+      const toggle = el("button", "family-toggle");
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.title = open ? "Replier" : "Voir les genres";
+      toggle.append(el("span", "check-name", fam), el("span", "family-chevron", "›"));
+      toggle.addEventListener("click", () => {
+        open ? state.openFamilies.delete(fam) : state.openFamilies.add(fam);
+        renderFilters(all, q);
       });
-      label.append(box, el("span", "check-name", g), el("span", "count", String(genreCount.get(g))));
-      return label;
+      const box = familyCheck(fam, total, keys, refresh);
+      box.setAttribute("aria-label", "Famille " + fam);
+      head.append(box, toggle, el("span", "count", String(total)));
+      group.appendChild(head);
+
+      if (open) {
+        const list = el("div", "family-genres");
+        keys.forEach(k => {
+          const g = k.slice(k.indexOf("|") + 1);
+          const label = el("label", "check" + (genreCount.get(k) ? "" : " is-empty"));
+          const b = el("input");
+          b.type = "checkbox";
+          b.checked = state.genres.has(k);
+          b.addEventListener("change", () => {
+            b.checked ? state.genres.add(k) : state.genres.delete(k);
+            refresh();
+          });
+          label.append(b, el("span", "check-name", g), el("span", "count", String(genreCount.get(k))));
+          list.appendChild(label);
+        });
+        group.appendChild(list);
+      }
+      return group;
     }) : [el("p", "filter-empty", "Les genres apparaissent une fois les albums complétés.")]));
 
     // Décennies, à partir des années 1950
@@ -419,8 +477,8 @@
     const artistCount = new Set(all.map(a => a.artist)).size;
     const total = totalLength(all);
     stats.innerHTML =
-      "<strong>" + plural(artistCount, "artiste") + "</strong>, " +
-      "<strong>" + plural(all.length, "album") + "</strong>" +
+      "<strong>" + plural(all.length, "album") + "</strong>, " +
+      "<strong>" + plural(artistCount, "artiste") + "</strong>" +
       (total ? ", <strong>" + formatTotal(total) + "</strong>" : "");
     if (shownList.length !== all.length) {
       const sub = totalLength(shownList);
@@ -475,16 +533,35 @@
   const params = new URLSearchParams(location.search);
   if (params.get("q")) searchInput.value = params.get("q");
   if (params.get("page")) state.page = Number(params.get("page")) || 1;
+  // Liens d'une page album → filtre « Genres » (famille entière, ou un genre précis)
+  //   index.html?famille=Rock   index.html?genre=Post-punk
+  if (params.get("famille") || params.get("genre")) {
+    const fam = params.get("famille");
+    const genre = params.get("genre");
+    Store.all().forEach(a => {
+      if (!a.genre) return;
+      if (fam ? familyOf(a) === fam : a.genre === genre) {
+        state.genres.add(genreKey(a));
+        state.openFamilies.add(familyOf(a));
+      }
+    });
+    const url = new URL(location.href);
+    url.searchParams.delete("famille");
+    url.searchParams.delete("genre");
+    history.replaceState(null, "", url);
+  }
 
   render();
 
-  // Alt+N : ajouter un album
-  const addDialog = document.getElementById("add-dialog");
-  document.addEventListener("keydown", e => {
-    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyN" || e.key.toLowerCase() === "n")) {
-      e.preventDefault();
-      if (!addDialog.open) document.getElementById("add-album-btn").click();
-    }
+  // Maj + H (js/shortcuts.js) : accueil remis à zéro (recherche, filtres, page)
+  document.addEventListener("conductor:reset", () => {
+    searchInput.value = "";
+    state.genres.clear();
+    state.decades.clear();
+    state.filesOnly = false;
+    state.intensities.clear();
+    state.letter = "";
+    refresh();
   });
 
   // index.html#ajouter : ouvre directement la fenêtre d'ajout
