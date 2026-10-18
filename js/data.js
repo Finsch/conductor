@@ -87,10 +87,48 @@ const FAMILY_RULES = [
   ["Pop", /pop|chanson|variété|cabaret/]
 ];
 
-// Genre : seule la première lettre en majuscule ("Hip Hop" → "Hip hop",
-// "Funk / Soul" → "Funk / soul")
+// ---------- Nettoyage des styles et genres ----------
+// Les sources en ligne (surtout les tags MusicBrainz) mêlent de vrais styles,
+// des étiquettes de classement ("offizielle charts", "1–4 wochen") et des
+// orthographes différentes d'un même style ("hip hop" / "hip-hop").
+
+// Étiquettes qui ne sont pas des styles
+const STYLE_JUNK = /wochen|charts|\b(19|20)\d\d\b|^(drake|drugs|english|french|concept album|eclectic|classical influences|piano|seen live|favorites?|albums? i own|my music|vinyl)$/;
+
+// Orthographes ramenées à une seule (après passage en minuscules)
+const STYLE_ALIASES = {
+  "neo soul": "neo-soul",
+  "jazz funk": "jazz-funk",
+  "pop-rock": "pop rock",
+  "p.funk": "p-funk",
+  "prog rock": "progressive rock",
+  "avantgarde": "avant-garde",
+  "alt-pop": "alternative pop",
+  "minimalist music": "minimalism",
+  "conscious": "conscious hip-hop",
+  "rap/hip hop": "hip-hop",
+  "rap/hip-hop": "hip-hop",
+  "hiphop": "hip-hop",
+  "r'n'b": "r&b",
+  "rnb": "r&b"
+};
+
+function cleanStyle(style) {
+  let s = String(style || "").trim().toLowerCase().replace(/\s+/g, " ");
+  s = s.replace(/hip hop/g, "hip-hop");          // "conscious hip hop" → "conscious hip-hop"
+  return STYLE_ALIASES[s] || s;
+}
+
+// Styles nettoyés : sans doublon, sans étiquette parasite, sans le genre lui-même
+function cleanStyles(list, genre) {
+  const g = cleanStyle(genre);
+  return [...new Set((list || []).map(cleanStyle))].filter(s => s && s !== g && !STYLE_JUNK.test(s));
+}
+
+// Genre : orthographe unifiée, seule la première lettre en majuscule
+// ("Hip Hop", "Rap/Hip Hop" → "Hip-hop" ; "Funk / Soul" → "Funk / soul")
 function genreCase(genre) {
-  const g = String(genre || "").trim().toLowerCase();
+  const g = cleanStyle(genre);
   return g ? g.charAt(0).toUpperCase() + g.slice(1) : "";
 }
 
@@ -153,8 +191,6 @@ const Store = (function () {
     // Nettoie aussi les titres des albums déjà enregistrés
     albums.forEach(a => {
       a.title = cleanAlbumTitle(a.title);
-      // Styles toujours en minuscules ("Psychedelic Indie Pop" → "psychedelic indie pop")
-      if (Array.isArray(a.styles)) a.styles = a.styles.map(st => String(st).toLowerCase());
       if (a.genre) a.genre = genreCase(a.genre);
       // Anciens "mots-clés" : les ambiances vont dans le ressenti, le reste dans les styles
       if (Array.isArray(a.keywords) && a.keywords.length) {
@@ -166,6 +202,8 @@ const Store = (function () {
         a.keywords = [];
       }
       if (Array.isArray(a.moods)) a.moods = a.moods.map(m => String(m).toLowerCase());
+      // Styles en minuscules, nettoyés (étiquettes parasites, doublons d'orthographe)
+      if (Array.isArray(a.styles)) a.styles = cleanStyles(a.styles, a.genre);
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
     });
@@ -282,8 +320,8 @@ const Store = (function () {
       const album = albums.find(a => a.id === id);
       if (!album) return null;
       Object.assign(album, patch);
-      if (Array.isArray(album.styles)) album.styles = album.styles.map(st => String(st).toLowerCase());
       if (album.genre) album.genre = genreCase(album.genre);
+      if (Array.isArray(album.styles)) album.styles = cleanStyles(album.styles, album.genre);
       save(albums);
       return album;
     },

@@ -1302,6 +1302,18 @@ a.album-card:hover .album-cover {
   margin-bottom: 14px;
 }
 
+.in-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.in-card-head .text-btn {
+  margin-top: 0;
+  font-size: 13px;
+}
+
 .in-wide {
   grid-column: 1 / -1;
 }

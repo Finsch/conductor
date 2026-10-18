@@ -96,6 +96,57 @@
     }));
   }
 
+  // ---------- À redécouvrir ----------
+  // Albums jamais écoutés avec le lecteur, ou pas depuis longtemps : 5 tirés au
+  // hasard parmi les 30 plus « oubliés » (plus c'est ancien, plus il a de chances).
+  // Référence : dernière écoute comptée, sinon date d'ajout.
+
+  const DAY = 86400000;
+
+  function lastPlayAt(a) {
+    const p = a.plays || [];
+    return p.length ? p[p.length - 1].at : "";
+  }
+
+  function ago(iso) {
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / DAY);
+    if (days < 1) return "aujourd'hui";
+    if (days < 60) return "il y a " + days + " j";
+    if (days < 730) return "il y a " + Math.floor(days / 30) + " mois";
+    return "il y a " + Math.floor(days / 365) + " ans";
+  }
+
+  function renderRediscover() {
+    const now = Date.now();
+    const scored = Store.all().map(a => {
+      const last = lastPlayAt(a);
+      const ref = last || addedAt(a);
+      const days = ref ? (now - new Date(ref).getTime()) / DAY : 365;
+      // jamais écouté : bonus, pour passer devant à ancienneté égale
+      return { a, last, weight: Math.max(1, days) * (last ? 1 : 1.5) };
+    }).sort((x, y) => y.weight - x.weight).slice(0, 30);
+
+    const picked = [];
+    const left = scored.slice();
+    while (picked.length < 5 && left.length) {
+      let x = Math.random() * left.reduce((s, r) => s + r.weight, 0);
+      let i = 0;
+      while (i < left.length - 1 && (x -= left[i].weight) > 0) i++;
+      picked.push(left.splice(i, 1)[0]);
+    }
+
+    $("in-rediscover").replaceChildren(...(picked.length ? picked.map(({ a, last }) => {
+      const li = el("li");
+      const link = el("a", "rec-link");
+      link.href = albumLink(a);
+      link.append(el("span", "rec-title", a.title), document.createTextNode(" - " + a.artist));
+      li.append(link, el("span", "in-list-value", last ? "écouté " + ago(last) : "jamais écouté ici"));
+      return li;
+    }) : [el("li", "hint", "Rien à redécouvrir pour l'instant.")]));
+  }
+
+  $("in-rediscover-more").addEventListener("click", renderRediscover);
+
   // ---------- Rendu ----------
 
   function render() {
@@ -225,4 +276,5 @@
 
   document.addEventListener("albums:changed", render);
   render();
+  renderRediscover();   // une fois par visite (le bouton « d'autres » en tire de nouveaux)
 })();
