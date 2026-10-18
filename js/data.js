@@ -76,16 +76,23 @@ const GENRE_FAMILIES = ["Black music", "Jazz", "Rock", "Punk", "Pop", "Hip-hop",
                         "Electronic", "Folk", "World music", "Autres"];
 
 const FAMILY_RULES = [
-  ["Jazz", /jazz|swing|bebop|bossa/],
+  ["Jazz", /jazz|swing|bebop|big band/],
   ["Electronic", /trip-?hop|electro|techno|house|ambient|downtempo|idm|dubstep|drum ?(&|and|n) ?bass|edm|trance|breakbeat|synthwave|chillwave|glitch|garage/],
   ["Hip-hop", /hip ?-?hop|rap|trap|drill|grime|boom bap/],
   ["Punk", /punk|hardcore|emo|oi!|riot grrrl/],
   ["Rock", /rock|metal|grunge|shoegaze|new wave|no wave|krautrock/],
   ["Black music", /blues|soul|funk|r&b|rnb|rhythm and blues|disco|gospel|motown|doo-?wop/],
   ["Folk", /folk|country|bluegrass|americana|singer-songwriter/],
-  ["World music", /world|reggae|dub|dancehall|ska|afro|latin|samba|salsa|cumbia|tropicalia|zouk|kompa|highlife|rumba|flamenco|fado/],
+  ["World music", /world|reggae|dub|dancehall|ska|afro|latin|bossa|samba|salsa|cumbia|tropicalia|zouk|kompa|highlife|rumba|flamenco|fado/],
   ["Pop", /pop|chanson|variété|cabaret/]
 ];
+
+// Genre : seule la première lettre en majuscule ("Hip Hop" → "Hip hop",
+// "Funk / Soul" → "Funk / soul")
+function genreCase(genre) {
+  const g = String(genre || "").trim().toLowerCase();
+  return g ? g.charAt(0).toUpperCase() + g.slice(1) : "";
+}
 
 function autoFamily(genre) {
   const g = (genre || "").toLowerCase();
@@ -148,6 +155,7 @@ const Store = (function () {
       a.title = cleanAlbumTitle(a.title);
       // Styles toujours en minuscules ("Psychedelic Indie Pop" → "psychedelic indie pop")
       if (Array.isArray(a.styles)) a.styles = a.styles.map(st => String(st).toLowerCase());
+      if (a.genre) a.genre = genreCase(a.genre);
       // Anciens "mots-clés" : les ambiances vont dans le ressenti, le reste dans les styles
       if (Array.isArray(a.keywords) && a.keywords.length) {
         const low = x => String(x).toLowerCase();
@@ -198,8 +206,46 @@ const Store = (function () {
     },
 
     // Tous les albums, le dernier loggé en premier
+    // La collection (albums écoutés) ; les albums « next up » sont à part
     all() {
-      return load().sort((a, b) => lastLoggedAt(b).localeCompare(lastLoggedAt(a)));
+      return load().filter(a => !a.nextUp)
+        .sort((a, b) => lastLoggedAt(b).localeCompare(lastLoggedAt(a)));
+    },
+
+    // Next up : albums repérés, pas encore écoutés (les plus récents d'abord)
+    nextUp() {
+      return load().filter(a => a.nextUp)
+        .sort((a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || ""));
+    },
+
+    // Priorité 1 à 5 dans next up (une seule par rang ; null = pas de priorité).
+    // Le rang déjà pris par un autre album lui est retiré.
+    setPriority(id, rank) {
+      const albums = load();
+      const album = albums.find(a => a.id === id);
+      if (!album) return null;
+      albums.forEach(a => { if (rank && a.nextUp && a.priority === rank) delete a.priority; });
+      if (rank) album.priority = rank; else delete album.priority;
+      save(albums);
+      return album;
+    },
+
+    // "collection", "nextup" ou null
+    statusOf(album) {
+      const found = load().find(a => sameAlbum(a, album));
+      return found ? (found.nextUp ? "nextup" : "collection") : null;
+    },
+
+    // Ajoute à Next up (sans écoute). Déjà présent : on ne touche à rien.
+    addNextUp(album) {
+      const albums = load();
+      const existing = albums.find(a => sameAlbum(a, album));
+      if (existing) return existing;
+      const entry = Object.assign({}, album, { logs: [], nextUp: true, nextUpAt: new Date().toISOString() });
+      if (entry.genre) entry.genre = genreCase(entry.genre);
+      albums.push(entry);
+      save(albums);
+      return entry;
     },
 
     get(id) {
@@ -213,6 +259,7 @@ const Store = (function () {
       if (!album) return null;
       Object.assign(album, patch);
       if (Array.isArray(album.styles)) album.styles = album.styles.map(st => String(st).toLowerCase());
+      if (album.genre) album.genre = genreCase(album.genre);
       save(albums);
       return album;
     },
@@ -224,7 +271,7 @@ const Store = (function () {
     // Même album = même identifiant, ou même artiste + même titre
     // (évite les doublons quand un album vient de Deezer puis de Discogs)
     has(album) {
-      return load().some(a => sameAlbum(a, album));
+      return load().some(a => !a.nextUp && sameAlbum(a, album));
     },
 
     // Ajoute un album sans écoute (import depuis vos fichiers)
@@ -233,6 +280,7 @@ const Store = (function () {
       const existing = albums.find(a => sameAlbum(a, album));
       if (existing) return existing;
       const entry = Object.assign({}, album, { logs: [], addedAt: new Date().toISOString() });
+      if (entry.genre) entry.genre = genreCase(entry.genre);
       albums.push(entry);
       save(albums);
       return entry;
@@ -244,8 +292,17 @@ const Store = (function () {
       let entry = albums.find(a => sameAlbum(a, album));
       if (!entry) {
         entry = Object.assign({}, album, { logs: [], addedAt: new Date().toISOString() });
+        if (entry.genre) entry.genre = genreCase(entry.genre);
         albums.push(entry);
       }
+      // Première écoute d'un album « next up » : il entre dans la collection
+      if (entry.nextUp) {
+        delete entry.nextUp;
+        delete entry.nextUpAt;
+        delete entry.priority;
+        entry.addedAt = new Date().toISOString();
+      }
+      entry.logs = entry.logs || [];
       entry.logs.push(Object.assign({}, log, { loggedAt: new Date().toISOString() }));
       save(albums);
       return entry;

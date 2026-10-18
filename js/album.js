@@ -20,6 +20,16 @@
   }
   $("album-page").hidden = false;
 
+  // Album « next up » : pas de page album, il s'ouvre dans la page next up
+  if (album.nextUp) {
+    location.replace("nextup.html?album=" + encodeURIComponent(album.id));
+    return;
+  }
+  try {
+    const back = $("back-link");
+    if (back.href.includes("nextup.html")) back.textContent = "← retour à next up";
+  } catch (e) {}
+
   // ---------- Formats ----------
 
   const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -550,7 +560,10 @@
     const auto = autoFamily($("e-genre").value);
     const keep = sel.value;
     sel.replaceChildren(new Option("Automatique" + (auto ? " (" + auto + ")" : ""), ""),
-      ...GENRE_FAMILIES.map(f => new Option(f, f)));
+      // ordre alphabétique, « Autres » en dernier
+      ...GENRE_FAMILIES.slice().sort((a, b) =>
+        (a === "Autres") - (b === "Autres") || a.localeCompare(b, "fr", { sensitivity: "base" }))
+        .map(f => new Option(f, f)));
     sel.value = keep;
   }
   $("e-genre").addEventListener("input", fillFamilySelect);

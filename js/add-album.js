@@ -30,6 +30,14 @@
   let debounce = null;
   let requestId = 0;     // pour ignorer les réponses arrivées en retard
 
+  // Page Next up : la fenêtre ajoute à Next up (pas de date d'écoute ni de note)
+  const NEXTUP_MODE = dialog.dataset.mode === "nextup";
+  const nextUpBtn = document.getElementById("log-nextup");
+  if (NEXTUP_MODE) {
+    stepLog.querySelectorAll(".form-row").forEach(r => { r.hidden = true; });
+    dateInput.required = false;
+  }
+
   // ---------- Ouverture / fermeture ----------
 
   function open() {
@@ -123,10 +131,11 @@
 
       li.append(thumb, text);
 
-      if (Store.has(album)) {
+      const status = Store.statusOf(album);
+      if (status) {
         const tag = document.createElement("span");
         tag.className = "result-tag";
-        tag.textContent = "Dans la collection";
+        tag.textContent = status === "nextup" ? "Dans next up" : "Dans la collection";
         li.appendChild(tag);
       }
 
@@ -188,9 +197,12 @@
     setRating(0);
     errorBox.hidden = true;
 
+    // Déjà dans la collection : « Next up » n'a pas de sens
+    if (nextUpBtn) nextUpBtn.hidden = Store.statusOf(selected) === "collection";
+
     stepSearch.hidden = true;
     stepLog.hidden = false;
-    dateInput.focus();
+    (NEXTUP_MODE ? stepLog.querySelector("button[type=submit]") : dateInput).focus();
   }
 
   function renderInfo() {
@@ -226,21 +238,39 @@
     });
   }
 
-  stepLog.addEventListener("submit", e => {
-    e.preventDefault();
+  // Enregistrer : écoute (collection) ; page Next up ou bouton « Next up » : à écouter
+  function save(toNextUp) {
     if (!selected) return;
     const album = Object.assign({}, selected);
     delete album.thumb;
     try {
-      Store.logAlbum(album, {
-        date: dateInput.value,
-        rating: rating || null,
-        review: reviewInput.value.trim()
-      });
+      const entry = toNextUp
+        ? Store.addNextUp(album)
+        : Store.logAlbum(album, {
+            date: dateInput.value,
+            rating: rating || null,
+            review: reviewInput.value.trim()
+          });
       close();
+      // Page next up : la liste se met à jour toute seule
+      if (toNextUp && NEXTUP_MODE) return;
+      // Ouvre la page de l'album (ou next up), après l'écriture dans datastorage (3 s max)
+      const go = () => {
+        location.href = APP_ROOT + (toNextUp && entry.nextUp
+          ? "pages/nextup.html?album=" + encodeURIComponent(entry.id)
+          : "pages/album.html?id=" + encodeURIComponent(entry.id));
+      };
+      const write = typeof Disk !== "undefined" ? Promise.resolve(Disk.writeNow()) : Promise.resolve();
+      Promise.race([write.catch(() => {}), new Promise(r => setTimeout(r, 3000))]).then(go);
     } catch (err) {
       errorBox.textContent = "L'enregistrement a échoué : le navigateur bloque peut-être le stockage local.";
       errorBox.hidden = false;
     }
+  }
+
+  stepLog.addEventListener("submit", e => {
+    e.preventDefault();
+    save(NEXTUP_MODE);
   });
+  if (nextUpBtn) nextUpBtn.addEventListener("click", () => save(true));
 })();

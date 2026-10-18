@@ -18,7 +18,10 @@
 
   try {
     const home = sessionStorage.getItem("conductor01.home");
-    if (home && home.startsWith(new URL(APP_ROOT || "./", location.href).href)) $("back-link").href = home;
+    if (home && home.startsWith(new URL(APP_ROOT || "./", location.href).href)) {
+      $("back-link").href = home;
+      if (home.includes("nextup.html")) $("back-link").textContent = "← retour à next up";
+    }
   } catch (e) {}
 
   // ---------- Connexion ----------
@@ -93,10 +96,7 @@
     const text = el("div", "row-text");
     text.append(el("p", "row-title", cleanAlbumTitle(s.title)), el("p", "row-artist", meta(s)));
 
-    const btn = el("button", "btn btn-ghost btn-small", "Ajouter à la collection");
-    btn.type = "button";
-    btn.addEventListener("click", () => {
-      const album = Store.addAlbum({
+    const entryOf = () => ({
         id: "local-" + s.id,
         source: "Fichiers",
         title: cleanAlbumTitle(s.title),
@@ -109,13 +109,24 @@
         serverId: s.id,
         serverCover: s.coverArt
       });
-      const link = el("a", "text-link", "Voir la page");
-      link.href = "album.html?id=" + encodeURIComponent(album.id);
-      btn.replaceWith(link);
-      renderSummary();
-    });
+    const actions = el("div", "lib-actions");
+    const add = (label, fn) => {
+      const btn = el("button", "btn btn-ghost btn-small", label);
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        const album = fn(entryOf());
+        const link = el("a", "text-link", album.nextUp ? "Voir dans next up" : "Voir la page");
+        link.href = album.nextUp ? "nextup.html?album=" + encodeURIComponent(album.id)
+                                 : "album.html?id=" + encodeURIComponent(album.id);
+        actions.replaceChildren(link);
+        renderSummary();
+      });
+      actions.appendChild(btn);
+    };
+    add("Next up", a => Store.addNextUp(a));
+    add("Ajouter à la collection", a => Store.addAlbum(a));
 
-    row.append(coverThumb(Server.coverUrl(s.coverArt, 100)), text, btn);
+    row.append(coverThumb(Server.coverUrl(s.coverArt, 100)), text, actions);
     return row;
   }
 
@@ -130,13 +141,14 @@
 
   function compute() {
     const index = Server.cachedIndex();
-    const albums = Store.all();
+    // Collection + next up : un album repéré dans next up n'est pas « manquant »
+    const albums = Store.raw();
     const linkedIds = new Set();
     const noFiles = [];
     albums.forEach(a => {
       const m = Server.matchFor(a, index);
       if (m) (m.ids || [m.id]).forEach(id => linkedIds.add(id));
-      else noFiles.push(a);
+      else if (!a.nextUp) noFiles.push(a);
     });
     const missing = index.albums.filter(s => !(s.ids || [s.id]).some(id => linkedIds.has(id)));
     return { index, linked: index.albums.length - missing.length, missing, noFiles };

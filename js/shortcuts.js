@@ -25,7 +25,8 @@
 (function () {
   const ROOT = typeof APP_ROOT !== "undefined" ? APP_ROOT : "";
   const PAGE = /\/pages\/album\.html$/.test(location.pathname) ? "album"
-    : /\/pages\/library\.html$/.test(location.pathname) ? "library" : "home";
+    : /\/pages\/library\.html$/.test(location.pathname) ? "library"
+    : /\/pages\/nextup\.html$/.test(location.pathname) ? "nextup" : "home";
 
   const SHORTCUTS = [
     ["N", "Ajouter un album"],
@@ -67,7 +68,7 @@
 
   function addAlbum() {
     const btn = document.getElementById("add-album-btn");
-    if (PAGE === "home" && btn) btn.click();
+    if ((PAGE === "home" || PAGE === "nextup") && btn) btn.click();   // next up : ajoute à next up
     else location.href = ROOT + "index.html#ajouter";
   }
 
