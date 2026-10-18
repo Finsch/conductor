@@ -50,6 +50,17 @@ function cleanAlbumTitle(raw) {
 // APP_ROOT ramène à app/ depuis n'importe quelle page.
 const APP_ROOT = /\/pages\/[^\/]*$/.test(location.pathname) ? "../" : "";
 
+// ---------- Site sur une seule page ----------
+// Toutes les pages s'affichent dans conductor.html (l'« enveloppe »), qui ne se
+// recharge jamais : la musique continue d'une page à l'autre. Une page ouverte
+// seule (favori, ancien lien) est renvoyée dans l'enveloppe, à la même adresse.
+const IN_SHELL = window.top !== window;
+if (!IN_SHELL && !window.CONDUCTOR_SHELL) {
+  const root = new URL(APP_ROOT || "./", location.href).href;
+  const rel = location.href.split("#")[0].slice(root.length) || "index.html";
+  location.replace(root + "conductor.html#" + rel + (location.hash || ""));
+}
+
 // Fichiers de datastorage : enregistrés relativement à app/ ("../datastorage/…"),
 // ajustés ici selon la page qui les affiche.
 function localUrl(path) {
@@ -87,6 +98,29 @@ const FAMILY_RULES = [
   ["Pop", /pop|chanson|variété|cabaret/]
 ];
 
+// Clé d'un morceau pour les étoiles : titre simplifié ("Black Mambo" → "blackmambo"),
+// pour retrouver la piste qu'elle vienne de Deezer ou de vos fichiers.
+function trackKey(title) {
+  return cleanAlbumTitle(title || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// ---------- Icônes favoris ----------
+// Album favori : cœur arrondi. Morceau préféré : étoile aux angles arrondis.
+// on = plein, sinon contour. Taille et couleur viennent du CSS (currentColor).
+
+function favIcon(on) {
+  return '<svg class="fav-icon' + (on ? ' is-on' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path d="M12 20.2c-.3 0-.55-.1-.77-.28C7.4 16.6 3.6 13.3 3.6 9.3c0-2.7 2.1-4.8 4.7-4.8 1.5 0 2.85.7 3.7 1.85.85-1.15 2.2-1.85 3.7-1.85 2.6 0 4.7 2.1 4.7 4.8 0 4-3.8 7.3-7.63 10.62-.22.18-.47.28-.77.28z" ' +
+    'fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+}
+
+function trackIcon(on) {
+  return '<svg class="track-icon' + (on ? ' is-on' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path d="M12 3.8 L14.59 9.24 L20.56 10.02 L16.18 14.16 L17.29 20.08 L12 17.2 L6.71 20.08 L7.82 14.16 L3.44 10.02 L9.41 9.24Z" ' +
+    'fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+}
+
 // ---------- Nettoyage des styles et genres ----------
 // Les sources en ligne (surtout les tags MusicBrainz) mêlent de vrais styles,
 // des étiquettes de classement ("offizielle charts", "1–4 wochen") et des
@@ -119,10 +153,11 @@ function cleanStyle(style) {
   return STYLE_ALIASES[s] || s;
 }
 
-// Styles nettoyés : sans doublon, sans étiquette parasite, sans le genre lui-même
+// Styles nettoyés : sans doublon, sans étiquette parasite.
+// Le genre fait toujours partie des styles (en premier).
 function cleanStyles(list, genre) {
   const g = cleanStyle(genre);
-  return [...new Set((list || []).map(cleanStyle))].filter(s => s && s !== g && !STYLE_JUNK.test(s));
+  return [...new Set([g].concat((list || []).map(cleanStyle)))].filter(s => s && !STYLE_JUNK.test(s));
 }
 
 // Genre : orthographe unifiée, seule la première lettre en majuscule
@@ -202,8 +237,8 @@ const Store = (function () {
         a.keywords = [];
       }
       if (Array.isArray(a.moods)) a.moods = a.moods.map(m => String(m).toLowerCase());
-      // Styles en minuscules, nettoyés (étiquettes parasites, doublons d'orthographe)
-      if (Array.isArray(a.styles)) a.styles = cleanStyles(a.styles, a.genre);
+      // Styles en minuscules, nettoyés (étiquettes parasites, doublons d'orthographe), genre inclus
+      if (Array.isArray(a.styles) || a.genre) a.styles = cleanStyles(a.styles, a.genre);
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
     });
@@ -217,6 +252,14 @@ const Store = (function () {
     // Écriture dans datastorage (si le dossier est connecté)
     if (typeof Disk !== "undefined") Disk.changed();
   }
+
+  // Données modifiées ailleurs (le cadre ↔ l'enveloppe) : chacun se met à jour.
+  // Une page du cadre a modifié les données : l'enveloppe les écrit dans datastorage.
+  window.addEventListener("storage", e => {
+    if (e.key !== KEY) return;
+    document.dispatchEvent(new CustomEvent("albums:changed"));
+    if (typeof Disk !== "undefined") Disk.changed();
+  });
 
   function simplify(str) {
     return (str || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -321,7 +364,7 @@ const Store = (function () {
       if (!album) return null;
       Object.assign(album, patch);
       if (album.genre) album.genre = genreCase(album.genre);
-      if (Array.isArray(album.styles)) album.styles = cleanStyles(album.styles, album.genre);
+      if (Array.isArray(album.styles) || album.genre) album.styles = cleanStyles(album.styles, album.genre);
       save(albums);
       return album;
     },

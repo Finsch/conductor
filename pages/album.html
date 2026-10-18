@@ -68,6 +68,7 @@
           </div>
         </div>
         <p class="player-note" id="p-note"></p>
+        <button type="button" class="text-btn queue-add" id="queue-add" hidden>+ file d'attente</button>
 
         <!-- Titres -->
         <table class="tracklist" id="tracklist"></table>
@@ -103,7 +104,11 @@
 
       <!-- Colonne 2 : pochette et fiche -->
       <aside class="album-side">
-        <div class="album-art" id="a-cover"></div>
+        <!-- Pochette + cœur « album favori » (vide au survol, plein une fois marqué) -->
+        <div class="album-art-wrap">
+          <div class="album-art" id="a-cover"></div>
+          <button type="button" class="fav-album" id="a-fav" aria-pressed="false"></button>
+        </div>
 
         <dl class="facts" id="a-sheet"></dl>
 
@@ -225,6 +230,7 @@
   <script src="../js/enrich.js"></script>
   <script src="../js/lyrics.js"></script>
   <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
   <script src="../js/album.js"></script>
   <script src="../js/shortcuts.js"></script>
 </body>

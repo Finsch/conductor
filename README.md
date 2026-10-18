@@ -2,6 +2,7 @@
 
 A personal, local-first music library and audio player. Inspired by Bandcamp and Musicboard.
 Plain HTML, CSS and JavaScript: no server, no install. Open `index.html` in Chrome or Edge.
+Single-page: everything runs inside `conductor.html`, which never reloads, so the music keeps playing from page to page.
 Data lives on your PC (`datastorage/`), so it works offline.
 
 ## Features
@@ -13,13 +14,15 @@ Data lives on your PC (`datastorage/`), so it works offline.
 - **Next up**: a to-listen list kept apart from the collection, with a top 5 priority grid.
 - **Insights**: the collection in numbers, every bar links to the filtered collection.
 - **audio-files**: streams your MP3/FLAC from an Android phone running **Navidrome** (Termux), over Wi-Fi or hotspot.
-- **Volume** (0–20, remembered) and **keyboard shortcuts**: `N` add, `S` search, `R` surprise, `Esc` back, `Shift+H` home, `Space` play, `← →` tracks, `↑ ↓` volume, `M` mute, `?` help.
+- **Continuous playback**: floating mini player (cover, track, play/pause, progress, ★, back to album) and an album **queue** (reorder, remove, total and remaining time).
+- **Volume** (0–20, remembered) and **keyboard shortcuts**: `N` add, `S` search, `R` surprise, `Esc` back, `Z` home, `Space` play, `← →` tracks, `↑ ↓` volume, `M` mute, `?` help.
 
 ## Structure
 
 ```
 conductor/
 ├── app/              this repo (code)
+│   ├── conductor.html  single-page shell: player, mini player, queue, disk writes
 │   ├── index.html    collection
 │   ├── pages/        album, nextup, insights, library (audio-files)
 │   ├── css/  js/  assets/

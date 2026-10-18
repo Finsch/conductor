@@ -10,7 +10,11 @@
 // Écrire : le navigateur (Chrome ou Edge) doit avoir accès au dossier. On le
 //          choisit une fois ; ensuite un clic « Autoriser » suffit à chaque session.
 
-const Disk = (function () {
+// Site sur une seule page : seule l'enveloppe (conductor.html) écrit sur le
+// disque — Chrome interdit le choix d'un dossier depuis une page affichée dans
+// un cadre. Les pages du cadre ont un relais (frameDisk, plus bas) : leurs
+// modifications passent par le stockage du navigateur, que l'enveloppe écoute.
+const Disk = window.top !== window ? frameDisk() : (function () {
   const supported = "showDirectoryPicker" in window;
   const DB_NAME = "conductor01";
   const DB_STORE = "handles";
@@ -123,6 +127,8 @@ const Disk = (function () {
   }
 
   async function flushLyrics() {
+    // relire : des paroles ont pu être ajoutées par une page du cadre
+    try { pendingLyrics = JSON.parse(localStorage.getItem(PENDING_KEY)) || {}; } catch (e) {}
     const ids = Object.keys(pendingLyrics);
     if (!ids.length) return;
     const dir = await handle.getDirectoryHandle("lyrics", { create: true });
@@ -349,6 +355,9 @@ const Disk = (function () {
   // Avant de quitter la page : écrire ce qui reste
   window.addEventListener("pagehide", () => { if (dirty && state === "ready") writeNow(); });
 
+  // Paroles ajoutées par une page du cadre : à écrire
+  window.addEventListener("storage", e => { if (e.key === PENDING_KEY) changed(); });
+
   return {
     init, changed, choose, allow, writeNow, cacheCovers, retryCovers,
     writeLyrics, lyricsPath, pendingLyricsFor, safeName,
@@ -357,3 +366,28 @@ const Disk = (function () {
 })();
 
 document.addEventListener("DOMContentLoaded", () => Disk.init());
+
+// Relais pour une page affichée dans le cadre de conductor.html
+function frameDisk() {
+  const PENDING_KEY = "conductor01.lyricsPending";
+  const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || {}; } catch (e) { return {}; } };
+  const safeName = id => String(id).replace(/[^a-z0-9_-]/gi, "_");
+  return {
+    init() {},
+    changed() {},                       // l'enveloppe voit la modification et l'écrit
+    writeNow: () => Promise.resolve(),
+    cacheCovers: () => Promise.resolve(),
+    retryCovers() {},
+    choose() {},
+    allow() {},
+    writeLyrics(albumId, data) {
+      const p = readPending();
+      p[albumId] = data;
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch (e) {}
+    },
+    lyricsPath: albumId => APP_ROOT + "../datastorage/lyrics/" + safeName(albumId) + ".js",
+    pendingLyricsFor: albumId => readPending()[albumId] || null,
+    safeName,
+    state: () => "shell"
+  };
+}

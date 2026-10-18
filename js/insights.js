@@ -158,19 +158,12 @@
     // Chiffres clés
     const artists = new Set(all.map(a => a.artist)).size;
     const total = all.reduce((s, a) => s + (durationOf(a) || 0), 0);
-    const plays = all.reduce((s, a) => s + (a.plays || []).length, 0);
-    const favs = all.reduce((s, a) => s + (a.favorites || []).length, 0);
-    const index = Server.isConfigured() ? Server.cachedIndex() : null;
-    const onPhone = index ? all.filter(a => Server.matchFor(a, index)).length : null;
     const tiles = [
       [String(all.length), "albums"],
       [String(artists), "artistes"],
       [formatTotal(total), "d'écoute au total"],
-      [String(plays), plays > 1 ? "écoutes comptées" : "écoute comptée"],
-      [String(favs), favs > 1 ? "morceaux ★" : "morceau ★"],
       [String(Store.nextUp().length), "dans next up"]
     ];
-    if (onPhone != null) tiles.push([Math.round(onPhone / all.length * 100) + " %", "sur le téléphone"]);
     $("in-tiles").replaceChildren(...tiles.map(([v, l]) => {
       const t = el("div", "in-tile" + (v.length > 9 ? " is-long" : ""));
       t.append(el("p", "in-tile-value", v), el("p", "in-tile-label", l));

@@ -66,6 +66,24 @@
 
   // ---------- Infos ----------
 
+  // ---------- Album favori (♥) ----------
+
+  function renderFavorite() {
+    const on = !!album.favorite;
+    const b = $("a-fav");
+    b.innerHTML = favIcon(on);
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", on ? "Retirer des favoris" : "Ajouter aux favoris");
+    b.title = on ? "Album favori (cliquer pour retirer)" : "Ajouter aux favoris";
+  }
+
+  $("a-fav").addEventListener("click", () => {
+    const on = !album.favorite;
+    album = Store.update(album.id, { favorite: on || null, favoriteAt: on ? new Date().toISOString() : null }) || album;
+    renderFavorite();
+  });
+
   // ---------- Vous aimerez peut-être aussi ----------
   // 4 albums de la collection, par ordre d'importance des critères :
   // 1. intensité (proche), 2. ressenti (communs), 3. styles (communs), 4. genre / famille.
@@ -160,6 +178,7 @@
     renderRecs();
     document.title = album.title + " — " + album.artist + " · conductor.";
     $("a-title").textContent = album.title;
+    renderFavorite();
     $("a-artist").textContent = album.artist;
     $("a-artist").href = searchLink(album.artist);
 
@@ -375,8 +394,7 @@
   // retrouver la piste qu'elle vienne de Deezer ou de vos fichiers.
 
   function favKey(title) {
-    return cleanAlbumTitle(title || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase().replace(/[^a-z0-9]/g, "");
+    return trackKey(title);   // js/data.js (partagé avec le mini-lecteur)
   }
 
   function isFavorite(t) {
@@ -422,7 +440,8 @@
       const fav = isFavorite(t);
       if (fav) tr.classList.add("is-favorite");
       const tdFav = el("td", "track-fav");
-      const star = el("button", "fav-btn" + (fav ? " is-on" : ""), fav ? "★" : "☆");
+      const star = el("button", "fav-btn" + (fav ? " is-on" : ""));
+      star.innerHTML = trackIcon(fav);
       star.type = "button";
       star.setAttribute("aria-pressed", String(fav));
       star.setAttribute("aria-label", (fav ? "Retirer des préférés : " : "Marquer comme préféré : ") + t.title);
@@ -439,11 +458,16 @@
   }
 
   // ---------- Lecteur ----------
+  // Télécommande du moteur commun (js/playback.js) : la musique continue quand
+  // on change de page, et reprend ici au même endroit. `current` = morceau en
+  // cours quand c'est cet album qui joue, sinon -1.
 
-  const audio = new Audio();
-  audio.preload = "none";
-  if (window.Volume) Volume.attach(audio);   // volume global du lecteur (js/volume.js)
+  const audio = Playback.audio;
   let current = -1;
+
+  function own() {
+    return Playback.isAlbum(album.id);
+  }
 
   function playable(i) {
     return tracks[i] && tracks[i].preview;
@@ -454,35 +478,35 @@
     return -1;
   }
 
+  function meta() {
+    return {
+      albumId: album.id, title: album.title, artist: album.artist,
+      cover: album.cover || "", serverCover: album.serverCover || "",
+      source: local.active ? "fichiers" : "extraits"
+    };
+  }
+
   function playTrack(i) {
     if (!playable(i)) return;
-    current = i;
-    audio.src = tracks[i].preview;
-    audio.play().catch(() => {});
-    updatePlayerUI();
+    Playback.playAlbum(meta(), tracks.map(t => ({ title: t.title, duration: t.duration, src: t.preview })), i);
   }
 
   function toggle() {
-    if (current < 0) {
-      const i = firstPlayable(0, 1);
-      if (i > -1) playTrack(i);
-      return;
-    }
-    audio.paused ? audio.play().catch(() => {}) : audio.pause();
+    if (own()) { Playback.toggle(); return; }
+    const i = firstPlayable(0, 1);
+    if (i > -1) playTrack(i);
   }
 
   function next() {
-    const i = firstPlayable(current + 1, 1);
-    if (i > -1) playTrack(i);
+    if (own()) Playback.next();
   }
 
   function prev() {
-    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
-    const i = firstPlayable(current - 1, -1);
-    if (i > -1) playTrack(i);
+    if (own()) Playback.prev();
   }
 
   function updatePlayerUI() {
+    current = own() ? Playback.index() : -1;
     const list = tracks.length ? tracks : (album.tracks || []);
     const shown = current > -1 ? current : 0;
     const playing = current > -1 && !audio.paused;
@@ -502,18 +526,20 @@
       tr.classList.toggle("is-playing", i === current && playing);
     });
     updateTime();
+    renderQueueButton();
   }
 
   // Durée du morceau : celle du fichier audio, sinon celle des métadonnées
   function currentDuration() {
-    if (isFinite(audio.duration) && audio.duration > 0) return audio.duration;
-    return (tracks[current] && tracks[current].duration) || 0;
+    if (current < 0) return 0;
+    return Playback.duration() || (tracks[current] && tracks[current].duration) || 0;
   }
 
   function updateTime() {
     const dur = currentDuration();
-    $("p-time").textContent = mmss(current > -1 ? audio.currentTime : 0) + " / " + mmss(current > -1 ? dur : 0);
-    $("p-fill").style.width = (dur && current > -1 ? (audio.currentTime / dur) * 100 : 0) + "%";
+    const t = current > -1 ? audio.currentTime : 0;
+    $("p-time").textContent = mmss(t) + " / " + mmss(current > -1 ? dur : 0);
+    $("p-fill").style.width = (dur && current > -1 ? (t / dur) * 100 : 0) + "%";
   }
 
   $("p-play").addEventListener("click", toggle);
@@ -525,31 +551,37 @@
     toggle,
     next,
     prev,
-    active: () => current > -1,
+    active: () => own(),
     hasAudio: () => tracks.some(t => t.preview)
   };
-  audio.addEventListener("timeupdate", updateTime);
-  audio.addEventListener("timeupdate", countListening);
-  audio.addEventListener("seeking", () => { lastTime = null; });
-  audio.addEventListener("play", () => { lastTime = null; });
-  audio.addEventListener("loadedmetadata", updateTime);
-  audio.addEventListener("play", updatePlayerUI);
-  audio.addEventListener("pause", updatePlayerUI);
-  audio.addEventListener("ended", () => {
-    const i = firstPlayable(current + 1, 1);
-    i > -1 ? playTrack(i) : updatePlayerUI();
-  });
+  audio.addEventListener("timeupdate", () => { if (own()) updateTime(); });
+  audio.addEventListener("loadedmetadata", () => { if (own()) updateTime(); });
+  document.addEventListener("playback:change", updatePlayerUI);
 
   // Cliquer sur la barre pour avancer / reculer
   $("p-bar").addEventListener("click", e => {
     if (current < 0 || !currentDuration()) return;
     const r = e.currentTarget.getBoundingClientRect();
-    audio.currentTime = ((e.clientX - r.left) / r.width) * currentDuration();
+    Playback.seek(((e.clientX - r.left) / r.width) * currentDuration());
   });
   $("p-bar").addEventListener("keydown", e => {
     if (current < 0) return;
-    if (e.key === "ArrowRight") audio.currentTime = Math.min(currentDuration(), audio.currentTime + 5);
-    if (e.key === "ArrowLeft") audio.currentTime = Math.max(0, audio.currentTime - 5);
+    if (e.key === "ArrowRight") Playback.seek(Math.min(currentDuration(), audio.currentTime + 5));
+    if (e.key === "ArrowLeft") Playback.seek(Math.max(0, audio.currentTime - 5));
+  });
+
+  // + file d'attente : l'album passera après celui en cours
+  function renderQueueButton() {
+    const b = $("queue-add");
+    if (!b) return;
+    const inQ = Playback.inQueue(album.id);
+    b.hidden = own() || !(Playback.state() || inQ);
+    b.textContent = inQ ? "✓ dans la file d'attente" : "+ file d'attente";
+    b.title = inQ ? "Cliquer pour retirer de la file d'attente" : "Écouter cet album après celui en cours";
+  }
+
+  $("queue-add").addEventListener("click", () => {
+    Playback.inQueue(album.id) ? Playback.removeFromQueue(album.id) : Playback.addToQueue(album.id);
   });
 
   // ---------- Votre écoute ----------
@@ -581,50 +613,18 @@
     $("aggro-scale").appendChild(b);
   }
 
-  // ---------- Écoutes (comptées par le lecteur) ----------
-  // Un morceau compte comme écouté après la moitié de sa durée réelle (4 min max),
-  // en temps réellement joué (avancer dans la barre ne compte pas). Un extrait
-  // Deezer de 30 s n'y arrive donc pas : seuls vos fichiers font des écoutes.
-  // L'album compte comme écouté quand 90 % de ses morceaux l'ont été pendant
-  // la visite de la page → album.plays (Store.addPlay).
+  // ---------- Écoutes ----------
+  // Comptées par le moteur de lecture (js/playback.js), même hors de cette page :
+  // un album est « écouté » quand 90 % de ses morceaux l'ont été, chacun au moins
+  // à moitié (4 min max), en temps réellement joué → album.plays.
 
   const plural = (n, w) => n + " " + w + (n > 1 ? "s" : "");
-  const TRACK_SHARE = 0.5, TRACK_MAX = 240, ALBUM_SHARE = 0.9;
-  const heard = new Map();   // n° de piste → secondes réellement jouées
-  const done = new Set();    // pistes comptées comme écoutées
-  let lastTime = null;
+  const ALBUM_SHARE = 0.9;
 
-  function trackNeed(i) {
-    const dur = (tracks[i] && tracks[i].duration) || currentDuration() || 0;
-    return dur ? Math.min(TRACK_MAX, dur * TRACK_SHARE) : Infinity;
-  }
-
-  function albumNeed() {
-    return Math.ceil(tracks.length * ALBUM_SHARE);
-  }
-
-  function countListening() {
-    if (current < 0 || audio.paused || audio.seeking) { lastTime = null; return; }
-    const t = audio.currentTime;
-    if (lastTime != null) {
-      const d = t - lastTime;
-      if (d > 0 && d < 2) heard.set(current, (heard.get(current) || 0) + d);
-    }
-    lastTime = t;
-    if (!done.has(current) && (heard.get(current) || 0) >= trackNeed(current)) {
-      done.add(current);
-      if (tracks.length && done.size >= albumNeed()) {
-        album = Store.addPlay(album.id, {
-          tracks: done.size,
-          of: tracks.length,
-          source: local.active ? "fichiers" : "extraits"
-        }) || album;
-        done.clear();
-        heard.clear();
-      }
-      renderPlays();
-    }
-  }
+  document.addEventListener("albums:changed", () => {
+    album = Store.get(album.id) || album;
+    renderPlays();
+  });
 
   function renderPlays() {
     const plays = album.plays || [];

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>conductor.</title>
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="shell">
+
+  <!--
+    conductor. — site sur une seule page.
+    Cette page ne se recharge jamais : elle porte la musique, le mini-lecteur et
+    la file d'attente (js/playback.js). Les pages du site (collection, albums,
+    next up, insights, audio-files) s'affichent dans le cadre ci-dessous ;
+    l'adresse (#index.html, #pages/album.html?id=…) suit la page affichée.
+  -->
+  <iframe id="page" class="shell-frame" title="conductor."></iframe>
+
+  <script>window.CONDUCTOR_SHELL = true;</script>
+  <script src="js/config.js"></script>
+  <!-- Votre collection, lue depuis le disque -->
+  <script src="../datastorage/collection.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/navidrome.js"></script>
+  <!-- Écriture dans datastorage (le choix du dossier n'est permis qu'ici) -->
+  <script src="js/disk.js"></script>
+  <script src="js/playback.js"></script>
+  <script>
+    // Page à afficher : celle de l'adresse (#…), sinon la collection.
+    // Seules les pages du site sont acceptées.
+    (function () {
+      const want = decodeURIComponent(location.hash.slice(1));
+      const ok = /^(index\.html|pages\/(album|nextup|insights|library)\.html)(\?[^#]*)?(#.*)?$/.test(want);
+      document.getElementById("page").src = ok ? want : "index.html";
+    })();
+  </script>
+</body>
+</html>

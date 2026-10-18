@@ -33,8 +33,9 @@
         <p class="stats" id="stats"></p>
         <div class="toolbar-right">
           <button type="button" class="btn btn-ghost btn-small" id="surprise-btn" title="Un album au hasard parmi ceux affichés (Raccourci : R)">Surprise me</button>
-          <button type="button" class="icon-square" id="export-btn" hidden title="Exporter la liste en .txt (album (année) - artiste)" aria-label="Exporter la liste en .txt">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v9.2M6.2 7.6 10 11.4l3.8-3.8M3 13v3.5h14V13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <button type="button" class="icon-square" id="export-btn" hidden title="Copier la liste (album (année) - artiste)" aria-label="Copier la liste dans le presse-papiers">
+            <svg class="icon-copy" viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 4.5v-.7a1.8 1.8 0 0 0-1.8-1.8H5.3a1.8 1.8 0 0 0-1.8 1.8v6.4a1.8 1.8 0 0 0 1.8 1.8h.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <svg class="icon-done" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <button type="button" class="btn btn-ghost btn-small filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters">Filtres</button>
           <div class="view-switch" role="group" aria-label="Affichage">
@@ -73,6 +74,20 @@
       </section>
 
       <section class="filter-group">
+        <h2 class="filter-title">Favoris</h2>
+        <label class="check">
+          <input type="checkbox" id="fav-only">
+          <span class="check-name">Albums favoris <span class="fav-mark" id="fav-filter-icon"></span></span>
+          <span class="count" id="fav-count"></span>
+        </label>
+      </section>
+
+      <section class="filter-group">
+        <h2 class="filter-title">Intensité</h2>
+        <div class="intensity-list" id="intensity-list"></div>
+      </section>
+
+      <section class="filter-group">
         <h2 class="filter-title">Genres</h2>
         <div class="check-list" id="genre-list"></div>
       </section>
@@ -80,11 +95,6 @@
       <section class="filter-group">
         <h2 class="filter-title">Décennies</h2>
         <div class="chip-list" id="decade-list"></div>
-      </section>
-
-      <section class="filter-group">
-        <h2 class="filter-title">Intensité</h2>
-        <div class="intensity-list" id="intensity-list"></div>
       </section>
 
       <section class="filter-group" id="files-group" hidden>
@@ -186,6 +196,7 @@
   <script src="js/add-album.js"></script>
   <script src="js/app.js"></script>
   <script src="js/volume.js"></script>
+  <script src="js/playback.js"></script>
   <script src="js/shortcuts.js"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@
 
   // ---------- Préférences mémorisées : vue, tri et filtres ----------
   // Les filtres restent après un aller-retour sur une page album, un
-  // rechargement ou une nouvelle visite. « Réinitialiser » / Maj + H les vident.
+  // rechargement ou une nouvelle visite. « Réinitialiser » / Z les vident.
 
   const PREFS_KEY = "conductor01.prefs";
 
@@ -32,6 +32,7 @@
           openFamilies: [...state.openFamilies],
           decades: [...state.decades],
           filesOnly: state.filesOnly,
+          favOnly: state.favOnly,
           intensities: [...state.intensities],
           letter: state.letter
         }
@@ -49,6 +50,7 @@
     openFamilies: new Set(list(saved.openFamilies)),  // familles dépliées dans le filtre
     decades: new Set(list(saved.decades)),
     filesOnly: !!saved.filesOnly,
+    favOnly: !!saved.favOnly,
     intensities: new Set(list(saved.intensities)),
     letter: typeof saved.letter === "string" ? saved.letter : "",
     page: 1
@@ -153,6 +155,7 @@
     if (skip !== "letter" && state.letter && letterField() && letterOf(a[letterField()]) !== state.letter) return false;
     if (skip !== "intensity" && state.intensities.size && !state.intensities.has(a.aggressivity || 0)) return false;
     if (skip !== "files" && state.filesOnly && !onPhone(a)) return false;
+    if (skip !== "fav" && state.favOnly && !a.favorite) return false;
     if (skip !== "genre" && state.genres.size && !state.genres.has(genreKey(a))) return false;
     if (skip !== "decade" && state.decades.size && !state.decades.has(decadeOf(a))) return false;
     return true;
@@ -287,6 +290,12 @@
         String(base.filter(a => matchesFilters(a, "files") && onPhone(a)).length);
     }
 
+    // Favoris
+    document.getElementById("fav-filter-icon").innerHTML = favIcon(true);
+    document.getElementById("fav-only").checked = state.favOnly;
+    document.getElementById("fav-count").textContent =
+      String(base.filter(a => matchesFilters(a, "fav") && a.favorite).length);
+
     // Alphabet (tri Titre ou Artiste A → Z)
     const field = letterField();
     document.getElementById("letter-group").hidden = !field;
@@ -323,10 +332,14 @@
       return b;
     }));
 
-    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.filesOnly &&
+    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.filesOnly && !state.favOnly &&
       !state.intensities.size && !state.letter;
   }
 
+  document.getElementById("fav-only").addEventListener("change", e => {
+    state.favOnly = e.target.checked;
+    refresh();
+  });
   document.getElementById("files-only").addEventListener("change", e => {
     state.filesOnly = e.target.checked;
     refresh();
@@ -337,6 +350,7 @@
     state.genres.clear();
     state.decades.clear();
     state.filesOnly = false;
+    state.favOnly = false;
     state.intensities.clear();
     state.letter = "";
     refresh();
@@ -359,6 +373,14 @@
 
   function coverEl(album, cls) {
     const cover = el("div", cls);
+    // Album favori : étoile dans le coin de la pochette
+    if (album.favorite) {
+      const star = el("span", "cover-fav");
+      star.innerHTML = favIcon(true);
+      star.title = "Album favori";
+      cover.appendChild(star);
+    }
+    cover.appendChild(queueBtn(album));
     // Pas de pochette en ligne : celle de vos fichiers
     const src = album.cover || (album.serverCover && Server.isConfigured() ? Server.coverUrl(album.serverCover, 600) : "");
     if (src) {
@@ -371,6 +393,63 @@
     }
     return cover;
   }
+
+  // ---------- Bouton « file d'attente » sur la pochette ----------
+  // Visible au survol ; une fois l'album dans la file : coche verte, toujours visible.
+  // Recliquer le retire de la file.
+
+  const QUEUE_ICONS = {
+    add: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 13v7M14.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15 13v7.5l6-3.75z" fill="currentColor"/></svg>',
+    done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="q-check" d="M13.5 16.5l2.8 2.8 5.2-5.6" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  function queued(id) {
+    return !!(window.Playback && (Playback.inQueue(id) || (Playback.isAlbum && Playback.isAlbum(id))));
+  }
+
+  // Rien en lecture (lecteur fermé) : le bouton lance l'album
+  function idle() {
+    return !!window.Playback && !Playback.state();
+  }
+
+  function paintQueueBtn(b) {
+    const on = queued(b.dataset.id);
+    const playing = !!(window.Playback && Playback.isAlbum && Playback.isAlbum(b.dataset.id));
+    const mode = on ? "done" : idle() ? "play" : "add";
+    if (b.dataset.mode === mode) return;
+    b.dataset.mode = mode;
+    b.classList.toggle("is-on", on);
+    b.innerHTML = QUEUE_ICONS[mode];
+    const label = playing ? "En cours de lecture" : on ? "Dans la file d'attente (cliquer pour retirer)"
+      : mode === "play" ? "Écouter l'album" : "Ajouter à la file d'attente";
+    b.title = label;
+    b.setAttribute("aria-label", label);
+  }
+
+  function queueBtn(album) {
+    const b = el("button", "cover-queue");
+    b.type = "button";
+    b.dataset.id = album.id;
+    paintQueueBtn(b);
+    b.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!window.Playback) return;
+      const id = album.id;
+      if (Playback.isAlbum && Playback.isAlbum(id)) return;
+      if (Playback.inQueue(id)) Playback.removeFromQueue(id);
+      else if (idle()) Playback.playId(id);
+      else Playback.addToQueue(id);
+      delete b.dataset.mode;
+      paintQueueBtn(b);
+    });
+    return b;
+  }
+
+  document.addEventListener("playback:change", () => {
+    document.querySelectorAll(".cover-queue").forEach(b => { delete b.dataset.mode; paintQueueBtn(b); });
+  });
 
   function albumLink(album, cls) {
     const a = el("a", cls);
@@ -506,18 +585,33 @@
     }
   }
 
-  // ---------- Export .txt ----------
+  // ---------- Copier la liste ----------
   // Une ligne par album : "Titre (année) - Artiste", dans l'ordre du tri choisi,
-  // tous les résultats (pas seulement la page affichée).
+  // tous les résultats (pas seulement la page affichée), copiés dans le presse-papiers.
 
   const exportBtn = document.getElementById("export-btn");
   let lastResults = [];
+  let copiedTimer = null;
 
-  function exportName() {
-    const q = searchInput.value.trim();
-    const slug = (q || "filtres").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "liste";
-    return "conductor-" + slug + "-" + new Date().toLocaleDateString("sv-SE") + ".txt";
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => copyFallback(text));
+    }
+    return Promise.resolve(copyFallback(text));
+  }
+
+  // Ancienne méthode, si le presse-papiers moderne est refusé
+  function copyFallback(text) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (!ok) throw new Error("copie refusée");
   }
 
   exportBtn.addEventListener("click", () => {
@@ -525,15 +619,19 @@
       const y = yearOf(a);
       return a.title + (y ? " (" + y + ")" : "") + " - " + a.artist;
     });
-    // BOM + fins de ligne Windows : s'ouvre proprement dans le Bloc-notes
-    const blob = new Blob(["\ufeff" + lines.join("\r\n") + "\r\n"], { type: "text/plain;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = exportName();
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    const n = lines.length;
+    copyText(lines.join("\n")).then(() => {
+      exportBtn.classList.add("is-done");
+      exportBtn.title = n + " album" + (n > 1 ? "s" : "") + " copié" + (n > 1 ? "s" : "") + " dans le presse-papiers";
+    }).catch(() => {
+      exportBtn.title = "Copie impossible : le navigateur l'a refusée";
+    }).finally(() => {
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => {
+        exportBtn.classList.remove("is-done");
+        exportBtn.title = "Copier la liste (album (année) - artiste)";
+      }, 1800);
+    });
   });
 
   // ---------- Surprise me ----------
@@ -610,7 +708,7 @@
 
     // Export .txt : seulement après une recherche ou un filtre
     lastResults = albums;
-    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.filesOnly ||
+    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.filesOnly || state.favOnly ||
       state.intensities.size || state.letter) || !albums.length;
 
     viewBtns.forEach(b => {
@@ -655,10 +753,13 @@
   const genre = params.get("genre");
   const decade = params.get("decennie");
   const intensity = Number(params.get("intensite")) || 0;
-  if (fam || genre || decade || intensity || params.get("reset")) {
+  // ?accueil=1 (touche Z depuis une autre page) : tout à zéro, tri compris
+  if (params.get("accueil")) state.sort = "added-desc";
+  if (fam || genre || decade || intensity || params.get("reset") || params.get("accueil")) {
     state.genres.clear();
     state.decades.clear();
     state.filesOnly = false;
+    state.favOnly = false;
     state.intensities.clear();
     state.letter = "";
     if (fam || genre) {
@@ -673,18 +774,20 @@
     if (decade) state.decades.add(decade);
     if (intensity >= 1 && intensity <= 10) state.intensities.add(intensity);
     const url = new URL(location.href);
-    ["famille", "genre", "decennie", "intensite", "reset"].forEach(k => url.searchParams.delete(k));
+    ["famille", "genre", "decennie", "intensite", "reset", "accueil"].forEach(k => url.searchParams.delete(k));
     history.replaceState(null, "", url);
   }
 
   render();
 
-  // Maj + H (js/shortcuts.js) : accueil remis à zéro (recherche, filtres, page)
+  // Z (js/shortcuts.js) : accueil remis à zéro (recherche, filtres, page)
   document.addEventListener("conductor:reset", () => {
     searchInput.value = "";
+    state.sort = "added-desc";   // tri par défaut : ajouts récents
     state.genres.clear();
     state.decades.clear();
     state.filesOnly = false;
+    state.favOnly = false;
     state.intensities.clear();
     state.letter = "";
     refresh();

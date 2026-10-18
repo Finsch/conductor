@@ -3,7 +3,7 @@
 //   N         ajouter un album
 //   S         rechercher
 //   Échap     quitter un champ ; sinon retour à la collection
-//   Maj + H   accueil, filtres et recherche réinitialisés
+//   Z         accueil, filtres et recherche réinitialisés
 //   Espace    lecture / pause            (page album)
 //   ← →       titre précédent / suivant  (page album, pendant la lecture)
 //   ↑ ↓       volume + / − 1 (sur 20)    (page album, pendant la lecture)
@@ -34,7 +34,7 @@
     ["S", "Rechercher"],
     ["R", "Surprise me : un album au hasard (collection)"],
     ["Échap", "Quitter un champ · retour à la collection"],
-    ["Maj + H", "Accueil, filtres réinitialisés"],
+    ["Z", "Accueil, filtres réinitialisés"],
     ["Espace", "Lecture / pause (page album)"],
     ["← →", "Titre précédent / suivant (pendant la lecture)"],
     ["↑ ↓", "Volume + / − (sur 20, pendant la lecture)"],
@@ -93,7 +93,7 @@
       document.dispatchEvent(new CustomEvent("conductor:reset"));
       window.scrollTo({ top: 0 });
     } else {
-      location.href = ROOT + "index.html";
+      location.href = ROOT + "index.html?accueil=1";   // filtres et tri remis à zéro
     }
   }
 
@@ -132,12 +132,6 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    // Maj + H
-    if (e.shiftKey && e.code === "KeyH") {
-      e.preventDefault();
-      homeReset();
-      return;
-    }
 
     if (e.key === "?") { e.preventDefault(); openHelp(); return; }
 
@@ -154,6 +148,8 @@
     if (e.code === "KeyN") { e.preventDefault(); addAlbum(); return; }
     // e.code = position physique : marche en AZERTY comme en QWERTY
     if (e.code === "KeyS") { e.preventDefault(); focusSearch(); return; }
+    // Z : la lettre Z quelle que soit la disposition (AZERTY : pas à la place du Z QWERTY)
+    if (e.key.toLowerCase() === "z") { e.preventDefault(); homeReset(); return; }
     if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
 
     // Lecteur (page album)
