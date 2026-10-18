@@ -1,4 +1,4 @@
-// conductor. — page « next up » : albums repérés, pas encore écoutés
+// conductor. — page « next up » : albums repérés, pas encore ajoutés
 //
 // - Séparés de la collection (Store.nextUp) : ni compteurs, ni filtres de l'accueil.
 // - Pas de page album : un clic ouvre une fiche (pochette, infos, priorité,
@@ -85,7 +85,20 @@
 
   // ---------- Top 5 (grille) ----------
 
-  function topCard(album, rank) {
+  // Top 5 : priorités choisies à leur rang, cases libres remplies par les plus récents
+  function computeTop(list) {
+    const byRank = new Map(list.filter(a => a.priority).map(a => [a.priority, a]));
+    // Pas de priorité (ou en attente au-delà du 5e rang) : par récence
+    const recent = list.filter(a => !a.priority || a.priority > TOP);   // plus récents d'abord
+    return Array.from({ length: TOP }, (_, i) => {
+      const chosen = byRank.get(i + 1);
+      if (chosen) return { album: chosen, auto: false };
+      const next = recent.shift();
+      return next ? { album: next, auto: true } : { album: null, auto: false };
+    });
+  }
+
+  function topCard(album, rank, auto) {
     if (!album) {
       const slot = el("div", "nu-slot");
       slot.append(el("span", "nu-rank", String(rank)), el("span", "nu-slot-text", "libre"));
@@ -94,7 +107,9 @@
     const card = el("button", "album-card nu-card");
     card.type = "button";
     const cover = coverEl(album, "album-cover", 600);
-    cover.appendChild(el("span", "nu-rank", String(rank)));
+    const badge = el("span", "nu-rank" + (auto ? " is-auto" : ""), String(rank));
+    badge.title = auto ? "Rang par récence (pas de priorité choisie)" : "Priorité " + rank;
+    cover.appendChild(badge);
     if (onPhone(album)) cover.appendChild(el("span", "phone-badge", "sur le tél."));
     card.append(cover, el("p", "album-title", album.title), el("p", "album-artist", album.artist));
     card.addEventListener("click", () => openCard(album.id));
@@ -142,12 +157,13 @@
     $("nu-empty").hidden = list.length > 0;
 
     // Top 5
-    const byRank = new Map(list.filter(a => a.priority).map(a => [a.priority, a]));
+    top = computeTop(list);
     $("nu-top-section").hidden = !list.length;
-    $("nu-top").replaceChildren(...Array.from({ length: TOP }, (_, i) => topCard(byRank.get(i + 1), i + 1)));
+    $("nu-top").replaceChildren(...top.map((t, i) => topCard(t.album, i + 1, t.auto)));
 
     // Le reste (hors top 5)
-    const rest = list.filter(a => !a.priority);
+    const inTop = new Set(top.filter(t => t.album).map(t => t.album.id));
+    const rest = list.filter(a => !inTop.has(a.id));
     const phone = linked ? rest.filter(onPhone) : [];
     const other = linked ? rest.filter(a => !onPhone(a)) : rest;
 
@@ -170,6 +186,7 @@
 
   const dialog = $("nu-dialog");
   let current = null;   // id de l'album affiché
+  let top = [];         // top 5 affiché ({ album, auto })
 
   function fillCard() {
     const album = Store.get(current);
@@ -200,6 +217,7 @@
 
     // Priorité : 1 à 5 ; recliquer sur la sienne la retire
     const taken = new Map(Store.nextUp().filter(a => a.priority && a.id !== album.id).map(a => [a.priority, a]));
+    const autoRank = top.findIndex(t => t.auto && t.album && t.album.id === album.id) + 1;
     $("nu-d-prio").replaceChildren(...Array.from({ length: TOP }, (_, i) => {
       const n = i + 1;
       const b = el("button", "chip" + (album.priority === n ? " is-active" : ""), String(n));
@@ -208,14 +226,17 @@
       b.setAttribute("aria-checked", String(album.priority === n));
       const other = taken.get(n);
       b.title = album.priority === n ? "Retirer la priorité"
-        : other ? "Remplace « " + other.title + " »" : "Priorité " + n;
+        : other ? "« " + other.title + " » et les suivants descendent d'un rang" : "Priorité " + n;
       if (other) b.classList.add("is-taken");
+      if (!album.priority && autoRank === n) b.classList.add("is-auto");
       b.addEventListener("click", () => Store.setPriority(album.id, album.priority === n ? null : n));
       return b;
     }));
     $("nu-d-prio-hint").textContent = album.priority
       ? "N° " + album.priority + " du top 5. Recliquez pour retirer."
-      : "Un rang déjà pris est retiré à l'autre album.";
+      : autoRank
+        ? "N° " + autoRank + " du top 5 par récence. Choisissez un rang pour le fixer."
+        : "Rang déjà pris : l'album qui l'occupe et les suivants descendent d'un rang.";
   }
 
   function openCard(id) {

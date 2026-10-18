@@ -222,7 +222,7 @@
     const k = Lyrics.key(t.title);
     const tr = el("tr", "lyrics-row");
     const td = el("td", "lyrics-cell");
-    td.colSpan = 2;
+    td.colSpan = 3;
     const box = el("div", "lyrics");
 
     const link = (text, fn) => {
@@ -279,6 +279,27 @@
     return tr;
   }
 
+  // ---------- Morceaux préférés (★) ----------
+  // album.favorites : titres simplifiés ("Black Mambo" → "blackmambo"), pour
+  // retrouver la piste qu'elle vienne de Deezer ou de vos fichiers.
+
+  function favKey(title) {
+    return cleanAlbumTitle(title || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function isFavorite(t) {
+    return (album.favorites || []).includes(favKey(t.title));
+  }
+
+  function toggleFavorite(t) {
+    const k = favKey(t.title);
+    const favs = new Set(album.favorites || []);
+    favs.has(k) ? favs.delete(k) : favs.add(k);
+    album = Store.update(album.id, { favorites: [...favs] }) || album;
+    renderTracks();
+  }
+
   function renderTracks() {
     const list = tracks.length ? tracks : (album.tracks || []);
     const table = $("tracklist");
@@ -307,9 +328,20 @@
       lyrics.addEventListener("click", e => { e.preventDefault(); toggleLyrics(t); });
       tdTitle.appendChild(lyrics);
 
+      const fav = isFavorite(t);
+      if (fav) tr.classList.add("is-favorite");
+      const tdFav = el("td", "track-fav");
+      const star = el("button", "fav-btn" + (fav ? " is-on" : ""), fav ? "★" : "☆");
+      star.type = "button";
+      star.setAttribute("aria-pressed", String(fav));
+      star.setAttribute("aria-label", (fav ? "Retirer des préférés : " : "Marquer comme préféré : ") + t.title);
+      star.title = fav ? "Morceau préféré (cliquer pour retirer)" : "Marquer comme préféré";
+      star.addEventListener("click", () => toggleFavorite(t));
+      tdFav.appendChild(star);
+
       const tdTime = el("td", "track-time", t.duration ? mmss(t.duration) : "");
 
-      tr.append(tdPlay, tdTitle, tdTime);
+      tr.append(tdPlay, tdTitle, tdFav, tdTime);
       return open ? [tr, lyricsRow(t)] : [tr];
     }));
     updatePlayerUI();
@@ -458,7 +490,7 @@
     $("a-logs").replaceChildren(...logs.map(log => {
       const li = el("li", "log");
       const head = el("p", "log-head");
-      head.appendChild(el("span", null, log.date ? "Écouté le " + formatDate(log.date) : "Écouté"));
+      head.appendChild(el("span", null, log.date ? "Ajouté le " + formatDate(log.date) : "Ajouté"));
       if (log.rating) head.appendChild(el("span", "log-stars", "★".repeat(log.rating) + "☆".repeat(5 - log.rating)));
       li.appendChild(head);
       if (log.review) li.appendChild(el("p", "log-review", log.review));

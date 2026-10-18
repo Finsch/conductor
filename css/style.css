@@ -773,6 +773,45 @@ a.btn {
   margin-top: 8px;
 }
 
+/* Morceaux préférés : ★ plein ; ☆ discret au survol de la ligne */
+.track-fav {
+  width: 28px;
+  text-align: center;
+}
+
+.fav-btn {
+  padding: 0 4px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.track:hover .fav-btn,
+.fav-btn:focus-visible,
+.fav-btn.is-on {
+  visibility: visible;
+}
+
+.fav-btn:hover {
+  color: var(--text);
+}
+
+.fav-btn.is-on {
+  color: var(--text);
+}
+
+/* Écran tactile (pas de survol) : étoiles toujours visibles */
+@media (hover: none) {
+  .fav-btn {
+    visibility: visible;
+  }
+}
+
 .track-time {
   width: 60px;
   text-align: right;
@@ -1616,6 +1655,17 @@ a.album-row:hover .row-title {
   color: var(--bg);
   background: var(--text);
   border-radius: 2px;
+}
+
+/* Rang par récence (pas de priorité choisie) : badge en contour */
+.nu-rank.is-auto {
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.nu-prio .chip.is-auto:not(.is-active) {
+  border-color: var(--text-muted);
 }
 
 .nu-slot {

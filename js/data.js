@@ -185,6 +185,11 @@ const Store = (function () {
       .toLowerCase().replace(/[^a-z0-9]/g, "");
   }
 
+  // Next up : un album quitte le rang `rank` → ceux d'après remontent d'un rang
+  function closeRank(albums, rank) {
+    albums.forEach(a => { if (a.nextUp && a.priority > rank) a.priority -= 1; });
+  }
+
   function sameAlbum(a, b) {
     return a.id === b.id ||
       (simplify(a.artist) === simplify(b.artist) && simplify(a.title) === simplify(b.title));
@@ -206,26 +211,37 @@ const Store = (function () {
     },
 
     // Tous les albums, le dernier loggé en premier
-    // La collection (albums écoutés) ; les albums « next up » sont à part
+    // La collection (albums ajoutés) ; les albums « next up » sont à part
     all() {
       return load().filter(a => !a.nextUp)
         .sort((a, b) => lastLoggedAt(b).localeCompare(lastLoggedAt(a)));
     },
 
-    // Next up : albums repérés, pas encore écoutés (les plus récents d'abord)
+    // Next up : albums repérés, pas encore ajoutés (les plus récents d'abord)
     nextUp() {
       return load().filter(a => a.nextUp)
         .sort((a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || ""));
     },
 
-    // Priorité 1 à 5 dans next up (une seule par rang ; null = pas de priorité).
-    // Le rang déjà pris par un autre album lui est retiré.
+    // Priorité 1 à 5 dans next up (null = pas de priorité choisie).
+    // Rang déjà pris : cet album et ceux d'après descendent d'un rang. Le 5e
+    // passe 6e : hors du top 5 mais gardé en attente, il y revient si une place
+    // se libère. Changer ou retirer un rang fait remonter les suivants.
     setPriority(id, rank) {
       const albums = load();
       const album = albums.find(a => a.id === id);
       if (!album) return null;
-      albums.forEach(a => { if (rank && a.nextUp && a.priority === rank) delete a.priority; });
-      if (rank) album.priority = rank; else delete album.priority;
+      if (album.priority) {
+        const old = album.priority;
+        delete album.priority;
+        closeRank(albums, old);
+      }
+      if (rank) {
+        albums.forEach(a => {
+          if (a.nextUp && a.priority >= rank) a.priority += 1;
+        });
+        album.priority = rank;
+      }
       save(albums);
       return album;
     },
@@ -265,7 +281,10 @@ const Store = (function () {
     },
 
     remove(id) {
-      save(load().filter(a => a.id !== id));
+      const albums = load();
+      const gone = albums.find(a => a.id === id);
+      if (gone && gone.nextUp && gone.priority) closeRank(albums, gone.priority);
+      save(albums.filter(a => a.id !== id));
     },
 
     // Même album = même identifiant, ou même artiste + même titre
@@ -297,6 +316,7 @@ const Store = (function () {
       }
       // Première écoute d'un album « next up » : il entre dans la collection
       if (entry.nextUp) {
+        if (entry.priority) closeRank(albums, entry.priority);
         delete entry.nextUp;
         delete entry.nextUpAt;
         delete entry.priority;
