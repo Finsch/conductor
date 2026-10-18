@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>insights · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link is-current">insights</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page insights">
+    <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <h1 class="album-heading">insights</h1>
+    <p class="album-facts">Votre collection en chiffres. Cliquez sur une barre pour voir les albums concernés.</p>
+
+    <p class="empty" id="in-empty" hidden>La collection est vide pour l'instant.</p>
+
+    <div id="in-body">
+      <!-- Chiffres clés -->
+      <div class="in-tiles" id="in-tiles"></div>
+
+      <div class="in-grid">
+        <section class="in-card">
+          <h2 class="block-title">familles</h2>
+          <div class="in-hbars" id="in-families"></div>
+        </section>
+
+        <section class="in-card">
+          <h2 class="block-title">artistes les plus présents</h2>
+          <div class="in-hbars" id="in-artists"></div>
+        </section>
+
+        <section class="in-card in-wide">
+          <h2 class="block-title">décennies de sortie</h2>
+          <div class="in-cols" id="in-decades"></div>
+        </section>
+
+        <section class="in-card in-wide">
+          <h2 class="block-title">intensité</h2>
+          <div class="in-cols" id="in-intensity"></div>
+          <p class="hint" id="in-intensity-note"></p>
+        </section>
+
+        <section class="in-card">
+          <h2 class="block-title">ressentis les plus fréquents</h2>
+          <div class="in-hbars" id="in-moods"></div>
+        </section>
+
+        <section class="in-card">
+          <h2 class="block-title">styles les plus fréquents</h2>
+          <div class="in-hbars" id="in-styles"></div>
+        </section>
+
+        <section class="in-card in-wide">
+          <h2 class="block-title">ajouts à la collection, 12 derniers mois</h2>
+          <div class="in-cols" id="in-months"></div>
+        </section>
+
+        <section class="in-card">
+          <h2 class="block-title">les plus écoutés</h2>
+          <ol class="in-list" id="in-plays"></ol>
+        </section>
+
+        <section class="in-card">
+          <h2 class="block-title">records</h2>
+          <dl class="facts in-records" id="in-records"></dl>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/insights.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

@@ -19,6 +19,7 @@
         <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
+      <a href="insights.html" class="header-link">insights</a>
       <a href="nextup.html" class="header-link is-current">next up</a>
       <a href="library.html" class="header-link">audio-files</a>
       <button type="button" class="btn" id="add-album-btn" title="Raccourci : N">Ajouter à next up</button>
@@ -29,7 +30,7 @@
     <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
 
     <h1 class="album-heading">next up</h1>
-    <p class="album-facts">Albums repérés, pas encore ajoutés. Ils rejoignent la collection à une première écoute.</p>
+    <p class="album-facts">Albums repérés, pas encore écoutés. Ils rejoignent la collection à la première écoute.</p>
 
     <div class="toolbar nextup-toolbar">
       <p class="stats" id="nu-stats"></p>
@@ -83,7 +84,7 @@
 
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="nu-d-remove">Retirer de next up</button>
-          <button type="button" class="btn" id="nu-d-add" title="Ajoute une écoute aujourd'hui et ouvre la page de l'album">Ajouter à la collection</button>
+          <button type="button" class="btn" id="nu-d-add" title="Range l'album dans la collection et ouvre sa page">Ajouter à la collection</button>
         </div>
       </div>
     </dialog>
@@ -115,7 +116,7 @@
       </div>
 
       <div class="form-row">
-        <label for="log-date" class="label">Date d'écoute</label>
+        <label for="log-date" class="label">Date d'ajout</label>
         <input type="date" class="field field-date" id="log-date" required>
       </div>
 

@@ -1,36 +1,41 @@
 # conductor.
 
-Site personnel pour cataloguer les albums que j'écoute. Fortement inspiré de Bandcamp et Musicboard.
-HTML, CSS et JavaScript, sans serveur ni installation : on ouvre `index.html` dans Chrome ou Edge.
+A personal, local-first music library and audio player. Inspired by Bandcamp and Musicboard.
+Plain HTML, CSS and JavaScript: no server, no install. Open `index.html` in Chrome or Edge.
+Data lives on your PC (`datastorage/`), so it works offline.
 
-## Organisation
+## Features
+
+- **Collection**: grid or list, sort (added, title, artist, intensity, release, length), filters (genre families, decades, intensity, on phone, A–Z), remembered between visits. Search, **Surprise me** (random pick), **.txt export** of results.
+- **Add an album**: Deezer / Discogs search, original titles and release dates (via MusicBrainz).
+- **Album page**: player (Deezer previews or your own files), lyrics, ★ favourite tracks, genre/styles, moods, custom tags, intensity 1–10, **"you may also like"** (4 similar albums).
+- **Listens**: counted automatically when 90 % of an album's tracks are played. Adding an album is not a listen.
+- **Next up**: a to-listen list kept apart from the collection, with a top 5 priority grid.
+- **Insights**: the collection in numbers, every bar links to the filtered collection.
+- **audio-files**: streams your MP3/FLAC from an Android phone running **Navidrome** (Termux), over Wi-Fi or hotspot.
+- **Volume** (0–20, remembered) and **keyboard shortcuts**: `N` add, `S` search, `R` surprise, `Esc` back, `Shift+H` home, `Space` play, `← →` tracks, `↑ ↓` volume, `M` mute, `?` help.
+
+## Structure
 
 ```
 conductor/
-├── app/            ← ce dépôt (le code)
-│   ├── index.html      accueil : collection, tri, filtres
-│   ├── README.md
-│   ├── pages/
-│   │   ├── album.html      page album : lecteur, titres, paroles, fiche
-│   │   └── library.html    audio-files : connexion à Navidrome
-│   ├── css/            style.css
-│   ├── js/             scripts (config.js : réglages personnels, non publié)
-│   ├── assets/         favicon
-│   └── docs/
-│       ├── navidrome-man.md    mode d'emploi du serveur sur le téléphone
-│       └── toolkit.md          dépendances, matériel, coûts
-└── datastorage/    ← vos données, hors du dépôt
-    ├── collection.js   la collection
-    ├── covers/         pochettes
-    └── lyrics/         paroles
+├── app/              this repo (code)
+│   ├── index.html    collection
+│   ├── pages/        album, nextup, insights, library (audio-files)
+│   ├── css/  js/  assets/
+│   └── docs/         navidrome-man.md, toolkit.md
+└── datastorage/      your data, outside the repo
+    ├── collection.js
+    ├── covers/
+    └── lyrics/
 ```
 
-Le code lit et écrit les données dans `../datastorage/` : les deux dossiers doivent rester côte à côte.
+Keep both folders side by side: the app reads and writes `../datastorage/`.
 
-## Démarrer
+## Getting started
 
-1. Ouvrir `app/index.html` dans Chrome ou Edge.
-2. En bas à gauche : « Choisir le dossier datastorage » → `conductor/datastorage`.
-3. Facultatif : copier `js/config.example.js` en `js/config.js` et y mettre un jeton Discogs.
+1. Open `app/index.html` in Chrome or Edge.
+2. Bottom left: "Choisir le dossier datastorage" → `conductor/datastorage`.
+3. Optional: copy `js/config.example.js` to `js/config.js` and add a Discogs token.
 
-Voir `docs/toolkit.md` pour les services utilisés et `docs/navidrome-man.md` pour l'écoute de vos fichiers.
+See `docs/toolkit.md` (services, costs) and `docs/navidrome-man.md` (phone server).

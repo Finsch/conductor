@@ -19,6 +19,7 @@
         <input type="search" id="search-input" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
+      <a href="pages/insights.html" class="header-link">insights</a>
       <a href="pages/nextup.html" class="header-link">next up</a>
       <a href="pages/library.html" class="header-link">audio-files</a>
       <button type="button" class="btn" id="add-album-btn" title="Raccourci : N">Ajouter un album</button>
@@ -31,6 +32,10 @@
       <div class="toolbar">
         <p class="stats" id="stats"></p>
         <div class="toolbar-right">
+          <button type="button" class="btn btn-ghost btn-small" id="surprise-btn" title="Un album au hasard parmi ceux affichés (Raccourci : R)">Surprise me</button>
+          <button type="button" class="icon-square" id="export-btn" hidden title="Exporter la liste en .txt (album (année) - artiste)" aria-label="Exporter la liste en .txt">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v9.2M6.2 7.6 10 11.4l3.8-3.8M3 13v3.5h14V13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
           <button type="button" class="btn btn-ghost btn-small filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters">Filtres</button>
           <div class="view-switch" role="group" aria-label="Affichage">
             <button type="button" class="view-btn" data-view="grid" aria-label="Vue grille" title="Grille">
@@ -122,7 +127,7 @@
       </div>
 
       <div class="form-row">
-        <label for="log-date" class="label">Date d'écoute</label>
+        <label for="log-date" class="label">Date d'ajout</label>
         <input type="date" class="field field-date" id="log-date" required>
       </div>
 
@@ -140,10 +145,34 @@
 
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="log-back">Retour</button>
-        <button type="button" class="btn btn-ghost" id="log-nextup" title="Pas encore ajouté : à garder dans next up">Next up</button>
+        <button type="button" class="btn btn-ghost" id="log-nextup" title="Pas encore écouté : à garder dans next up">Next up</button>
         <button type="submit" class="btn">Enregistrer</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Surprise me : un album tiré au hasard (parmi la recherche / les filtres) -->
+  <dialog class="modal" id="surprise-dialog" aria-labelledby="sp-title">
+    <div class="modal-head">
+      <h2 class="modal-title">Surprise me</h2>
+      <button type="button" class="icon-btn" id="sp-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-step">
+      <a class="selected surprise-pick" id="sp-link">
+        <div class="selected-cover" id="sp-cover"></div>
+        <div>
+          <p class="selected-title" id="sp-title"></p>
+          <p class="selected-meta" id="sp-artist"></p>
+          <p class="selected-meta" id="sp-info"></p>
+          <p class="selected-meta" id="sp-extra"></p>
+        </div>
+      </a>
+      <p class="hint" id="sp-scope"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="sp-again">Un autre</button>
+        <a class="btn" id="sp-open">Ouvrir l'album</a>
+      </div>
+    </div>
   </dialog>
 
   <!-- Scripts classiques (pas de modules) pour fonctionner en ouvrant directement le fichier -->

@@ -66,7 +66,98 @@
 
   // ---------- Infos ----------
 
+  // ---------- Vous aimerez peut-être aussi ----------
+  // 4 albums de la collection, par ordre d'importance des critères :
+  // 1. intensité (proche), 2. ressenti (communs), 3. styles (communs), 4. genre / famille.
+  // Au survol d'un album : ce qu'il a en commun avec celui-ci.
+
+  const REC_WEIGHTS = { intensity: 8, moods: 4, styles: 2, genre: 1 };
+
+  function overlap(a, b) {
+    const A = new Set((a || []).map(x => String(x).toLowerCase()));
+    const B = new Set((b || []).map(x => String(x).toLowerCase()));
+    if (!A.size || !B.size) return { score: 0, common: [] };
+    const common = [...A].filter(x => B.has(x));
+    return { score: common.length / Math.min(A.size, B.size), common };
+  }
+
+  function similarity(a, b) {
+    const why = [];
+    let score = 0;
+    if (a.aggressivity && b.aggressivity) {
+      const s = 1 - Math.abs(a.aggressivity - b.aggressivity) / 9;
+      score += REC_WEIGHTS.intensity * s * s;
+      if (Math.abs(a.aggressivity - b.aggressivity) <= 1) why.push("intensité " + b.aggressivity + "/10");
+    }
+    const m = overlap(a.moods, b.moods);
+    score += REC_WEIGHTS.moods * m.score;
+    if (m.common.length) why.push("ressenti : " + m.common.slice(0, 3).join(", "));
+    const st = overlap(a.styles, b.styles);
+    score += REC_WEIGHTS.styles * st.score;
+    if (st.common.length) why.push("styles : " + st.common.slice(0, 3).join(", "));
+    if (a.genre && b.genre && a.genre.toLowerCase() === b.genre.toLowerCase()) {
+      score += REC_WEIGHTS.genre;
+      why.push("genre : " + b.genre);
+    } else if (familyOf(a) && familyOf(a) === familyOf(b)) {
+      score += REC_WEIGHTS.genre / 2;
+      why.push("famille : " + familyOf(b));
+    }
+    // L'intensité classe, mais ne suffit pas : il faut au moins un point commun
+    // de ressenti, de style, de genre ou de famille
+    const content = m.common.length || st.common.length || /genre|famille/.test(why.join(" "));
+    if (!content) return { score: 0, why };
+    if (a.artist === b.artist) score *= 0.85;   // un peu de variété
+    return { score, why };
+  }
+
+  // Varie à chaque chargement de la page : 4 albums tirés parmi les 12 plus
+  // proches (les plus proches ont plus de chances), puis affichés du plus proche
+  // au moins proche. Le tirage reste le même tant que la page est ouverte.
+  const REC_POOL = 12, REC_COUNT = 4, REC_TITLE_MAX = 28;
+  let recPicked = null;   // ids tirés ; null = à tirer
+
+  function drawRecs(pool) {
+    const left = pool.slice();
+    const picked = [];
+    while (picked.length < REC_COUNT && left.length) {
+      const total = left.reduce((s, r) => s + r.score, 0);
+      let x = Math.random() * total;
+      let i = 0;
+      while (i < left.length - 1 && (x -= left[i].score) > 0) i++;
+      picked.push(left.splice(i, 1)[0]);
+    }
+    return picked.map(r => r.album.id);
+  }
+
+  function shorten(text, max) {
+    return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
+  }
+
+  function renderRecs() {
+    const ranked = Store.all()
+      .filter(b => b.id !== album.id)
+      .map(b => Object.assign({ album: b }, similarity(album, b)))
+      .filter(r => r.score > 0)
+      .sort((x, y) => y.score - x.score)
+      // Un seul album par artiste, pour varier
+      .filter((r, i, list) => list.findIndex(o => o.album.artist === r.album.artist) === i)
+      .slice(0, REC_POOL);
+    if (!recPicked || recPicked.some(id => !ranked.some(r => r.album.id === id))) recPicked = drawRecs(ranked);
+    const recs = ranked.filter(r => recPicked.includes(r.album.id));
+    $("recs").hidden = !recs.length;
+    $("recs-list").replaceChildren(...recs.map(r => {
+      const li = el("li");
+      const a = el("a", "rec-link");
+      a.href = "album.html?id=" + encodeURIComponent(r.album.id);
+      a.append(el("span", "rec-title", shorten(r.album.title, REC_TITLE_MAX)), document.createTextNode(" - " + r.album.artist));
+      a.title = r.album.title + " — " + r.album.artist + "\n" + r.why.join(" · ");
+      li.appendChild(a);
+      return li;
+    }));
+  }
+
   function renderInfo() {
+    renderRecs();
     document.title = album.title + " — " + album.artist + " · conductor.";
     $("a-title").textContent = album.title;
     $("a-artist").textContent = album.artist;
@@ -438,6 +529,9 @@
     hasAudio: () => tracks.some(t => t.preview)
   };
   audio.addEventListener("timeupdate", updateTime);
+  audio.addEventListener("timeupdate", countListening);
+  audio.addEventListener("seeking", () => { lastTime = null; });
+  audio.addEventListener("play", () => { lastTime = null; });
   audio.addEventListener("loadedmetadata", updateTime);
   audio.addEventListener("play", updatePlayerUI);
   audio.addEventListener("pause", updatePlayerUI);
@@ -480,9 +574,67 @@
     b.addEventListener("click", () => {
       // Recliquer sur la valeur choisie la retire
       album = Store.update(album.id, { aggressivity: album.aggressivity === n ? null : n });
+      recPicked = null;   // l'intensité change les albums proches : nouveau tirage
+      renderRecs();
       renderAggro();
     });
     $("aggro-scale").appendChild(b);
+  }
+
+  // ---------- Écoutes (comptées par le lecteur) ----------
+  // Un morceau compte comme écouté après la moitié de sa durée réelle (4 min max),
+  // en temps réellement joué (avancer dans la barre ne compte pas). Un extrait
+  // Deezer de 30 s n'y arrive donc pas : seuls vos fichiers font des écoutes.
+  // L'album compte comme écouté quand 90 % de ses morceaux l'ont été pendant
+  // la visite de la page → album.plays (Store.addPlay).
+
+  const plural = (n, w) => n + " " + w + (n > 1 ? "s" : "");
+  const TRACK_SHARE = 0.5, TRACK_MAX = 240, ALBUM_SHARE = 0.9;
+  const heard = new Map();   // n° de piste → secondes réellement jouées
+  const done = new Set();    // pistes comptées comme écoutées
+  let lastTime = null;
+
+  function trackNeed(i) {
+    const dur = (tracks[i] && tracks[i].duration) || currentDuration() || 0;
+    return dur ? Math.min(TRACK_MAX, dur * TRACK_SHARE) : Infinity;
+  }
+
+  function albumNeed() {
+    return Math.ceil(tracks.length * ALBUM_SHARE);
+  }
+
+  function countListening() {
+    if (current < 0 || audio.paused || audio.seeking) { lastTime = null; return; }
+    const t = audio.currentTime;
+    if (lastTime != null) {
+      const d = t - lastTime;
+      if (d > 0 && d < 2) heard.set(current, (heard.get(current) || 0) + d);
+    }
+    lastTime = t;
+    if (!done.has(current) && (heard.get(current) || 0) >= trackNeed(current)) {
+      done.add(current);
+      if (tracks.length && done.size >= albumNeed()) {
+        album = Store.addPlay(album.id, {
+          tracks: done.size,
+          of: tracks.length,
+          source: local.active ? "fichiers" : "extraits"
+        }) || album;
+        done.clear();
+        heard.clear();
+      }
+      renderPlays();
+    }
+  }
+
+  function renderPlays() {
+    const plays = album.plays || [];
+    const last = plays.length ? plays[plays.length - 1] : null;
+    const parts = [plays.length
+      ? plural(plays.length, "écoute") + " · dernière le " + formatDate(last.at.slice(0, 10))
+      : "Pas encore écouté ici"];
+    $("a-plays").textContent = parts.join(" · ");
+    $("a-plays").title = "Une écoute = " + Math.round(ALBUM_SHARE * 100) +
+      " % des morceaux écoutés (chacun au moins à moitié) avec le lecteur.";
   }
 
   function renderLogs() {
@@ -490,6 +642,7 @@
     $("a-logs").replaceChildren(...logs.map(log => {
       const li = el("li", "log");
       const head = el("p", "log-head");
+      // Un log = un ajout (avec note / commentaire), pas une écoute
       head.appendChild(el("span", null, log.date ? "Ajouté le " + formatDate(log.date) : "Ajouté"));
       if (log.rating) head.appendChild(el("span", "log-stars", "★".repeat(log.rating) + "☆".repeat(5 - log.rating)));
       li.appendChild(head);
@@ -789,6 +942,7 @@
   renderTracks();
   renderAggro();
   renderLogs();
+  renderPlays();
 
   const needsInfo = !album.enrichedAt || !(album.tracks || []).length;
   $("tracks-status").textContent = needsInfo ? "Récupération des informations…" : "";

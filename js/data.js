@@ -190,6 +190,14 @@ const Store = (function () {
     albums.forEach(a => { if (a.nextUp && a.priority > rank) a.priority -= 1; });
   }
 
+  function leaveNextUp(albums, entry) {
+    if (entry.priority) closeRank(albums, entry.priority);
+    delete entry.nextUp;
+    delete entry.nextUpAt;
+    delete entry.priority;
+    entry.addedAt = new Date().toISOString();
+  }
+
   function sameAlbum(a, b) {
     return a.id === b.id ||
       (simplify(a.artist) === simplify(b.artist) && simplify(a.title) === simplify(b.title));
@@ -211,13 +219,13 @@ const Store = (function () {
     },
 
     // Tous les albums, le dernier loggé en premier
-    // La collection (albums ajoutés) ; les albums « next up » sont à part
+    // La collection (albums écoutés) ; les albums « next up » sont à part
     all() {
       return load().filter(a => !a.nextUp)
         .sort((a, b) => lastLoggedAt(b).localeCompare(lastLoggedAt(a)));
     },
 
-    // Next up : albums repérés, pas encore ajoutés (les plus récents d'abord)
+    // Next up : albums repérés, pas encore écoutés (les plus récents d'abord)
     nextUp() {
       return load().filter(a => a.nextUp)
         .sort((a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || ""));
@@ -314,16 +322,31 @@ const Store = (function () {
         if (entry.genre) entry.genre = genreCase(entry.genre);
         albums.push(entry);
       }
-      // Première écoute d'un album « next up » : il entre dans la collection
-      if (entry.nextUp) {
-        if (entry.priority) closeRank(albums, entry.priority);
-        delete entry.nextUp;
-        delete entry.nextUpAt;
-        delete entry.priority;
-        entry.addedAt = new Date().toISOString();
-      }
+      // Album « next up » enregistré depuis la fenêtre d'ajout : il entre dans la collection
+      if (entry.nextUp) leaveNextUp(albums, entry);
       entry.logs = entry.logs || [];
       entry.logs.push(Object.assign({}, log, { loggedAt: new Date().toISOString() }));
+      save(albums);
+      return entry;
+    },
+
+    // Next up → collection (un ajout, pas une écoute)
+    toCollection(id) {
+      const albums = load();
+      const entry = albums.find(a => a.id === id);
+      if (!entry) return null;
+      if (entry.nextUp) leaveNextUp(albums, entry);
+      save(albums);
+      return entry;
+    },
+
+    // Écoute d'album comptée par le lecteur (90 % des morceaux écoutés).
+    // album.plays : [{ at, tracks, of, source }] — à exploiter plus tard (stats…)
+    addPlay(id, play) {
+      const albums = load();
+      const entry = albums.find(a => a.id === id);
+      if (!entry) return null;
+      entry.plays = (entry.plays || []).concat([Object.assign({ at: new Date().toISOString() }, play)]);
       save(albums);
       return entry;
     }

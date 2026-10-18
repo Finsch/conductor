@@ -20,6 +20,7 @@
         <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
+      <a href="insights.html" class="header-link">insights</a>
       <a href="nextup.html" class="header-link">next up</a>
       <a href="library.html" class="header-link">audio-files</a>
       <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
@@ -84,7 +85,7 @@
           <div class="tags" id="a-tags"></div>
         </section>
 
-        <!-- rate intensity -->
+        <!-- Votre avis -->
         <section class="block" id="listen-block">
           <div class="aggro">
             <p class="label">Intensité <span class="optional" id="aggro-value"></span></p>
@@ -95,6 +96,7 @@
             </div>
           </div>
 
+          <p class="plays" id="a-plays"></p>
           <ul class="logs" id="a-logs"></ul>
         </section>
       </div>
@@ -121,6 +123,12 @@
           <button type="button" class="btn btn-small" id="delete-yes">Supprimer</button>
           <button type="button" class="btn btn-ghost btn-small" id="delete-no">Annuler</button>
         </div>
+
+        <!-- Recommandations : albums proches dans votre collection -->
+        <section class="recs" id="recs" hidden>
+          <h2 class="block-title">vous aimerez peut-être aussi :</h2>
+          <ul class="recs-list" id="recs-list"></ul>
+        </section>
       </aside>
     </div>
   </main>

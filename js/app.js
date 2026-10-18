@@ -12,7 +12,9 @@
   const filtersPanel = document.getElementById("filters");
   const filtersToggle = document.getElementById("filters-toggle");
 
-  // ---------- Préférences (vue et tri sont mémorisés) ----------
+  // ---------- Préférences mémorisées : vue, tri et filtres ----------
+  // Les filtres restent après un aller-retour sur une page album, un
+  // rechargement ou une nouvelle visite. « Réinitialiser » / Maj + H les vident.
 
   const PREFS_KEY = "conductor01.prefs";
 
@@ -21,19 +23,34 @@
   }
 
   function savePrefs() {
-    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ view: state.view, sort: state.sort })); } catch (e) {}
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({
+        view: state.view,
+        sort: state.sort,
+        filters: {
+          genres: [...state.genres],
+          openFamilies: [...state.openFamilies],
+          decades: [...state.decades],
+          filesOnly: state.filesOnly,
+          intensities: [...state.intensities],
+          letter: state.letter
+        }
+      }));
+    } catch (e) {}
   }
 
   const prefs = loadPrefs();
+  const saved = prefs.filters || {};
+  const list = v => (Array.isArray(v) ? v : []);
   const state = {
     view: prefs.view === "list" ? "list" : "grid",
     sort: prefs.sort || "added-desc",
-    genres: new Set(),          // clés "famille|genre" (voir genreKey)
-    openFamilies: new Set(),    // familles dépliées dans le filtre
-    decades: new Set(),
-    filesOnly: false,
-    intensities: new Set(),
-    letter: "",
+    genres: new Set(list(saved.genres)),              // clés "famille|genre" (voir genreKey)
+    openFamilies: new Set(list(saved.openFamilies)),  // familles dépliées dans le filtre
+    decades: new Set(list(saved.decades)),
+    filesOnly: !!saved.filesOnly,
+    intensities: new Set(list(saved.intensities)),
+    letter: typeof saved.letter === "string" ? saved.letter : "",
     page: 1
   };
 
@@ -101,7 +118,9 @@
     { id: "aggro-desc",   label: "Intensité, forte → douce",  fn: byNumber(a => a.aggressivity || null, -1) },
     { id: "aggro-asc",    label: "Intensité, douce → forte",  fn: byNumber(a => a.aggressivity || null, 1) },
     { id: "year-desc",    label: "Sortie récente",          fn: byNumber(yearOf, -1) },
-    { id: "year-asc",     label: "Sortie ancienne",         fn: byNumber(yearOf, 1) }
+    { id: "year-asc",     label: "Sortie ancienne",         fn: byNumber(yearOf, 1) },
+    { id: "length-desc",  label: "Durée, longue → courte",  fn: byNumber(durationOf, -1) },
+    { id: "length-asc",   label: "Durée, courte → longue",  fn: byNumber(durationOf, 1) }
   ];
 
   if (!SORTS.some(s => s.id === state.sort)) state.sort = "added-desc";
@@ -487,11 +506,95 @@
     }
   }
 
+  // ---------- Export .txt ----------
+  // Une ligne par album : "Titre (année) - Artiste", dans l'ordre du tri choisi,
+  // tous les résultats (pas seulement la page affichée).
+
+  const exportBtn = document.getElementById("export-btn");
+  let lastResults = [];
+
+  function exportName() {
+    const q = searchInput.value.trim();
+    const slug = (q || "filtres").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "liste";
+    return "conductor-" + slug + "-" + new Date().toLocaleDateString("sv-SE") + ".txt";
+  }
+
+  exportBtn.addEventListener("click", () => {
+    const lines = lastResults.map(a => {
+      const y = yearOf(a);
+      return a.title + (y ? " (" + y + ")" : "") + " - " + a.artist;
+    });
+    // BOM + fins de ligne Windows : s'ouvre proprement dans le Bloc-notes
+    const blob = new Blob(["\ufeff" + lines.join("\r\n") + "\r\n"], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = exportName();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  });
+
+  // ---------- Surprise me ----------
+  // Un album au hasard parmi les résultats affichés (recherche + filtres, toutes
+  // pages confondues). Évite de reproposer les derniers tirés.
+
+  const surprise = document.getElementById("surprise-dialog");
+  const recentPicks = [];
+
+  function pickRandom() {
+    const pool = lastResults.length ? lastResults : Store.all();
+    if (!pool.length) return null;
+    const fresh = pool.filter(a => !recentPicks.includes(a.id));
+    const from = fresh.length ? fresh : pool;
+    const album = from[Math.floor(Math.random() * from.length)];
+    recentPicks.push(album.id);
+    if (recentPicks.length > Math.min(10, Math.floor(pool.length / 2))) recentPicks.shift();
+    return album;
+  }
+
+  function showSurprise() {
+    const album = pickRandom();
+    if (!album) return;
+    const href = "pages/album.html?id=" + encodeURIComponent(album.id);
+    document.getElementById("sp-link").href = href;
+    document.getElementById("sp-open").href = href;
+    document.getElementById("sp-cover").replaceChildren(...coverEl(album, "x").childNodes);
+    document.getElementById("sp-title").textContent = album.title;
+    document.getElementById("sp-artist").textContent = album.artist;
+    const tracks = trackCountOf(album);
+    const length = durationOf(album);
+    document.getElementById("sp-info").textContent = [
+      yearOf(album), tracks ? formatTracks(tracks) : "", length ? formatLength(length) : "", album.genre
+    ].filter(Boolean).join(" · ");
+    const plays = (album.plays || []).length;
+    document.getElementById("sp-extra").textContent = [
+      album.aggressivity ? "intensité " + album.aggressivity + "/10" : "",
+      plays ? plural(plays, "écoute") : "",
+      onPhone(album) ? "sur le téléphone" : ""
+    ].filter(Boolean).join(" · ");
+    const all = Store.all().length;
+    document.getElementById("sp-scope").textContent = lastResults.length && lastResults.length < all
+      ? "Tiré parmi les " + lastResults.length + " albums affichés (recherche / filtres)."
+      : "Tiré parmi toute la collection (" + all + " albums).";
+    if (!surprise.open) surprise.showModal();
+    document.getElementById("sp-again").focus();
+  }
+
+  document.getElementById("surprise-btn").addEventListener("click", showSurprise);
+  document.getElementById("sp-again").addEventListener("click", showSurprise);
+  document.getElementById("sp-close").addEventListener("click", () => surprise.close());
+  surprise.addEventListener("click", e => { if (e.target === surprise) surprise.close(); });
+  window.Surprise = { show: showSurprise };
+
   function render() {
     const all = Store.all();
     serverIndex = Server.isConfigured() ? Server.cachedIndex() : null;
     const q = normalize(searchInput.value.trim());
     const sort = SORTS.find(s => s.id === state.sort);
+
+    savePrefs();   // vue, tri et filtres mémorisés
 
     const albums = all
       .filter(a => matchesSearch(a, q) && matchesFilters(a))
@@ -504,6 +607,11 @@
 
     renderStats(all, albums);
     renderFilters(all, q);
+
+    // Export .txt : seulement après une recherche ou un filtre
+    lastResults = albums;
+    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.filesOnly ||
+      state.intensities.size || state.letter) || !albums.length;
 
     viewBtns.forEach(b => {
       b.classList.toggle("is-active", b.dataset.view === state.view);
@@ -533,21 +641,39 @@
   const params = new URLSearchParams(location.search);
   if (params.get("q")) searchInput.value = params.get("q");
   if (params.get("page")) state.page = Number(params.get("page")) || 1;
-  // Liens d'une page album → filtre « Genres » (famille entière, ou un genre précis)
-  //   index.html?famille=Rock   index.html?genre=Post-punk
-  if (params.get("famille") || params.get("genre")) {
-    const fam = params.get("famille");
-    const genre = params.get("genre");
-    Store.all().forEach(a => {
-      if (!a.genre) return;
-      if (fam ? familyOf(a) === fam : a.genre === genre) {
-        state.genres.add(genreKey(a));
-        state.openFamilies.add(familyOf(a));
-      }
-    });
+  // Filtres mémorisés : on oublie les genres qui n'existent plus (genre renommé…)
+  {
+    const existing = new Set(Store.all().map(genreKey).filter(Boolean));
+    [...state.genres].forEach(k => { if (!existing.has(k)) state.genres.delete(k); });
+  }
+
+  // Liens venus d'une page album ou d'insights : ce filtre seul, à la place
+  // des filtres mémorisés.
+  //   ?famille=Rock   ?genre=Post-punk   ?decennie=1970   ?intensite=6
+  //   ?q=…&reset=1   (recherche, filtres remis à zéro)
+  const fam = params.get("famille");
+  const genre = params.get("genre");
+  const decade = params.get("decennie");
+  const intensity = Number(params.get("intensite")) || 0;
+  if (fam || genre || decade || intensity || params.get("reset")) {
+    state.genres.clear();
+    state.decades.clear();
+    state.filesOnly = false;
+    state.intensities.clear();
+    state.letter = "";
+    if (fam || genre) {
+      Store.all().forEach(a => {
+        if (!a.genre) return;
+        if (fam ? familyOf(a) === fam : a.genre === genre) {
+          state.genres.add(genreKey(a));
+          state.openFamilies.add(familyOf(a));
+        }
+      });
+    }
+    if (decade) state.decades.add(decade);
+    if (intensity >= 1 && intensity <= 10) state.intensities.add(intensity);
     const url = new URL(location.href);
-    url.searchParams.delete("famille");
-    url.searchParams.delete("genre");
+    ["famille", "genre", "decennie", "intensite", "reset"].forEach(k => url.searchParams.delete(k));
     history.replaceState(null, "", url);
   }
 

@@ -26,11 +26,13 @@
   const ROOT = typeof APP_ROOT !== "undefined" ? APP_ROOT : "";
   const PAGE = /\/pages\/album\.html$/.test(location.pathname) ? "album"
     : /\/pages\/library\.html$/.test(location.pathname) ? "library"
-    : /\/pages\/nextup\.html$/.test(location.pathname) ? "nextup" : "home";
+    : /\/pages\/nextup\.html$/.test(location.pathname) ? "nextup"
+    : /\/pages\/insights\.html$/.test(location.pathname) ? "insights" : "home";
 
   const SHORTCUTS = [
     ["N", "Ajouter un album"],
     ["S", "Rechercher"],
+    ["R", "Surprise me : un album au hasard (collection)"],
     ["Échap", "Quitter un champ · retour à la collection"],
     ["Maj + H", "Accueil, filtres réinitialisés"],
     ["Espace", "Lecture / pause (page album)"],
@@ -152,6 +154,7 @@
     if (e.code === "KeyN") { e.preventDefault(); addAlbum(); return; }
     // e.code = position physique : marche en AZERTY comme en QWERTY
     if (e.code === "KeyS") { e.preventDefault(); focusSearch(); return; }
+    if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
 
     // Lecteur (page album)
     if (!player) return;

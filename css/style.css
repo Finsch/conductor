@@ -812,6 +812,14 @@ a.btn {
   }
 }
 
+/* Écoutes comptées par le lecteur */
+.plays {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .track-time {
   width: 60px;
   text-align: right;
@@ -1160,6 +1168,295 @@ a.album-card:hover .album-cover {
 
 .view-btn.is-active {
   background: var(--hover);
+}
+
+/* Bouton icône carré (export .txt), même gabarit que le choix grille / liste */
+.icon-square {
+  width: 34px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.icon-square[hidden] {
+  display: none;
+}
+
+.icon-square svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-square:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* Surprise me : la fiche entière mène à l'album */
+.surprise-pick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.surprise-pick:hover .selected-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+#surprise-dialog .hint {
+  margin: -8px 0 16px;
+}
+
+/* Vous aimerez peut-être aussi (page album) */
+.recs {
+  margin-top: 28px;
+}
+
+.recs .block-title {
+  margin-bottom: 8px;
+}
+
+.recs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.recs-list li + li {
+  margin-top: 4px;
+}
+
+/* Une suggestion par ligne */
+.recs-list li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-link {
+  color: var(--text-muted);
+}
+
+.rec-title {
+  color: var(--text);
+}
+
+.rec-link:hover .rec-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Insights ---------- */
+
+.in-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 28px 0 8px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.in-tile {
+  padding: 16px 18px;
+  background: var(--bg);
+}
+
+.in-tile-value {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Valeur longue (durée totale) : un peu plus petite, sur une ligne */
+.in-tile.is-long .in-tile-value {
+  font-size: 18px;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.in-tile-label {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.in-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px 48px;
+  margin-top: 36px;
+}
+
+.in-card .block-title {
+  margin-bottom: 14px;
+}
+
+.in-wide {
+  grid-column: 1 / -1;
+}
+
+/* Barres horizontales */
+.in-hbars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.in-hbar {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+a.in-hbar:hover .in-hbar-label {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+a.in-hbar:hover .in-hbar-fill {
+  background: var(--text);
+}
+
+.in-hbar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.in-hbar-track {
+  height: 8px;
+}
+
+.in-hbar-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: #8c8c8c;
+  border-radius: 0 4px 4px 0;
+}
+
+.in-hbar-value,
+.in-list-value {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colonnes verticales */
+.in-cols {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 10), minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+}
+
+.in-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  color: var(--text-muted);
+}
+
+.in-col-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  height: 140px;
+  border-bottom: 1px solid var(--border);
+}
+
+.in-col-value {
+  margin-bottom: 4px;
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.in-col-bar {
+  display: block;
+  min-height: 0;
+  margin: 0 18%;
+  background: #8c8c8c;
+  border-radius: 4px 4px 0 0;
+}
+
+a.in-col:hover .in-col-bar,
+div.in-col:hover .in-col-bar {
+  background: var(--text);
+}
+
+.in-col-label {
+  margin-top: 6px;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.in-col.is-zero .in-col-label {
+  color: #5a5a5a;
+}
+
+/* Listes (plus écoutés, records) */
+.in-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.in-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.in-list .rec-link {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.in-records dd {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.in-records .rec-link {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 800px) {
+  .in-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .in-hbar {
+    grid-template-columns: minmax(0, 110px) minmax(0, 1fr) 28px;
+  }
 }
 
 /* Colonne filtres */

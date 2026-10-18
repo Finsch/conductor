@@ -1,4 +1,4 @@
-// conductor. — page « next up » : albums repérés, pas encore ajoutés
+// conductor. — page « next up » : albums repérés, pas encore écoutés
 //
 // - Séparés de la collection (Store.nextUp) : ni compteurs, ni filtres de l'accueil.
 // - Pas de page album : un clic ouvre une fiche (pochette, infos, priorité,
@@ -263,7 +263,7 @@
   $("nu-d-add").addEventListener("click", () => {
     const album = Store.get(current);
     if (!album) return;
-    Store.logAlbum(album, { date: new Date().toLocaleDateString("sv-SE"), rating: null, review: "" });
+    Store.toCollection(album.id);   // un ajout, pas une écoute
     const go = () => { location.href = "album.html?id=" + encodeURIComponent(album.id); };
     const write = typeof Disk !== "undefined" ? Promise.resolve(Disk.writeNow()) : Promise.resolve();
     Promise.race([write.catch(() => {}), new Promise(r => setTimeout(r, 3000))]).then(go);
