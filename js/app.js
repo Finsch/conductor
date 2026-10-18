@@ -522,7 +522,7 @@
 
     empty.textContent = all.length
       ? "Aucun album ne correspond à cette recherche."
-      : "Votre collection est vide. Cliquez sur « Ajouter un album » pour logger votre première écoute.";
+      : "Votre collection est vide. Cliquez sur « Ajouter un album » pour logger votre premier album.";
     empty.hidden = albums.length > 0;
   }
 

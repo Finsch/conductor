@@ -238,7 +238,7 @@
     });
   }
 
-  // Enregistrer : écoute (collection) ; page Next up ou bouton « Next up » : à écouter
+  // Enregistrer : ajout (collection) ; page Next up ou bouton « Next up » : à écouter
   function save(toNextUp) {
     if (!selected) return;
     const album = Object.assign({}, selected);
