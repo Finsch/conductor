@@ -206,6 +206,69 @@ function formatTracks(n) {
   return n + " titre" + (n > 1 ? "s" : "");
 }
 
+// ---------- Fiches à compléter ----------
+// Ce qui peut manquer à un album (page « à compléter », compteur d'insights).
+// album.ignoreMissing : critères ignorés pour cet album (× sur l'étiquette).
+
+const ALBUM_CHECKS = [
+  { id: "cover",  label: "pochette",        missing: a => !a.cover && !a.serverCover },
+  // En ligne seulement : son site a refusé la copie (absente hors ligne)
+  { id: "coverlocal", label: "pochette en ligne seulement", missing: a => /^https?:/i.test(a.cover || "") && !!a.coverCacheFailed },
+  { id: "genre",  label: "genre",           missing: a => !a.genre },
+  { id: "date",   label: "date de sortie",  missing: a => !a.releaseDate && !a.year },
+  { id: "tracks", label: "liste des titres", missing: a => !(a.tracks || []).length && !a.trackCount },
+  { id: "aggro",  label: "intensité",       missing: a => !a.aggressivity },
+  { id: "moods",  label: "ressenti",        missing: a => !(a.moods || []).length }
+];
+
+// Albums de la collection avec au moins un manque (hors critères ignorés)
+function incompleteCount(albums) {
+  return albums.filter(a => {
+    const skip = new Set(a.ignoreMissing || []);
+    return ALBUM_CHECKS.some(c => !skip.has(c.id) && c.missing(a));
+  }).length;
+}
+
+// ---------- Export CSV de la collection ----------
+// Séparateur « ; » et BOM UTF-8 : s'ouvre directement dans Excel (version française).
+// Écrit dans datastorage/collection.csv à chaque enregistrement (js/disk.js),
+// et téléchargeable depuis la page insights.
+
+function collectionCsv(albums) {
+  const cell = v => {
+    const s = v == null ? "" : String(v);
+    return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const length = a => a.duration || (a.tracks || []).reduce((s, t) => s + (t.duration || 0), 0);
+  const cols = [
+    ["titre", a => a.title],
+    ["artiste", a => a.artist],
+    ["année", a => (a.releaseDate || "").slice(0, 4) || a.year || ""],
+    ["date de sortie", a => a.releaseDate || ""],
+    ["genre", a => a.genre || ""],
+    ["famille", a => familyOf(a) || ""],
+    ["styles", a => (a.styles || []).join(", ")],
+    ["ressenti", a => (a.moods || []).join(", ")],
+    ["tags", a => (a.tags || []).join(", ")],
+    ["label", a => a.label || ""],
+    ["tier", a => a.tier ? a.tier + " · " + (TIER_NAMES[a.tier] || "") : ""],
+    ["intensité", a => a.aggressivity || ""],
+    ["favori", a => a.favorite ? "oui" : ""],
+    ["morceaux", a => a.trackCount || (a.tracks || []).length || ""],
+    ["durée (min)", a => length(a) ? Math.round(length(a) / 60) : ""],
+    ["écoutes", a => (a.plays || []).length],
+    ["dernière écoute", a => { const p = a.plays || []; return p.length ? (p[p.length - 1].at || "").slice(0, 10) : ""; }],
+    ["ajouté le", a => (a.addedAt || (a.logs && a.logs[0] && a.logs[0].loggedAt) || "").slice(0, 10)],
+    ["next up", a => a.nextUp ? "oui" : ""]
+  ];
+  const sorted = albums.slice().sort((a, b) =>
+    (a.artist || "").localeCompare(b.artist || "", "fr", { sensitivity: "base" }) ||
+    (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }));
+  const lines = [cols.map(c => c[0]).join(";")]
+    .concat(sorted.map(a => cols.map(c => cell(c[1](a))).join(";")));
+  return "\uFEFF" + lines.join("\r\n") + "\r\n";
+}
+
 const Store = (function () {
   const KEY = "conductor01.albums";
   const SAVED_KEY = "conductor01.savedAt";

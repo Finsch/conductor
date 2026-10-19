@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>manuels · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page manuals-page">
+    <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <h1 class="album-heading">manuels</h1>
+    <p class="album-facts">Les guides pas à pas de conductor. Cochez les étapes au fur et à mesure : elles restent cochées.</p>
+
+    <div class="mn-cards" id="mn-cards"></div>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/manuals.js"></script>
+  <script src="../js/manuals-page.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

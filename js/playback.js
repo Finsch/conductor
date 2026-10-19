@@ -100,7 +100,7 @@
     if (left <= PRELOAD_BEFORE && spareIndex !== i && Date.now() - lastSwap > 500) {
       spareIndex = i;
       const d = spare();
-      d.src = state.tracks[i].src;
+      d.src = srcOf(state.tracks[i]);
       d.currentTime = 0;
       d.load();
     }
@@ -215,6 +215,11 @@
     togglePanel: () => togglePanel(),
     closeMini: () => closeMini(),
     fullscreen: () => fsOpen(!fsIsOpen()),
+    // Stockage local (js/sdcard.js) : demandes de la page audio-files
+    "sd:add": () => { if (typeof SD !== "undefined") SD.add(); },
+    "sd:rescan": id => { if (typeof SD !== "undefined") SD.rescan(id); },
+    "sd:remove": id => { if (typeof SD !== "undefined") SD.remove(id); },
+    "sd:allow": () => { if (typeof SD !== "undefined") SD.allow(); },
     addToQueue: id => addToQueue(id),
     removeFromQueue: id => removeFromQueue(id),
     moveInQueue: (a, b) => moveInQueue(a, b),
@@ -268,13 +273,38 @@
     });
   }
 
+  // Adresse réelle d'un morceau : les fichiers du stockage local (« sd:… »)
+  // sont ouverts par js/sdcard.js, qui renvoie une adresse blob:
+  const hasSd = () => typeof SD !== "undefined" && SD.prepare;
+  const isSd = src => /^sd:/.test(src || "");
+  function srcOf(t) {
+    if (!t) return "";
+    if (isSd(t.src)) return hasSd() ? SD.urlFor(t.src) : "";
+    // Téléphone (Navidrome) : adresse en cours (wifi, point d'accès, câble USB…)
+    return typeof Server !== "undefined" && Server.rebase ? Server.rebase(t.src) : t.src;
+  }
+
   function loadTrack(i, at, autoplay) {
     if (!playable(i)) return;
+    // Stockage local pas encore ouvert : on ouvre les fichiers de l'album, puis on relance
+    if (isSd(state.tracks[i].src) && !srcOf(state.tracks[i])) {
+      if (!hasSd()) return;
+      state.index = i;
+      state.time = at || 0;
+      save();
+      emit();
+      const albumId = state.albumId;
+      const again = () => { if (state && state.albumId === albumId && state.index === i) loadTrack(i, at, true); };
+      SD.prepare(state.tracks, again).then(ok => {
+        if (ok && state && state.albumId === albumId && state.index === i && srcOf(state.tracks[i])) loadTrack(i, at, autoplay);
+      }).catch(e => console.warn("Stockage local :", e));
+      return;
+    }
     if (!at && spareIndex === i && spare().readyState >= 2 && autoplay) { swapTo(i); return; }
     resetSpare();
     state.index = i;
     state.time = at || 0;
-    audio.src = state.tracks[i].src;
+    audio.src = srcOf(state.tracks[i]);
     if (at) {
       const seek = () => { try { audio.currentTime = at; } catch (e) {} };
       audio.readyState >= 1 ? seek() : audio.addEventListener("loadedmetadata", seek, { once: true });
@@ -356,6 +386,18 @@
   // ---------- File d'attente ----------
 
   function albumTracks(a) {
+    // 0. Stockage local : carte SD, clé USB, dossier du PC… (sans réseau)
+    if (typeof SD !== "undefined") {
+      const m = SD.matchFor(a);
+      if (m) {
+        const tracks = SD.tracksOf(m);
+        // Durées inconnues dans les fichiers : celles de la fiche
+        tracks.forEach((t, i) => { if (!t.duration && a.tracks && a.tracks[i]) t.duration = a.tracks[i].duration || 0; });
+        // Pas de pochette : celle du dossier ou des fichiers
+        if (SD.needsCover(a) && SD.coverToAlbum) SD.coverToAlbum(a.id, m.dir).catch(() => {});
+        return Promise.resolve({ source: "local", serverCover: a.serverCover || "", tracks });
+      }
+    }
     // 1. Vos fichiers (Navidrome)
     if (typeof Server !== "undefined" && Server.isConfigured()) {
       const match = Server.matchFor(a);
@@ -525,6 +567,24 @@
     postTime("timeupdate");
   });
   audio.addEventListener("loadedmetadata", () => postTime("loadedmetadata"));
+
+  // Le téléphone ne répond plus à son adresse (câble USB branché, wifi coupé…) :
+  // on cherche l'adresse qui répond et on reprend le morceau au même endroit
+  let rescueAt = 0;
+  audio.addEventListener("error", () => {
+    const t = state && state.tracks[state.index];
+    if (!t || isSd(t.src) || !/\/rest\/stream\?/.test(t.src) || typeof Server === "undefined" || !Server.autoSelect) return;
+    if (Date.now() - rescueAt < 10000) return;   // une tentative à la fois
+    rescueAt = Date.now();
+    const at = state.time || audio.currentTime || 0;
+    const before = Server.config() && Server.config().url;
+    Server.autoSelect().then(u => {
+      if (u && u !== before && state && state.tracks[state.index] === t) loadTrack(state.index, at, true);
+    });
+  });
+
+  // Au démarrage : l'adresse du téléphone qui répond (sans attendre)
+  if (typeof Server !== "undefined" && Server.isConfigured() && Server.autoSelect) Server.autoSelect();
   window.addEventListener("pagehide", () => { flushTime(); save(); });
 
   // ---------- Reprise à l'ouverture de la page ----------
@@ -536,8 +596,11 @@
     state.heard = state.heard || {};
     state.done = state.done || [];
     const fresh = Date.now() - (state.savedAt || 0) < RESUME_WITHIN;
-    if (playable(state.index)) {
-      audio.src = state.tracks[state.index].src;
+    if (playable(state.index) && isSd(state.tracks[state.index].src)) {
+      // Stockage local : ouvert au premier ▶ (l'accès demande souvent un clic)
+      if (state.playing && fresh) loadTrack(state.index, state.time || 0, true);
+    } else if (playable(state.index)) {
+      audio.src = srcOf(state.tracks[state.index]);
       const at = state.time || 0;
       audio.addEventListener("loadedmetadata", () => { try { audio.currentTime = at; } catch (e) {} }, { once: true });
       if (state.playing && fresh) start();
@@ -555,6 +618,8 @@
     queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h12M4 11.5h12M4 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15.5 14.5v6l5-3z" fill="currentColor"/></svg>',
     close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
     expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    // Micro de karaoké : tête ronde, manche conique, câble en S
+    mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(15.8 6.4) rotate(40)"><circle r="4.6" fill="currentColor"/><path d="M-3 4.7A5.6 5.6 0 0 0 3 4.7L1.2 12.2a1.2 1.2 0 0 1-2.4 0z" fill="currentColor"/></g><path d="M7 16.6c-1.7.8-2.8 1.9-2 2.9.8 1 2.7.3 3.4 1.2.6.8-.1 1.8-.8 2.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     shrink: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l6.5-6.5M10 14l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
@@ -777,6 +842,7 @@
     fs.innerHTML =
       '<div class="fs-bg"></div><div class="fs-veil"></div>' +
       '<div class="fs-top"><span class="fs-logo">conductor.</span><div class="fs-tools">' +
+        '<button type="button" class="fs-tool fs-karaoke" title="Karaoké (K)" aria-label="Karaoké" aria-pressed="false">' + ICON.mic + '</button>' +
         '<button type="button" class="fs-tool fs-queue" title="File d\'attente (T)" aria-label="File d\'attente">' + ICON.queue + '</button>' +
         '<button type="button" class="fs-tool fs-exit" title="Quitter le plein écran (Échap)" aria-label="Quitter le plein écran">' + ICON.shrink + '</button>' +
       '</div></div>' +
@@ -797,11 +863,15 @@
           '</div>' +
           '<div class="fs-upnext"><p class="fs-next-track"></p><p class="fs-next-album"></p></div>' +
         '</div>' +
+        '<div class="fs-lyrics" hidden><div class="fs-ly-scroll"></div><p class="fs-ly-src"></p></div>' +
       '</div>' +
-      '<p class="fs-hint"><kbd>Espace</kbd> lecture · <kbd>← →</kbd> titres · <kbd>T</kbd> file · <kbd>Échap</kbd> quitter</p>';
+      '<p class="fs-hint"><kbd>Espace</kbd> lecture · <kbd>← →</kbd> titres · <kbd>K</kbd> karaoké · <kbd>T</kbd> file · <kbd>Échap</kbd> quitter</p>';
     document.body.appendChild(fs);
 
     fs.querySelector(".fs-exit").addEventListener("click", () => fsOpen(false));
+    fs.querySelector(".fs-karaoke").addEventListener("click", () => setKaraoke(!karaokeOn));
+    // Molette dans les paroles : le défilement automatique attend 4 s
+    fs.querySelector(".fs-ly-scroll").addEventListener("wheel", () => { lyUserScroll = Date.now(); }, { passive: true });
     fs.querySelector(".fs-queue").addEventListener("click", () => panelOpen(!(panel && !panel.hidden)));
     fs.querySelector(".fs-play").addEventListener("click", toggle);
     fs.querySelector(".fs-prev").addEventListener("click", prev);
@@ -813,6 +883,9 @@
     });
     // Souris immobile 3 s : curseur et aides masqués
     fs.addEventListener("pointermove", wakeFs);
+    // La page du cadre (derrière) ne doit pas prendre le clavier au plein écran
+    const f = frame();
+    if (f) f.addEventListener("focus", () => { if (fsIsOpen()) setTimeout(() => fs.focus(), 0); });
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement && fs && !fs.hidden) fsOpen(false);   // Échap du navigateur
     });
@@ -837,12 +910,14 @@
     document.body.classList.toggle("has-fs", open);
     if (open) {
       renderFs();
+      renderKaraoke();
       fs.focus();
       wakeFs();
       const root = document.documentElement;
       if (root.requestFullscreen && !document.fullscreenElement) root.requestFullscreen().catch(() => {});
     } else {
       clearTimeout(fsIdleTimer);
+      stopLyricsLoop();
       panelOpen(false);
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
       const f = frame();
@@ -904,6 +979,236 @@
     fs.querySelector(".fs-upnext").hidden = nt.hidden && na.hidden;
 
     renderFsProgress();
+    renderKaraoke();
+  }
+
+  // ---------- Karaoké (plein écran, touche K) ----------
+  // Paroles synchronisées (js/karaoke.js) : la ligne en cours est mise en avant
+  // et reste au milieu ; un clic sur une ligne y amène la lecture.
+
+  const KARAOKE_KEY = "conductor01.fs.karaoke";
+  let karaokeOn = read(KARAOKE_KEY, false) === true;
+  let lyKey = "";          // morceau dont les paroles sont affichées
+  let lyLines = null;      // [{ t, text }] ou null (pas synchronisées)
+  let lyNow = -2;          // ligne mise en avant
+  let lyRaf = 0;
+  let lyUserScroll = 0;
+
+  function setKaraoke(on) {
+    karaokeOn = on;
+    write(KARAOKE_KEY, on);
+    renderKaraoke();
+  }
+
+  function stopLyricsLoop() {
+    cancelAnimationFrame(lyRaf);
+    lyRaf = 0;
+  }
+
+  // ---------- Affichage des paroles ----------
+
+  let lyInfo = null;       // morceau affiché : { albumId, artist, album, title, duration, src }
+  let lyPlain = null;      // paroles simples connues (pour le calage)
+  let sync = null;         // calage en cours : { lines: [{ text, t }], next, pasted }
+
+  function lyBox() { return fs.querySelector(".fs-ly-scroll"); }
+
+  // Pied du panneau : source + boutons
+  function lyFooter(text, buttons) {
+    const foot = fs.querySelector(".fs-ly-src");
+    foot.replaceChildren(el("span", null, text || ""));
+    (buttons || []).forEach(([label, fn, primary]) => {
+      const b = el("button", "fs-ly-act" + (primary ? " is-primary" : ""), label);
+      b.type = "button";
+      b.addEventListener("click", e => { e.stopPropagation(); fn(); fs.focus(); });
+      foot.appendChild(b);
+    });
+  }
+
+  function lyricsMessage(text, buttons) {
+    lyBox().replaceChildren(el("p", "fs-ly-empty", text));
+    lyFooter("", buttons);
+  }
+
+  function showSynced(lines, source) {
+    lyLines = lines;
+    lyNow = -2;
+    lyBox().replaceChildren(...lines.map((l, i) => {
+      const p = el("p", "fs-ly-line" + (l.text ? "" : " is-gap"), l.text || "♪");
+      p.addEventListener("click", () => { seek(l.t); lyUserScroll = 0; });
+      p.dataset.i = i;
+      return p;
+    }));
+    lyFooter("paroles : " + source, [["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))]]);
+    lyBox().scrollTop = 0;
+    startLyricsLoop();
+  }
+
+  function showPlain(text, source) {
+    lyBox().replaceChildren(...text.replace(/\r/g, "").split("\n").map(line =>
+      el("p", "fs-ly-line is-plain" + (line.trim() ? "" : " is-gap"), line.trim() || " ")));
+    lyFooter("paroles non synchronisées · " + source, [["caler les paroles", () => startSync(text), true]]);
+    lyBox().scrollTop = 0;
+  }
+
+  function renderKaraoke() {
+    if (!fs) return;
+    const on = karaokeOn && fsIsOpen() && !!state;
+    fs.classList.toggle("is-karaoke", on);
+    const btn = fs.querySelector(".fs-karaoke");
+    btn.classList.toggle("is-on", karaokeOn);
+    btn.setAttribute("aria-pressed", String(karaokeOn));
+    fs.querySelector(".fs-lyrics").hidden = !on;
+    if (!on) { stopLyricsLoop(); return; }
+
+    const t = state.tracks[state.index] || {};
+    const key = state.albumId + "|" + state.index + "|" + (t.title || "");
+    if (key === lyKey) { if (!sync) startLyricsLoop(); return; }
+    // Morceau fini pendant le calage : ce qui est calé est enregistré
+    if (sync && sync.next > 0) { finishSync(); return; }
+    lyKey = key;
+    lyLines = null;
+    lyPlain = null;
+    lyNow = -2;
+    sync = null;
+    fs.classList.remove("is-syncing");
+    stopLyricsLoop();
+    lyricsMessage("Recherche des paroles…");
+    if (typeof Karaoke === "undefined") { lyricsMessage("Paroles indisponibles."); return; }
+    const a = Store.get(state.albumId);
+    lyInfo = {
+      albumId: state.albumId, artist: state.artist, album: (a && a.title) || state.title,
+      title: t.title, duration: t.duration || duration(), src: t.src
+    };
+    Karaoke.find(lyInfo).then(res => {
+      if (key !== lyKey || sync) return;   // morceau changé, ou calage commencé entre-temps
+      lyPlain = res && res.plain || null;
+      if (res && res.lines && res.lines.length) showSynced(res.lines, res.source);
+      else if (res && res.plain) showPlain(res.plain, res.source);
+      else if (res && res.instrumental) lyricsMessage("Instrumental ♪", [["coller des paroles", startPaste]]);
+      else lyricsMessage("Pas de paroles trouvées pour ce morceau.", [["coller des paroles", startPaste, true]]);
+    }).catch(() => {
+      if (key === lyKey) lyricsMessage("Paroles indisponibles (hors ligne ?).", [["coller des paroles", startPaste]]);
+    });
+  }
+
+  // ---------- Calage à la main ----------
+  // Les paroles défilent ; on appuie sur Entrée au moment où chaque ligne
+  // commence. Le résultat est enregistré (datastorage/lyrics-synced/) : le
+  // karaoké s'en sert ensuite pour toujours.
+
+  function startPaste() {
+    stopLyricsLoop();
+    const area = el("textarea", "fs-ly-paste");
+    area.placeholder = "Collez les paroles ici, une ligne par ligne chantée…";
+    area.value = lyPlain || "";
+    lyBox().replaceChildren(area);
+    lyFooter("coller les paroles du morceau", [
+      ["caler ces paroles", () => { if (area.value.trim()) startSync(area.value, true); }, true],
+      ["annuler", () => { lyKey = ""; renderKaraoke(); }]
+    ]);
+    setTimeout(() => area.focus(), 0);
+  }
+
+  function startSync(text, pasted) {
+    const lines = text.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(l => l && !/^\[[^\]]*\]$/.test(l));
+    if (!lines.length) return;
+    stopLyricsLoop();
+    lyLines = null;
+    sync = { lines: lines.map(text => ({ text, t: null })), next: 0, pasted: !!pasted, text };
+    fs.classList.add("is-syncing");
+    lyBox().replaceChildren(...sync.lines.map(l => el("p", "fs-ly-line is-sync", l.text)));
+    renderSync();
+    seek(0);
+    if (audio.paused) toggle();
+    fs.focus();
+  }
+
+  function renderSync() {
+    const box = lyBox();
+    [...box.children].forEach((p, n) => {
+      p.classList.toggle("is-past", n < sync.next);
+      p.classList.toggle("is-next", n === sync.next);
+    });
+    const cur = box.children[Math.min(sync.next, box.children.length - 1)];
+    if (cur) box.scrollTo({ top: cur.offsetTop - box.clientHeight * 0.4 + cur.offsetHeight / 2, behavior: "smooth" });
+    lyFooter("calage : " + sync.next + " / " + sync.lines.length + " · Entrée au début de chaque ligne · ⌫ annuler la dernière · Échap abandonner", [
+      ["terminer", finishSync, true],
+      ["abandonner", cancelSync]
+    ]);
+  }
+
+  // Entrée : la ligne suivante commence maintenant (petit retard de réaction retiré)
+  function syncTap() {
+    if (!sync || sync.next >= sync.lines.length) return;
+    const prevT = sync.next ? sync.lines[sync.next - 1].t : 0;
+    sync.lines[sync.next].t = Math.max(prevT, (audio.currentTime || 0) - 0.15);
+    sync.next++;
+    if (sync.next >= sync.lines.length) { finishSync(); return; }
+    renderSync();
+  }
+
+  // Retour arrière : annule la dernière ligne et revient un peu avant
+  function syncUndo() {
+    if (!sync || !sync.next) return;
+    sync.next--;
+    sync.lines[sync.next].t = null;
+    const back = sync.next ? sync.lines[sync.next - 1].t : 0;
+    seek(Math.max(0, back - 1));
+    renderSync();
+  }
+
+  function cancelSync() {
+    sync = null;
+    fs.classList.remove("is-syncing");
+    lyKey = "";
+    renderKaraoke();
+  }
+
+  async function finishSync() {
+    if (!sync) return;
+    const done = sync.lines.filter(l => l.t != null).map(l => ({ t: l.t, text: l.text }));
+    const info = lyInfo, pasted = sync.pasted, text = sync.text;
+    if (!done.length) { cancelSync(); return; }
+    sync = null;
+    fs.classList.remove("is-syncing");
+    const saved = await Karaoke.saveManual(info, done).catch(() => false);
+    // Paroles collées : gardées aussi pour la page album (« vous »)
+    if (pasted && typeof Disk !== "undefined" && Disk.readLyrics && info.albumId) {
+      const data = Object.assign({}, (await Disk.readLyrics(info.albumId).catch(() => null)) || {});
+      data[Karaoke.key(info.title)] = { text: text.trim(), source: "vous", edited: true };
+      Disk.writeLyrics(info.albumId, data);
+    }
+    lyKey = "";
+    renderKaraoke();
+    if (!saved) setTimeout(() => {
+      const foot = fs.querySelector(".fs-ly-src span");
+      if (foot) foot.textContent += " · non enregistrées sur le disque (dossier datastorage non autorisé)";
+    }, 300);
+  }
+
+  function startLyricsLoop() {
+    if (lyRaf || !lyLines) return;
+    const tick = () => {
+      lyRaf = 0;
+      if (!lyLines || !fsIsOpen() || !karaokeOn) return;
+      // Léger temps d'avance : la ligne s'allume au moment où elle est chantée
+      const i = Karaoke.lineAt(lyLines, (audio.currentTime || 0) + 0.2);
+      if (i !== lyNow) {
+        lyNow = i;
+        const box = fs.querySelector(".fs-ly-scroll");
+        box.querySelectorAll(".fs-ly-line").forEach((p, n) => {
+          p.classList.toggle("is-now", n === i);
+          p.classList.toggle("is-past", n < i);
+        });
+        const cur = box.children[Math.max(0, i)];
+        if (cur && Date.now() - lyUserScroll > 4000) {
+          box.scrollTo({ top: cur.offsetTop - box.clientHeight * 0.4 + cur.offsetHeight / 2, behavior: "smooth" });
+        }
+      }
+      lyRaf = requestAnimationFrame(tick);
+    };
+    lyRaf = requestAnimationFrame(tick);
   }
 
   function renderFsProgress() {
@@ -1045,12 +1350,26 @@
     if (k === "t") { e.preventDefault(); togglePanel(); }
     else if (k === "q") { e.preventDefault(); closeMini(); }
     else if (k === "p") { e.preventDefault(); fsOpen(!fsIsOpen()); }
+    else if (k === "o" && state && !sync) {
+      // O : page de l'album en cours (quitte le plein écran)
+      e.preventDefault();
+      fsOpen(false);
+      if (framePage.albumId !== state.albumId) navigate(albumUrl(state.albumId));
+    }
+    else if (fsIsOpen() && sync) {
+      // Calage des paroles : Entrée = la ligne commence, ⌫ = annuler, Échap = abandonner
+      if (e.key === "Enter") { if (/^(button|a)$/i.test(t.tagName)) return; e.preventDefault(); syncTap(); }
+      else if (e.key === "Backspace") { e.preventDefault(); syncUndo(); }
+      else if (e.key === "Escape") { e.preventDefault(); cancelSync(); }
+      else if (e.code === "Space") { e.preventDefault(); if (!e.repeat) toggle(); }
+    }
     else if (fsIsOpen()) {
       // Plein écran : le focus est ici, pas dans la page du cadre
       if (e.key === "Escape") { e.preventDefault(); if (panel && !panel.hidden) panelOpen(false); else fsOpen(false); }
       else if (e.code === "Space") { if (/^(button|a)$/i.test(t.tagName)) return; e.preventDefault(); if (!e.repeat) toggle(); }
       else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
+      else if (e.key.toLowerCase() === "k") { e.preventDefault(); setKaraoke(!karaokeOn); }
     }
   });
 
@@ -1059,6 +1378,7 @@
   // Après un clic sur le mini-lecteur, le clavier revient à la page (raccourcis)
   let refocusAt = 0;
   document.addEventListener("click", () => {
+    if (fsIsOpen()) return;   // plein écran : le clavier reste ici
     const f = frame();
     if (f) setTimeout(() => { refocusAt = Date.now(); try { f.contentWindow.focus(); } catch (e) {} }, 0);
   });

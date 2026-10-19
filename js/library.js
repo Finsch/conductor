@@ -60,6 +60,83 @@
       .finally(() => { btn.disabled = false; btn.textContent = "Actualiser"; });
   });
 
+  // ---------- Adresses du téléphone (wifi, point d'accès, câble USB…) ----------
+
+  const addrState = {};   // adresse → "ok" | "off" | "test"
+
+  function renderAddresses() {
+    const conf = Server.config();
+    const list = $("nd-addr-list");
+    if (!conf) { list.replaceChildren(); return; }
+    list.replaceChildren(...Server.addresses().map(u => {
+      const li = el("li", "nd-addr" + (u === conf.url ? " is-active" : ""));
+      const st = addrState[u];
+      li.append(el("span", "dot " + (st === "ok" ? "is-on" : st === "off" ? "is-off" : "")),
+        el("span", "nd-addr-url", u.replace(/^https?:\/\//, "")),
+        el("span", "nd-addr-state", u === conf.url ? "en cours" : st === "off" ? "ne répond pas" : st === "test" ? "test…" : ""));
+      const actions = el("span", "nd-addr-actions");
+      if (u !== conf.url) {
+        const use = el("button", "text-btn inline", "utiliser");
+        use.type = "button";
+        use.addEventListener("click", async () => {
+          addrState[u] = "test";
+          renderAddresses();
+          const ok = await Server.test(u);
+          addrState[u] = ok ? "ok" : "off";
+          if (ok) { Server.useAddress(u); render(true); } else renderAddresses();
+        });
+        actions.appendChild(use);
+      }
+      if (Server.addresses().length > 1) {
+        const del = el("button", "text-btn inline", "retirer");
+        del.type = "button";
+        del.addEventListener("click", () => { Server.removeAddress(u); render(); });
+        actions.appendChild(del);
+      }
+      li.appendChild(actions);
+      return li;
+    }));
+  }
+
+  $("nd-addr-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const input = $("nd-addr-input");
+    if (!input.value.trim()) return;
+    const btn = $("nd-addr-btn");
+    btn.disabled = true;
+    btn.textContent = "Test…";
+    $("nd-addr-error").hidden = true;
+    try {
+      const u = await Server.addAddress(input.value);
+      addrState[u] = "ok";
+      input.value = "";
+      render(true);
+      if (!Server.cachedIndex().albums.length) Server.refreshIndex().then(() => render(true)).catch(() => {});
+    } catch (err) {
+      $("nd-addr-error").textContent = err.message + " Vérifiez l'adresse, le câble ou le réseau, et que Navidrome tourne dans Termux.";
+      $("nd-addr-error").hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Ajouter";
+    }
+  });
+
+  $("nd-addr-detect").addEventListener("click", async () => {
+    const btn = $("nd-addr-detect");
+    btn.disabled = true;
+    btn.textContent = "Détection…";
+    Server.addresses().forEach(u => { addrState[u] = "test"; });
+    renderAddresses();
+    await Promise.all(Server.addresses().map(u => Server.test(u).then(ok => { addrState[u] = ok ? "ok" : "off"; renderAddresses(); })));
+    const found = await Server.autoSelect();
+    btn.disabled = false;
+    btn.textContent = "Détecter";
+    render(!!found);
+  });
+
+  document.addEventListener("server:address", () => renderAddresses());
+  window.addEventListener("storage", e => { if (e.key === "conductor01.server") renderAddresses(); });
+
   function setOnline(ok) {
     const conf = Server.config();
     $("s-dot").className = "dot " + (ok ? "is-on" : "is-off");
@@ -148,7 +225,7 @@
     albums.forEach(a => {
       const m = Server.matchFor(a, index);
       if (m) (m.ids || [m.id]).forEach(id => linkedIds.add(id));
-      else if (!a.nextUp) noFiles.push(a);
+      else if (!a.nextUp && !SD.matchFor(a)) noFiles.push(a);
     });
     const missing = index.albums.filter(s => !(s.ids || [s.id]).some(id => linkedIds.has(id)));
     return { index, linked: index.albums.length - missing.length, missing, noFiles };
@@ -180,9 +257,150 @@
   $("missing-filter").addEventListener("input", () => { shownMissing = PAGE; renderLists(); });
   $("missing-more").addEventListener("click", () => { shownMissing += PAGE; renderLists(); });
 
+  // ---------- Stockage local (carte SD, clé USB, dossier du PC…) ----------
+  // Les dossiers sont choisis et lus par l'enveloppe (js/sdcard.js) ; cette page
+  // envoie les demandes et affiche l'état, partagé par le stockage du navigateur.
+
+  let shownSd = PAGE;
+
+  function sdButton(label, fn, primary) {
+    const b = el("button", "btn btn-small" + (primary ? "" : " btn-ghost"), label);
+    b.type = "button";
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function sdEntry(s) {
+    return {
+      id: "sd-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      source: "Stockage local",
+      title: cleanAlbumTitle(s.title),
+      artist: s.artist,
+      year: s.year,
+      genre: s.genre,
+      trackCount: s.trackCount,
+      duration: s.duration || null,
+      cover: "",
+      sdDir: s.dir,
+      tracks: s.tracks.map(t => ({ title: t.title, duration: t.duration, track: t.track, disc: t.disc }))
+    };
+  }
+
+  function sdRow(s) {
+    const row = el("div", "lib-row");
+    const text = el("div", "row-text");
+    text.append(el("p", "row-title", cleanAlbumTitle(s.title)), el("p", "row-artist", meta(s)));
+    const actions = el("div", "lib-actions");
+    const add = (label, fn) => {
+      const btn = el("button", "btn btn-ghost btn-small", label);
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        const album = fn(sdEntry(s));
+        // Pochette du dossier ou des fichiers (copiée dans datastorage/covers)
+        if (SD.needsCover(album)) SD.call("coverToAlbum", album.id, s.dir).catch(() => {});
+        const link = el("a", "text-link", album.nextUp ? "Voir dans next up" : "Voir la page");
+        link.href = album.nextUp ? "nextup.html?album=" + encodeURIComponent(album.id)
+                                 : "album.html?id=" + encodeURIComponent(album.id);
+        actions.replaceChildren(link);
+      });
+      actions.appendChild(btn);
+    };
+    add("Next up", a => Store.addNextUp(a));
+    add("Ajouter à la collection", a => Store.addAlbum(a));
+    // « Musique › Radiohead/OK Computer »
+    const src = SD.sourceOf(s.dir);
+    const rel = s.dir.split("/").slice(1).join("/");
+    const path = el("p", "row-artist sd-path", (src ? src.name : "") + (rel ? " › " + rel : ""));
+    text.appendChild(path);
+    const thumb = coverThumb("");
+    SD.call("cover", s.dir).then(blob => {
+      if (!blob) return;
+      const img = el("img");
+      img.src = URL.createObjectURL(blob);
+      img.alt = "";
+      img.loading = "lazy";
+      thumb.appendChild(img);
+    }).catch(() => {});
+    row.append(thumb, text, actions);
+    return row;
+  }
+
+  function sdCompute() {
+    const idx = SD.index();
+    const linked = new Set();
+    Store.raw().forEach(a => { const m = SD.matchFor(a); if (m) linked.add(m.dir); });
+    return { idx, linked, missing: idx.albums.filter(s => !linked.has(s.dir)) };
+  }
+
+  const plural = (n, word) => n + " " + word + (n > 1 ? "s" : "");
+  const inSource = (a, id) => a.dir === id || a.dir.startsWith(id + "/");
+
+  // Une ligne par dossier : nom, bilan, boutons
+  function sourceRow(src, st, linked) {
+    const idx = SD.index();
+    const albums = idx.albums.filter(a => inSource(a, src.id));
+    const perm = (st.perms || {})[src.id];
+    const scanning = st.state === "scanning" && st.scanning && st.scanning.id === src.id;
+    const row = el("div", "sd-source");
+    const line = el("p", "server-line");
+    const dot = el("span", "dot " + (perm === "granted" ? "is-on" : "is-off"));
+    const name = el("span", "sd-name", "« " + src.name + " »");
+    line.append(dot, name);
+    const when = src.scannedAt ? new Date(src.scannedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "";
+    const n = albums.filter(a => linked.has(a.dir)).length;
+    const info = el("p", "hint sd-info", scanning
+      ? "Analyse… " + (st.scanning.read ? st.scanning.read + " / " + st.scanning.files + " fichiers lus" : (st.scanning.files || 0) + " fichiers trouvés")
+      : perm !== "granted" && perm
+        ? "Accès à autoriser" + (when ? " · " + plural(albums.length, "album") : "")
+        : when
+          ? plural(albums.length, "album") + " · " + plural(src.files || 0, "fichier") + " · " + plural(n, "relié") + " à la collection · analysé le " + when
+          : "pas encore analysé");
+    const actions = el("div", "server-actions");
+    if (perm && perm !== "granted") actions.append(sdButton("Autoriser", () => SD.allow(), true));
+    if (!scanning) actions.append(sdButton("Analyser", () => SD.rescan(src.id)), sdButton("Retirer", () => SD.remove(src.id)));
+    const head = el("div", "server-status");
+    head.append(line, actions);
+    row.append(head, info);
+    return row;
+  }
+
+  function renderSd() {
+    const st = SD.status();
+    const idx = SD.index();
+    const { linked, missing } = sdCompute();
+    $("sd-error").hidden = !st.error;
+    $("sd-error").textContent = st.error || "";
+
+    const list = $("sd-sources");
+    if (!SD.supported) {
+      list.replaceChildren(el("p", "hint", "Votre navigateur ne peut pas ouvrir un dossier : utilisez Chrome ou Edge."));
+      $("sd-add").hidden = true;
+    } else {
+      list.replaceChildren(...idx.sources.map(src => sourceRow(src, st, linked)));
+      $("sd-empty").hidden = idx.sources.length > 0;
+      $("sd-add").hidden = false;
+    }
+
+    const q = normalize($("sd-missing-filter").value.trim());
+    const filtered = q ? missing.filter(s => normalize(s.title + " " + s.artist + " " + s.dir).includes(q)) : missing;
+    $("sd-missing-block").hidden = !missing.length || st.state === "scanning";
+    $("sd-missing-title").textContent = "dans vos dossiers, pas encore dans la collection (" + missing.length + ")";
+    $("sd-missing-list").replaceChildren(...filtered.slice(0, shownSd).map(sdRow));
+    $("sd-missing-more").hidden = filtered.length <= shownSd;
+  }
+
+  $("sd-add").addEventListener("click", () => SD.add());
+  $("sd-missing-filter").addEventListener("input", () => { shownSd = PAGE; renderSd(); });
+  $("sd-missing-more").addEventListener("click", () => { shownSd += PAGE; renderSd(); });
+  document.addEventListener("sd:change", () => {
+    renderSd();
+    if (Server.isConfigured()) renderLists();
+  });
+
   // ---------- Rendu ----------
 
   function render(online) {
+    renderSd();
     const configured = Server.isConfigured();
     $("connect-block").hidden = configured;
     $("status-block").hidden = !configured;
@@ -192,15 +410,18 @@
       return;
     }
     setOnline(online !== false);
+    renderAddresses();
     renderSummary();
     renderLists();
   }
 
   render();
 
-  // Vérifie que le serveur répond, et actualise l'index s'il a plus d'une heure
+  // Vérifie que le serveur répond (sinon : une autre adresse connue qui répond),
+  // et actualise l'index s'il a plus d'une heure
   if (Server.isConfigured()) {
-    Server.ping()
+    Server.autoSelect().then(u => { if (!u) throw new Error("injoignable"); render(true); })
+      .then(() => Server.ping())
       .then(() => {
         setOnline(true);
         const age = Date.now() - new Date(Server.cachedIndex().fetchedAt || 0).getTime();

@@ -16,7 +16,7 @@
 
       <form class="search" role="search" action="../index.html" method="get">
         <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
-        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
       <a href="insights.html" class="header-link">insights</a>
@@ -31,7 +31,28 @@
     <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
 
     <h1 class="album-heading">audio-files</h1>
-    <p class="album-facts">Vos fichiers MP3 et FLAC, servis en wifi par Navidrome depuis votre téléphone.</p>
+    <p class="album-facts">Vos fichiers MP3 et FLAC : sur le stockage local du PC (carte SD, clé USB, disque, dossier), ou servis en wifi par Navidrome depuis votre téléphone.</p>
+
+    <!-- Stockage local : carte SD, clé USB, disque externe, dossier du PC (js/sdcard.js) -->
+    <section class="block" id="sd-block">
+      <h2 class="block-title">stockage local</h2>
+      <p class="hint" id="sd-empty">Carte SD, clé USB, disque externe ou simple dossier du PC : ajoutez le dossier qui contient vos fichiers audio (par exemple E:\Musique). Vous pouvez en ajouter plusieurs.</p>
+      <div class="sd-sources" id="sd-sources"></div>
+      <p class="error" id="sd-error" hidden></p>
+      <button type="button" class="btn btn-small" id="sd-add">Ajouter un dossier…</button>
+    </section>
+
+    <!-- Dans les dossiers locaux, pas dans la collection -->
+    <section class="block" id="sd-missing-block" hidden>
+      <div class="block-head">
+        <h2 class="block-title" id="sd-missing-title"></h2>
+        <input type="search" class="field field-small" id="sd-missing-filter" placeholder="Filtrer" autocomplete="off">
+      </div>
+      <div class="lib-list" id="sd-missing-list"></div>
+      <button type="button" class="text-btn" id="sd-missing-more" hidden>Afficher plus</button>
+    </section>
+
+    <h2 class="lib-section-title">téléphone (Navidrome)</h2>
 
     <!-- Connexion -->
     <section class="block" id="connect-block" hidden>
@@ -67,6 +88,18 @@
         </div>
       </div>
       <p class="hint" id="s-summary"></p>
+
+      <!-- Adresses du téléphone : wifi, point d'accès, câble USB… (celle qui répond est utilisée) -->
+      <div class="nd-addrs">
+        <p class="label">Adresses du téléphone <span class="optional">(conductor. prend celle qui répond)</span></p>
+        <ul class="nd-addr-list" id="nd-addr-list"></ul>
+        <form class="nd-addr-add" id="nd-addr-form">
+          <input class="field field-small" id="nd-addr-input" placeholder="Autre adresse, ex. câble USB : 192.168.42.129" autocomplete="off">
+          <button type="submit" class="btn btn-ghost btn-small" id="nd-addr-btn">Ajouter</button>
+          <button type="button" class="btn btn-ghost btn-small" id="nd-addr-detect" title="Essaie toutes les adresses et garde celle qui répond">Détecter</button>
+        </form>
+        <p class="error" id="nd-addr-error" hidden></p>
+      </div>
     </section>
 
     <!-- Sur le téléphone, pas dans la collection -->
@@ -93,6 +126,7 @@
   <script src="../js/data.js"></script>
   <script src="../js/navidrome.js"></script>
   <script src="../js/disk.js"></script>
+  <script src="../js/sdcard.js"></script>
   <script src="../js/library.js"></script>
   <script src="../js/volume.js"></script>
   <script src="../js/playback.js"></script>

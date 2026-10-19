@@ -42,6 +42,7 @@
     ["H", "Accueil, tout réinitialisé"],
     ["J", "Note du jour (page journal)"],
     ["F", "Filtre « Albums favoris » (collection)"],
+    ["E", "Modifier la fiche (page album)"],
     ["Maj + ← →", "Page précédente / suivante (collection, historique du journal)"],
     ["Espace", "Lecture / pause (page album)"],
     ["← →", "Titre précédent / suivant (pendant la lecture)"],
@@ -49,6 +50,7 @@
     ["T", "File d'attente : ouvrir / fermer (mini-lecteur)"],
     ["Q", "Fermer le mini-lecteur"],
     ["P", "Plein écran (pendant la lecture)"],
+    ["O", "Ouvrir la page de l'album en cours de lecture"],
     ["M", "Couper / rétablir le son"],
     ["0", "Volume à zéro"],
     ["1", "Volume au maximum"],
@@ -193,6 +195,20 @@
       if (e.key.toLowerCase() === "t") { e.preventDefault(); pb.togglePanel(); return; }
       if (e.key.toLowerCase() === "q") { e.preventDefault(); pb.closeMini(); return; }
       if (e.key.toLowerCase() === "p") { e.preventDefault(); pb.fullscreen(); return; }
+      // O : page de l'album en cours (déjà dessus : rien)
+      if (e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        const id = pb.state().albumId;
+        const here = PAGE === "album" && new URLSearchParams(location.search).get("id") === id;
+        if (id && !here) location.href = ROOT + "pages/album.html?id=" + encodeURIComponent(id);
+        return;
+      }
+    }
+    // E : la lettre E quelle que soit la disposition ; page album → « Modifier la fiche »
+    if (e.key.toLowerCase() === "e" && PAGE === "album") {
+      const b = document.getElementById("edit-btn");
+      if (b && !b.closest("[hidden]")) { e.preventDefault(); b.click(); }
+      return;
     }
     if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
 
@@ -241,7 +257,7 @@
   function openHelp() {
     if (!help) {
       help = document.createElement("dialog");
-      help.className = "modal modal-small";
+      help.className = "modal modal-shortcuts";
       help.setAttribute("aria-labelledby", "shortcuts-title");
       help.innerHTML =
         '<div class="modal-head"><h2 class="modal-title" id="shortcuts-title">Raccourcis clavier</h2>' +
@@ -257,7 +273,9 @@
         });
         const dd = document.createElement("dd");
         dd.textContent = label;
-        list.append(dt, dd);
+        const row = document.createElement("div");
+        row.append(dt, dd);
+        list.appendChild(row);
       });
       help.querySelector(".icon-btn").addEventListener("click", () => help.close());
       help.addEventListener("click", e => { if (e.target === help) help.close(); });
@@ -294,6 +312,7 @@
     vinyl: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5" opacity=".45"/><circle cx="12" cy="12" r="1.6"/>',
     people: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.5 13.8c2 .7 3.5 2.6 3.5 5.2"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    book: '<path d="M4.5 6H2.5v13h7c1.1 0 2 .4 2.5 1.2.5-.8 1.4-1.2 2.5-1.2h7V6h-2"/><path d="M4.5 3.5v13.6c3 0 5.5.7 7.5 2.4V6.3C10 4.4 7.5 3.5 4.5 3.5z"/><path d="M19.5 3.5v13.6c-3 0-5.5.7-7.5 2.4V6.3c2-1.9 4.5-2.8 7.5-2.8z"/><path d="M6.7 7.6c1.1.1 2.1.4 2.9.9M6.7 10.3c1.1.1 2.1.4 2.9.9M6.7 13c1.1.1 2.1.4 2.9.9"/><path d="M15.8 7.5v.3M15.8 10.2v3.9M15 10.2h.8M14.8 14.1h2"/>',
     keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9.3 10h.01M12.6 10h.01M15.9 10h.01M18 10h.01M6 13.5h.01M18 13.5h.01M8.5 14h7"/>'
   };
   const GITHUB = '<path fill="currentColor" stroke="none" d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49l-.01-1.7c-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9l-.01 2.81c0 .27.18.6.69.49A10.1 10.1 0 0 0 22 12.23C22 6.58 17.52 2 12 2z"/>';
@@ -342,18 +361,23 @@
             '<div><p class="footer-name">conductor.</p>' +
             '<p class="footer-note">A personal, local-first music library and audio player.</p></div>' +
           '</div>' +
-          '<a class="footer-square" href="https://github.com/Finsch/conductor" target="_blank" rel="noopener" ' +
-            'title="Code source sur GitHub" aria-label="GitHub">' + svg(GITHUB) + '</a>' +
+          '<div class="footer-links">' +
+            '<a class="footer-about" href="' + ROOT + 'pages/about.html" title="Le projet : principe, fonctionnalités, ressources">About</a>' +
+            '<a class="footer-square" href="https://github.com/Finsch/conductor" target="_blank" rel="noopener" ' +
+              'title="Code source sur GitHub" aria-label="GitHub">' + svg(GITHUB) + '</a>' +
+          '</div>' +
         '</div>' +
         '<div class="footer-bottom">' +
           '<p class="footer-stats"></p>' +
           '<div class="footer-tools">' +
+            '<a class="footer-help footer-manuals" href="' + ROOT + 'pages/manuals.html" title="Manuels : les guides pas à pas" ' +
+              'aria-label="Manuels">' + svg(ICON.book) + '</a>' +
             '<button type="button" class="footer-help" title="Raccourcis clavier (?)" ' +
               'aria-label="Raccourcis clavier">' + svg(ICON.keyboard) + '</button>' +
           '</div>' +
         '</div>' +
       '</div></div>';
-    footer.querySelector(".footer-help").addEventListener("click", openHelp);
+    footer.querySelector("button.footer-help").addEventListener("click", openHelp);
     statsEl = footer.querySelector(".footer-stats");
     // Volume fixe, à gauche du bouton clavier (js/volume.js)
     if (window.Volume) {

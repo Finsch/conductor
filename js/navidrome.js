@@ -121,9 +121,92 @@ const Server = (function () {
     const salt = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
     const conf = { url: normalizeUrl(serverUrl), user: user.trim(), salt: salt, token: md5(password + salt) };
     return api("ping", {}, conf, 6000).then(() => {
+      // Mêmes identifiants : on garde les autres adresses connues du téléphone
+      const old = config();
+      const known = old && old.user === conf.user ? addresses(old) : [];
+      conf.urls = [conf.url].concat(known.filter(u => u !== conf.url));
       writeJson(CONF_KEY, conf);
       return conf;
     });
+  }
+
+  // ---------- Plusieurs adresses pour le même téléphone ----------
+  // Wifi de la box, point d'accès, câble USB (partage de connexion USB)… :
+  // le téléphone n'a pas la même adresse selon le réseau. On les garde toutes ;
+  // conductor. utilise celle qui répond (conf.url = adresse en cours).
+
+  function addresses(conf) {
+    conf = conf || config();
+    if (!conf) return [];
+    const list = Array.isArray(conf.urls) && conf.urls.length ? conf.urls : [conf.url];
+    return list.filter((u, i) => u && list.indexOf(u) === i);
+  }
+
+  function saveAddresses(list, active) {
+    const conf = config();
+    if (!conf) return null;
+    conf.urls = list;
+    if (active) conf.url = active;
+    if (!list.includes(conf.url)) conf.url = list[0] || conf.url;
+    writeJson(CONF_KEY, conf);
+    document.dispatchEvent(new CustomEvent("server:address"));
+    return conf;
+  }
+
+  // Le téléphone répond-il à cette adresse (mêmes identifiants) ?
+  function test(address, timeoutMs) {
+    const conf = config();
+    if (!conf) return Promise.resolve(false);
+    return api("ping", {}, Object.assign({}, conf, { url: normalizeUrl(address) }), timeoutMs || 3000)
+      .then(() => true, () => false);
+  }
+
+  // Nouvelle adresse : vérifiée, ajoutée et utilisée
+  async function addAddress(address) {
+    const u = normalizeUrl(address);
+    if (!u) throw new Error("Adresse vide");
+    if (!(await test(u, 6000))) throw new Error("Le téléphone ne répond pas à cette adresse.");
+    const list = addresses();
+    saveAddresses(list.includes(u) ? list : list.concat(u), u);
+    return u;
+  }
+
+  function removeAddress(address) {
+    const list = addresses().filter(u => u !== address);
+    if (!list.length) return config();
+    return saveAddresses(list);
+  }
+
+  function useAddress(address) {
+    return saveAddresses(addresses(), address);
+  }
+
+  // Choisit l'adresse qui répond : celle en cours d'abord, sinon les autres.
+  // → adresse retenue, ou null si le téléphone ne répond nulle part.
+  let selecting = null;
+  function autoSelect() {
+    const conf = config();
+    if (!conf) return Promise.resolve(null);
+    if (selecting) return selecting;
+    selecting = (async () => {
+      if (await test(conf.url, 2500)) return conf.url;
+      const others = addresses(conf).filter(u => u !== conf.url);
+      const ok = await Promise.all(others.map(u => test(u, 3000).then(r => r ? u : null)));
+      const found = ok.find(Boolean);
+      if (found) saveAddresses(addresses(), found);
+      return found || null;
+    })().finally(() => { setTimeout(() => { selecting = null; }, 1000); });
+    return selecting;
+  }
+
+  // Adresse d'un morceau ou d'une pochette du téléphone, ramenée à l'adresse en
+  // cours (les adresses enregistrées dans la file ou la reprise peuvent dater
+  // d'un autre réseau)
+  function rebase(src) {
+    const conf = config();
+    if (!conf || !src || !/\/rest\/(stream|getCoverArt|download)\?/.test(src)) return src;
+    const i = src.indexOf("/rest/");
+    return src.slice(0, i) === conf.url ? src : conf.url + src.slice(i);
   }
 
   function disconnect() {
@@ -305,6 +388,17 @@ const Server = (function () {
     });
   }
 
+  // Paroles synchronisées (karaoké) : [{ t: secondes, text }] ou null
+  function syncedLyrics(songId) {
+    return api("getLyricsBySongId", { id: songId }).then(res => {
+      const list = (res.lyricsList && res.lyricsList.structuredLyrics) || [];
+      const best = list.find(l => l.synced && (l.line || []).length);
+      if (!best) return null;
+      const offset = (best.offset || 0) / 1000;
+      return best.line.map(l => ({ t: Math.max(0, (l.start || 0) / 1000 - offset), text: l.value || "" }));
+    });
+  }
+
   function search(query) {
     return api("search3", { query: query, albumCount: 20, artistCount: 0, songCount: 0 })
       .then(res => mergeParts(((res.searchResult3 && res.searchResult3.album) || []).map(toAlbum)));
@@ -321,8 +415,9 @@ const Server = (function () {
 
   return {
     config, connect, disconnect, ping,
+    addresses, addAddress, removeAddress, useAddress, test, autoSelect, rebase, normalizeUrl,
     refreshIndex, cachedIndex, matchFor,
-    getAlbum, search, coverUrl, lyrics,
+    getAlbum, search, coverUrl, lyrics, syncedLyrics,
     isConfigured: () => !!config(),
     _md5: md5
   };

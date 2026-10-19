@@ -1,7 +1,8 @@
 # Navidrome sur le téléphone (Samsung A12) — mode d'emploi
 
 Navidrome est un serveur musical. Il tourne sur le téléphone, dans l'appli Termux,
-et sert vos fichiers MP3/FLAC en wifi à conductor. — sans copie sur le PC.
+et sert vos fichiers MP3/FLAC à conductor. — sans copie sur le PC — en wifi, par
+le point d'accès du téléphone, ou **par le câble USB, sans aucun réseau ni internet** (D).
 Dans conductor., tout se passe dans la page **audio-files**.
 
 Installation : une seule fois, 15 à 20 minutes (voir plus bas).
@@ -40,10 +41,53 @@ Laissez Termux ouvert.
 4. Adresse à utiliser : `192.168.43.1:4533`
    La musique ne consomme pas de données ; internet sur le PC passe par les données du A12.
 
+**D. Câble USB — 100 % hors ligne** (ni wifi, ni internet, ni données mobiles)
+1. Branchez le A12 au PC avec un câble USB **de données** (pas un câble de charge seule).
+2. A12 : Paramètres → Connexions → **Point d'accès mobile et modem** → activez **Modem USB**.
+   (Grisé ? Le câble ne transporte pas de données, ou le PC ne voit pas encore le téléphone :
+   rebranchez, et choisissez « Transfert de fichiers » si Android le demande.)
+3. Pour être vraiment hors ligne : A12 → coupez les **Données mobiles** (le câble continue de marcher).
+   Windows affichera « Pas d'accès Internet » sur cette connexion : c'est normal.
+4. Trouvez l'adresse du A12 sur ce câble, au choix :
+   - PC : Invite de commandes → `ipconfig` → la carte réseau nommée **« Remote NDIS… »**
+     (ou « Ethernet 2/3… ») → **Passerelle par défaut**, ex. `192.168.42.129` ;
+   - ou Termux → `ifconfig` → interface **`rndis0`** (ou `ncm0`, `usb0`) → ligne `inet`.
+5. Adresse à utiliser : `192.168.42.129:4533` (avec la vôtre).
+   Elle peut changer d'un branchement à l'autre : refaites l'étape 4 si le site ne la trouve plus.
+
+**E. Câble USB sans carte SIM (ADB)** — quand « Modem USB » est grisé ou absent
+(certains Samsung bloquent le partage de connexion sans SIM). Le câble transporte
+Navidrome directement : ni SIM, ni wifi, ni données mobiles.
+
+*Une seule fois :*
+1. A12 : Paramètres → À propos du téléphone → Informations sur le logiciel →
+   touchez **7 fois** « Numéro de version » : les **Options de développement** apparaissent.
+2. Paramètres → Options de développement → activez **Débogage USB**.
+3. PC : téléchargez les **SDK Platform-Tools** pour Windows (developer.android.com, gratuit)
+   et décompressez le dossier dans `C:\platform-tools`.
+4. Branchez le câble **de données**, puis Invite de commandes :
+   ```
+   C:\platform-tools\adb devices
+   ```
+   Sur le A12, acceptez « Autoriser le débogage USB » (cochez « Toujours autoriser »).
+   La commande doit afficher une ligne terminée par `device`.
+   (Rien ne s'affiche ? Installez le **Samsung USB Driver**, puis rebranchez.)
+
+*À chaque branchement du câble :*
+1. Invite de commandes :
+   ```
+   C:\platform-tools\adb forward tcp:4533 tcp:4533
+   ```
+2. Adresse à utiliser : `localhost:4533` (à ajouter une seule fois dans conductor.).
+   Si elle ne répond plus (câble débranché, PC redémarré), relancez la commande.
+
+> **Bon à savoir** : rien à changer dans Navidrome. Il écoute déjà sur toutes les connexions
+> du téléphone (wifi et câble) ; seule l'adresse diffère.
+
 ### 3. PC : tester dans Chrome
 
 ```
-http://10.188.202.114:4533                                  (A, C : adresse:4533)
+http://10.188.202.114:4533                                  (A, C, D : adresse:4533)
 http://[2a04:cec0:1014:6130:d0c0:a0ff:fe7c:e1e9]:4533       (B en IPv6 : avec crochets)
 ```
 La page de connexion Navidrome s'affiche → passez à l'étape 4.
@@ -51,15 +95,18 @@ La page de connexion Navidrome s'affiche → passez à l'étape 4.
 ### 4. conductor. : se connecter
 
 **audio-files**
-- Déjà connecté avec la même adresse : rien à faire (ou **Actualiser**).
-- Autre adresse : **Déconnecter**, puis :
-  - Adresse : collez-la telle quelle (IPv6 sans crochets acceptée, port ajouté tout seul).
-  - Utilisateur / mot de passe : ceux du compte Navidrome.
-  - **Se connecter**.
+- **Première fois** : Adresse (collez-la telle quelle — IPv6 sans crochets acceptée, port
+  ajouté tout seul), utilisateur et mot de passe du compte Navidrome → **Se connecter**.
+- **Ensuite, autre réseau** (câble USB, point d'accès…) : pas besoin de se reconnecter.
+  Sous « Adresses du téléphone », tapez la nouvelle adresse → **Ajouter**. Elle est testée,
+  puis gardée avec les autres.
+- **Au quotidien** : conductor. essaie lui-même les adresses connues et prend celle qui
+  répond — au démarrage, et si la musique s'arrête parce que le téléphone a changé de
+  réseau (le morceau reprend au même endroit). Bouton **Détecter** pour forcer un essai.
 
 ### 5. Fin de session
 
-Termux → `Ctrl` + `C`. Coupez le point d'accès (C) si besoin.
+Termux → `Ctrl` + `C`. Coupez le point d'accès (C) ou le Modem USB (D) si besoin. Avec E, débrancher le câble suffit.
 
 ### Si le test de l'étape 3 échoue
 
@@ -177,8 +224,10 @@ Le mot de passe n'est pas enregistré : le site garde seulement un jeton dériv�
 **Empêcher Android de couper Termux** : Paramètres → Applications → Termux → Batterie → **Non restreinte**.
 
 **Adresse qui change** : réservez une adresse fixe au A12 dans la box (réglages DHCP,
-« bail statique »). Impossible sur un partage de connexion : relevez alors l'adresse
-à chaque session, puis audio-files → Déconnecter → reconnectez-vous.
+« bail statique »). Impossible sur un partage de connexion ou le câble USB : relevez
+alors la nouvelle adresse, puis audio-files → Adresses du téléphone → **Ajouter**
+(inutile de se déconnecter). Les anciennes adresses peuvent rester : conductor. prend
+celle qui répond. **Retirer** celles qui ne servent plus.
 
 **Partage de connexion de l'iPhone** : ça marche, le PC et le A12 se voient.
 - La musique (A12 → PC) ne consomme pas votre forfait ; les recherches en ligne et les pochettes, si.
@@ -219,6 +268,9 @@ Ce que conductor. utilise aussi dans vos fichiers :
 | `pkg install navidrome` : paquet introuvable | Refaites `pkg update` ; vérifiez que Termux vient de F-Droid. |
 | « serveur injoignable » | Navidrome tourne-t-il dans Termux ? PC et A12 sur le même réseau ? Adresse changée ? Lien « réessayer » sur la page album. |
 | La page Navidrome ne s'ouvre pas en IPv6 | `ipconfig` sur le PC doit montrer une « Adresse IPv6 » commençant comme celle du A12. Sinon, ajoutez `export ND_ADDRESS="::"` dans `~/navidrome.sh` (avant `navidrome`) et relancez. |
+| Câble USB : « Modem USB » grisé | Câble de charge seule, ou téléphone pas encore reconnu : autre câble, rebranchez, « Transfert de fichiers ». |
+| Câble USB : « Le téléphone ne répond pas à cette adresse » | Navidrome tourne-t-il ? Bonne adresse (passerelle de la carte « Remote NDIS ») ? Testez `http://adresse:4533` dans Chrome. |
+| Le PC passe par le téléphone pour internet | Normal avec le Modem USB : coupez les données mobiles du A12 pour rester hors ligne. |
 | « Utilisateur ou mot de passe incorrect » | Ce sont ceux créés à l'étape 8, pas ceux du téléphone. |
 | « erreur du serveur : … » sur une page album | Message renvoyé par Navidrome ; « relier à vos fichiers » pour choisir l'album à la main. |
 | Navidrome ne voit aucun album | Vérifiez `ND_MUSICFOLDER` avec `ls` (étape 4), puis relancez. |

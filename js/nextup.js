@@ -54,6 +54,13 @@
     return Math.floor(days / 365) + " ans";
   }
 
+  // Album qui dort : plus de 3 mois dans next up, jamais écouté
+  const SLEEP_DAYS = 90;
+  function sleeping(a) {
+    if (!a.nextUpAt || (a.plays || []).length) return false;
+    return Date.now() - new Date(a.nextUpAt).getTime() > SLEEP_DAYS * 86400000;
+  }
+
   function sinceLabel(iso) {
     const s = since(iso);
     if (!s) return "";
@@ -138,6 +145,11 @@
     badge.title = auto ? "Rang par récence (pas de priorité choisie)" : "Priorité " + rank;
     cover.appendChild(badge);
     if (onPhone(album)) cover.appendChild(el("span", "phone-badge", "sur le tél."));
+    if (sleeping(album)) {
+      const z = el("span", "sleep-badge", "endormi");
+      z.title = "Dans next up depuis " + since(album.nextUpAt) + ", jamais écouté";
+      cover.appendChild(z);
+    }
     cover.appendChild(collectBtn(album));
     card.append(cover, el("p", "album-title", album.title), el("p", "album-artist", album.artist));
     card.addEventListener("click", () => openCard(album.id));
@@ -164,7 +176,11 @@
       el("span", "row-cell nu-genre", album.genre || ""),
       el("span", "row-cell nu-tracks", tracks ? formatTracks(tracks) : ""),
       el("span", "row-cell nu-length", length ? formatLength(length) : ""),
-      el("span", "row-cell nu-since", since(album.nextUpAt))
+      (() => {
+        const c = el("span", "row-cell nu-since" + (sleeping(album) ? " is-sleeping" : ""), since(album.nextUpAt));
+        if (sleeping(album)) c.title = "Endormi : dans next up depuis " + since(album.nextUpAt) + ", jamais écouté";
+        return c;
+      })()
     );
     b.addEventListener("click", () => openCard(album.id));
     li.appendChild(b);
@@ -283,6 +299,21 @@
     }
     $("nu-empty").hidden = list.length > 0;
 
+    // Albums qui dorment (les plus anciens d'abord)
+    const asleep = list.filter(sleeping).sort((a, b) => (a.nextUpAt || "").localeCompare(b.nextUpAt || ""));
+    $("nu-sleep").hidden = !asleep.length;
+    $("nu-sleep-title").textContent = plural(asleep.length, "album") + (asleep.length > 1 ? " dorment" : " dort") +
+      " dans next up : ajouté" + (asleep.length > 1 ? "s" : "") + " il y a plus de 3 mois, jamais écouté" + (asleep.length > 1 ? "s" : "") + ".";
+    $("nu-sleep-list").replaceChildren(...asleep.map(a => {
+      const li = el("li");
+      const b = el("button", "text-btn nu-sleep-item");
+      b.type = "button";
+      b.append(el("span", "nu-sleep-name", a.title + " — " + a.artist), el("span", "nu-sleep-since", " · " + since(a.nextUpAt)));
+      b.addEventListener("click", () => openCard(a.id));
+      li.appendChild(b);
+      return li;
+    }));
+
     // Top 5
     top = computeTop(list);
     $("nu-top-section").hidden = !list.length;
@@ -339,7 +370,7 @@
       length ? formatLength(length) : "",
       album.genre
     ].filter(Boolean).join(" · ");
-    $("nu-d-since").textContent = [sinceLabel(album.nextUpAt), onPhone(album) ? "sur le téléphone" : ""]
+    $("nu-d-since").textContent = [sinceLabel(album.nextUpAt), sleeping(album) ? "jamais écouté (endormi)" : "", onPhone(album) ? "sur le téléphone" : ""]
       .filter(Boolean).join(" · ");
 
     // Priorité : 1 à 5 ; recliquer sur la sienne la retire

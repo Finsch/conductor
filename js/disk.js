@@ -6,6 +6,12 @@
 //   datastorage/backups/…           une copie par jour (collection-AAAA-MM-JJ.js), les 7 dernières
 //   datastorage/covers/…            les pochettes, copiées en local
 //
+//   datastorage/lyrics-synced/…     paroles synchronisées (karaoké), une .lrc par morceau
+//   datastorage/collection.csv      la collection en tableau (Excel, LibreOffice ; séparateur « ; »)
+//   datastorage/journal-entries/…   une note du journal par jour (AAAA-MM-JJ.md), lisible
+//                                   dans Obsidian ou tout éditeur ; modifiée à la main, elle
+//                                   est reprise par le site au démarrage suivant
+//
 // Lire : le site charge collection.js avec une simple balise <script>,
 //        aucune autorisation n'est nécessaire.
 // Écrire : le navigateur (Chrome ou Edge) doit avoir accès au dossier. On le
@@ -97,6 +103,9 @@ const Disk = window.top !== window ? frameDisk() : (function () {
           await dailyBackup(previous);
         }
         await writeFile(handle, "collection.js", fileContent());
+        // Copie lisible dans Excel / LibreOffice (séparateur « ; »)
+        await writeFile(handle, "collection.csv", collectionCsv(Store.raw()));
+        await flushJournal();
         await flushLyrics();
         dirty = false;
         writeError = "";
@@ -111,6 +120,72 @@ const Disk = window.top !== window ? frameDisk() : (function () {
       }
     })();
     return writing;
+  }
+
+  // ---------- Journal : datastorage/journal-entries/AAAA-MM-JJ.md ----------
+  // Une note = un fichier Markdown. Écrit seulement s'il a changé ; le fichier
+  // d'une note supprimée est retiré.
+
+  const JOURNAL_DIR = "journal-entries";
+  const JOURNAL_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/;
+  const journalWritten = new Map();   // jour → texte déjà sur le disque
+
+  const mdText = note => note.text.replace(/\s+$/, "") + "\n";
+
+  async function flushJournal() {
+    try {
+      const dir = await handle.getDirectoryHandle(JOURNAL_DIR, { create: true });
+      const notes = Store.notes();
+      const onDisk = new Set();
+      for await (const [name, entry] of dir.entries()) {
+        const m = entry.kind === "file" && name.match(JOURNAL_FILE);
+        if (m) onDisk.add(m[1]);
+      }
+      for (const day of Object.keys(notes)) {
+        const text = mdText(notes[day]);
+        if (onDisk.has(day) && !journalWritten.has(day)) {
+          try { journalWritten.set(day, await (await (await dir.getFileHandle(day + ".md")).getFile()).text()); } catch (e) {}
+        }
+        if (journalWritten.get(day) === text) continue;
+        await writeFile(dir, day + ".md", text);
+        journalWritten.set(day, text);
+      }
+      // Notes supprimées dans le site : fichier retiré
+      for (const day of onDisk) {
+        if (!notes[day]) {
+          await dir.removeEntry(day + ".md").catch(() => {});
+          journalWritten.delete(day);
+        }
+      }
+    } catch (e) {
+      console.warn("journal-entries :", e);
+    }
+  }
+
+  // Au démarrage : les .md modifiés (ou ajoutés) à la main depuis la dernière
+  // écriture du site sont repris dans le journal.
+  async function importJournal() {
+    try {
+      const dir = await handle.getDirectoryHandle(JOURNAL_DIR, { create: true });
+      const notes = Store.notes();
+      for await (const [name, entry] of dir.entries()) {
+        const m = entry.kind === "file" && name.match(JOURNAL_FILE);
+        if (!m) continue;
+        const day = m[1];
+        const file = await entry.getFile();
+        const text = await file.text();
+        const note = notes[day];
+        const newer = !note || file.lastModified > Date.parse(note.updatedAt || 0) + 2000;
+        if (newer && (!note || mdText(note) !== text) && text.trim()) {
+          Store.setNote(day, text);
+          journalWritten.set(day, mdText({ text }));
+        } else {
+          journalWritten.set(day, text);
+        }
+      }
+    } catch (e) {
+      console.warn("journal-entries :", e);
+    }
   }
 
   // ---------- Sauvegarde du jour : datastorage/backups/ ----------
@@ -181,6 +256,51 @@ const Disk = window.top !== window ? frameDisk() : (function () {
     return APP_ROOT + "../datastorage/lyrics/" + safeName(albumId) + ".js";
   }
 
+  // Paroles d'un album déjà connues (en attente d'écriture, sinon le fichier)
+  async function readLyrics(albumId) {
+    if (pendingLyrics[albumId]) return pendingLyrics[albumId];
+    if (state !== "ready") return null;
+    try {
+      const dir = await handle.getDirectoryHandle("lyrics");
+      const text = await (await (await dir.getFileHandle(safeName(albumId) + ".js")).getFile()).text();
+      const json = text.slice(text.indexOf("] = ") + 4).replace(/;\s*$/, "");
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ---------- Paroles synchronisées : datastorage/lyrics-synced/<album>/<titre>.lrc ----------
+  // Trouvées une fois (fichiers, Navidrome, LRCLIB) ou calées à la main : le
+  // karaoké les relit ensuite sans internet.
+
+  const SYNCED_DIR = "lyrics-synced";
+  const trackFile = title => ((title || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "piste") + ".lrc";
+
+  async function readSynced(albumId, title) {
+    if (state !== "ready") return null;
+    try {
+      const dir = await (await handle.getDirectoryHandle(SYNCED_DIR)).getDirectoryHandle(safeName(albumId));
+      return await (await (await dir.getFileHandle(trackFile(title))).getFile()).text();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function writeSynced(albumId, title, lrc) {
+    if (state !== "ready") return false;
+    try {
+      const dir = await (await handle.getDirectoryHandle(SYNCED_DIR, { create: true }))
+        .getDirectoryHandle(safeName(albumId), { create: true });
+      await writeFile(dir, trackFile(title), lrc);
+      return true;
+    } catch (e) {
+      console.warn("lyrics-synced :", e);
+      return false;
+    }
+  }
+
   // Paroles pas encore écrites sur le disque (pour les afficher quand même)
   function pendingLyricsFor(albumId) {
     return pendingLyrics[albumId] || null;
@@ -194,6 +314,14 @@ const Disk = window.top !== window ? frameDisk() : (function () {
 
   // Pochette à copier : adresse en ligne, image collée (data:), ou pochette de vos fichiers
   function coverSource(a) {
+    // Pochette en ligne refusée par son site (Discogs…) : celle de vos fichiers
+    // sur le téléphone (Navidrome), s'ils sont reliés
+    if (a.cover && /^https?:/i.test(a.cover) && a.coverCacheFailed &&
+        typeof Server !== "undefined" && Server.isConfigured()) {
+      const m = a.serverCover ? null : Server.matchFor(a);
+      const id = a.serverCover || (m && (m.coverArt || m.id));
+      if (id) return Server.coverUrl(id, 600);
+    }
     if (a.cover && (/^https?:/i.test(a.cover) || a.cover.startsWith("data:"))) return a.cover;
     if (!a.cover && a.serverCover && typeof Server !== "undefined" && Server.isConfigured()) {
       return Server.coverUrl(a.serverCover, 600);
@@ -286,6 +414,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
     state = "ready";
     writeError = "";
     render();
+    await importJournal();
     // Le fichier est plus ancien que le navigateur (ou absent) : on l'écrit
     if (dirty || !window.CONDUCTOR_DATA) await writeNow();
     await cacheCovers();
@@ -392,6 +521,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
   return {
     init, changed, choose, allow, writeNow, cacheCovers, retryCovers,
     writeLyrics, lyricsPath, pendingLyricsFor, safeName,
+    readLyrics, readSynced, writeSynced,
     state: () => state
   };
 })();

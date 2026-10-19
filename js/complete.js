@@ -1,7 +1,8 @@
 // conductor. — page « à compléter »
 //
-// Les albums de la collection auxquels il manque quelque chose : pochette,
-// genre, date de sortie, liste des titres, intensité, ressenti.
+// Les albums de la collection auxquels il manque quelque chose : pochette
+// (ou pochette seulement en ligne), genre, date de sortie, liste des titres,
+// intensité, ressenti.
 // Un clic sur l'album ouvre sa page pour compléter. Le × d'une étiquette
 // l'ignore pour cet album — album.ignoreMissing garde ces choix.
 
@@ -21,14 +22,8 @@
 
   // ---------- Ce qui peut manquer ----------
 
-  const CHECKS = [
-    { id: "cover",  label: "pochette",        missing: a => !a.cover && !a.serverCover },
-    { id: "genre",  label: "genre",           missing: a => !a.genre },
-    { id: "date",   label: "date de sortie",  missing: a => !a.releaseDate && !a.year },
-    { id: "tracks", label: "liste des titres", missing: a => !(a.tracks || []).length && !a.trackCount },
-    { id: "aggro",  label: "intensité",       missing: a => !a.aggressivity },
-    { id: "moods",  label: "ressenti",        missing: a => !(a.moods || []).length }
-  ];
+  // Critères partagés avec la page insights (js/data.js : ALBUM_CHECKS)
+  const CHECKS = ALBUM_CHECKS;
 
   function gaps(a) {
     const skip = new Set(a.ignoreMissing || []);

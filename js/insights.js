@@ -271,3 +271,32 @@
   render();
   renderRediscover();   // une fois par visite (le bouton « d'autres » en tire de nouveaux)
 })();
+
+// Export CSV : téléchargement de toute la collection (et next up)
+(function () {
+  const btn = document.getElementById("in-export");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const blob = new Blob([collectionCsv(Store.raw())], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    const d = new Date();
+    a.href = URL.createObjectURL(blob);
+    a.download = "conductor-collection-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+})();
+
+// Nombre de fiches à compléter, devant le lien (mêmes critères que la page)
+(function () {
+  const box = document.getElementById("in-incomplete");
+  if (!box) return;
+  const paint = () => {
+    const n = incompleteCount(Store.all());
+    box.textContent = (n ? n + " fiche" + (n > 1 ? "s" : "") : "aucune fiche") + " à compléter →";
+  };
+  paint();
+  document.addEventListener("albums:changed", paint);
+})();

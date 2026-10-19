@@ -524,7 +524,7 @@
     return {
       albumId: album.id, title: album.title, artist: album.artist,
       cover: album.cover || "", serverCover: album.serverCover || "",
-      source: local.active ? "fichiers" : "extraits"
+      source: local.sd ? "local" : local.active ? "fichiers" : "extraits"
     };
   }
 
@@ -872,9 +872,49 @@
 
   // ---------- Vos fichiers (Navidrome) ----------
 
-  const local = { active: false, offline: false, error: "", formats: "" };
+  const local = { active: false, offline: false, error: "", formats: "", sd: false };
+
+  // Stockage local (js/sdcard.js) : carte SD, clé USB, dossier du PC… prioritaire
+  function loadSd() {
+    if (typeof SD === "undefined") return false;
+    const m = SD.matchFor(album);
+    if (!m || !m.tracks.length) return false;
+    const known = album.tracks || [];
+    tracks = SD.tracksOf(m).map((t, i) => ({
+      title: t.title,
+      duration: t.duration || (known.length === m.tracks.length && known[i] ? known[i].duration || 0 : 0),
+      preview: t.src, track: t.track, disc: t.disc
+    }));
+    local.active = true;
+    local.sd = true;
+    local.formats = [...new Set(SD.tracksOf(m).map(t => t.format).filter(Boolean))].join(", ");
+    const patch = { sdDir: m.dir, tracks: tracks.map(t => ({ title: t.title, duration: t.duration, track: t.track, disc: t.disc })), trackCount: tracks.length };
+    if (tracks.every(t => t.duration)) patch.duration = tracks.reduce((s, t) => s + t.duration, 0);
+    album = Store.update(album.id, patch);
+    // Pas de pochette locale : celle du dossier ou des fichiers (copiée dans datastorage/covers)
+    if (SD.needsCover(album) && SD.call) {
+      SD.call("coverToAlbum", album.id, m.dir).then(ok => {
+        if (!ok) return;
+        album = Store.get(album.id) || album;
+        renderInfo();
+      }).catch(() => {});
+    }
+    return true;
+  }
+
+  function localName() {
+    const src = typeof SD !== "undefined" && album.sdDir ? SD.sourceOf(album.sdDir) : null;
+    return src ? src.name : "dossier";
+  }
 
   async function loadLocal() {
+    if (loadSd()) {
+      renderFiles();
+      renderNote();
+      renderInfo();
+      renderTracks();
+      return;
+    }
     if (!Server.isConfigured()) return;
     try {
       // Index vide (première visite) : on le récupère une fois
@@ -927,7 +967,7 @@
 
   function renderNote() {
     $("p-note").textContent = local.active
-      ? "Lecture intégrale depuis vos fichiers" + (local.formats ? " (" + local.formats + ")" : "") + "."
+      ? "Lecture intégrale depuis " + (local.sd ? "votre dossier « " + localName() + " »" : "vos fichiers") + (local.formats ? " (" + local.formats + ")" : "") + "."
       : tracks.some(t => t.preview)
         ? "Extraits de 30 secondes, fournis par Deezer" + (local.offline ? " (serveur de fichiers injoignable)" : "") + "."
         : "";
@@ -943,7 +983,14 @@
   function renderFiles() {
     const box = $("a-files");
     box.replaceChildren(el("span", "files-label", "fichiers"));
-    if (!Server.isConfigured()) {
+    if (local.sd) {
+      box.append(el("span", null, "stockage local « " + localName() + " » · " + formatTracks(tracks.length)),
+        action("changer", openLink),
+        action("délier", () => { Store.update(album.id, { sdDir: "none" }); location.reload(); }));
+    } else if (!Server.isConfigured() && typeof SD !== "undefined" && SD.isConfigured()) {
+      box.append(el("span", null, album.sdDir === "none" ? "délié" : "aucun fichier relié"),
+        action("relier à vos fichiers", openLink));
+    } else if (!Server.isConfigured()) {
       const a = el("a", "text-link", "connecter votre bibliothèque");
       a.href = "library.html";
       box.append(a);
@@ -977,14 +1024,53 @@
   }
 
   // Recherche dans la bibliothèque du téléphone (fenêtre "Relier à vos fichiers")
+  // Albums du stockage local correspondant à la recherche (titre, artiste, dossier)
+  function localResults(q) {
+    if (typeof SD === "undefined" || !SD.isConfigured()) return [];
+    const words = q.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/\s+/).filter(Boolean);
+    const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    return SD.index().albums.filter(a => {
+      const hay = norm(a.title + " " + a.artist + " " + a.dir);
+      return words.every(w => hay.includes(w));
+    }).slice(0, 20).map(a => {
+      const li = el("li", "result");
+      const thumb = el("div", "result-thumb");
+      SD.call("cover", a.dir).then(blob => {
+        if (!blob) return;
+        const img = el("img");
+        img.src = URL.createObjectURL(blob);
+        img.alt = "";
+        thumb.appendChild(img);
+      }).catch(() => {});
+      const text = el("div", "result-text");
+      const src = SD.sourceOf(a.dir);
+      text.append(el("p", "result-title", a.title),
+        el("p", "result-meta", ["dossier « " + (src ? src.name : "") + " »", a.artist, a.year, formatTracks(a.trackCount)].filter(Boolean).join(" · ")));
+      li.append(thumb, text);
+      li.addEventListener("click", () => {
+        Store.update(album.id, { sdDir: a.dir });
+        location.reload();
+      });
+      li.addEventListener("mouseenter", () => li.classList.add("is-active"));
+      li.addEventListener("mouseleave", () => li.classList.remove("is-active"));
+      return li;
+    });
+  }
+
   function searchServer() {
     const q = $("link-input").value.trim();
     const list = $("link-results");
     if (q.length < 2) { list.replaceChildren(); return; }
+    const local = localResults(q);
+    list.replaceChildren(...local);
+    if (!Server.isConfigured()) {
+      $("link-status").textContent = local.length ? "" : "Aucun album trouvé dans vos dossiers.";
+      return;
+    }
     $("link-status").textContent = "Recherche…";
     Server.search(q).then(found => {
-      $("link-status").textContent = found.length ? "" : "Aucun album trouvé sur le téléphone.";
-      list.replaceChildren(...found.map(s => {
+      $("link-status").textContent = found.length || local.length ? "" : "Aucun album trouvé sur le téléphone ni dans vos dossiers.";
+      list.replaceChildren(...local, ...found.map(s => {
         const li = el("li", "result");
         const thumb = el("div", "result-thumb");
         const img = el("img");
@@ -1004,7 +1090,7 @@
         li.addEventListener("mouseleave", () => li.classList.remove("is-active"));
         return li;
       }));
-    }).catch(() => { $("link-status").textContent = "Serveur injoignable."; });
+    }).catch(() => { $("link-status").textContent = local.length ? "Téléphone injoignable." : "Serveur injoignable."; });
   }
 
   $("link-input").addEventListener("input", () => { clearTimeout(linkTimer); linkTimer = setTimeout(searchServer, 300); });

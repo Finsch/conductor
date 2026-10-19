@@ -2,8 +2,11 @@
 //
 // Sources, dans l'ordre :
 //   1. vos paroles (modifiées à la main sur le site)
-//   2. les paroles intégrées à vos fichiers (servies par Navidrome)
-//   3. LRCLIB (lrclib.net), base de paroles ouverte, gratuite, sans compte
+//   2. les paroles de vos fichiers : stockage local (.lrc à côté du morceau ou
+//      paroles intégrées au fichier) ou Navidrome
+//   3. les paroles synchronisées gardées par le karaoké (sans les horodatages)
+//   4. LRCLIB (lrclib.net), base de paroles ouverte, gratuite, sans compte ;
+//      recherche tolérante (js/karaoke.js : sans « feat. », « Remastered »…)
 //
 // Les paroles trouvées sont enregistrées dans datastorage/lyrics/, pour être
 // disponibles ensuite sans internet.
@@ -45,6 +48,14 @@ const Lyrics = (function () {
   }
 
   async function lrclib(album, track) {
+    // Recherche tolérante partagée avec le karaoké
+    if (typeof Karaoke !== "undefined") {
+      const r = await Karaoke.lrclib({ artist: album.artist, album: album.title, title: track.title, duration: track.duration });
+      if (!r) return null;
+      if (r.instrumental) return { text: "[Instrumental]", source: "LRCLIB" };
+      const text = (r.plain || Karaoke.stripTimes(r.lrc) || "").trim();
+      return text ? { text, source: "LRCLIB" } : null;
+    }
     const base = "https://lrclib.net/api/";
     const q = "artist_name=" + encodeURIComponent(album.artist) +
       "&track_name=" + encodeURIComponent(track.title);
@@ -68,6 +79,17 @@ const Lyrics = (function () {
   // ---------- Vos fichiers (Navidrome) ----------
 
   async function fromFiles(track) {
+    // Stockage local : demandé à l'enveloppe, qui ouvre les fichiers
+    const src = track.preview || track.src || "";
+    if (/^sd:/.test(src) && typeof SD !== "undefined" && SD.call) {
+      try {
+        const r = await SD.call("lyrics", src);
+        const text = r && (r.text || (r.lrc && stripTimestamps(r.lrc).replace(/^\s*\[[a-z]+:.*\]\s*$/gim, "").trim()));
+        return text ? { text, source: r.source === "fichier .lrc" ? "fichier .lrc" : "vos fichiers" } : null;
+      } catch (e) {
+        return null;
+      }
+    }
     if (!track.songId || typeof Server === "undefined" || !Server.isConfigured()) return null;
     try {
       const lines = await Server.lyrics(track.songId);
@@ -77,8 +99,22 @@ const Lyrics = (function () {
     }
   }
 
+  // Paroles synchronisées déjà enregistrées par le karaoké
+  // (datastorage/lyrics-synced/) : leur texte, sans les horodatages.
+  // Lues par l'enveloppe (seule à accéder au disque) : marche hors ligne.
+  async function fromSaved(album, track) {
+    if (typeof SD === "undefined" || !SD.call) return null;
+    try {
+      const lrc = await SD.call("savedSynced", album.id, track.title);
+      const text = lrc && stripTimestamps(lrc).replace(/^\s*\[[a-z]+:.*\]\s*$/gim, "").trim();
+      return text ? { text, source: "karaoké (enregistrées)" } : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function find(album, track) {
-    return (await fromFiles(track)) || (await lrclib(album, track));
+    return (await fromFiles(track)) || (await fromSaved(album, track)) || (await lrclib(album, track));
   }
 
   // ---------- Affichage ----------

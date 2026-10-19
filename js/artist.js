@@ -110,6 +110,8 @@
         fav.title = "Album favori";
         cover.appendChild(fav);
       }
+      // ▶ / « 3 traits + » au survol, comme dans la collection
+      if (typeof coverActions === "function") cover.appendChild(coverActions(a));
       const meta = el("p", "album-artist", yearOf(a) ? String(yearOf(a)) : "");
       card.append(cover, el("p", "album-title", a.title), meta);
       return card;

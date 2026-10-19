@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>manuel · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page manual-page">
+    <a href="manuals.html" class="back-link" id="back-link">← tous les manuels</a>
+
+    <p class="empty" id="mn-missing" hidden>Ce guide n'existe pas. <a href="manuals.html" class="text-link">Voir tous les manuels</a></p>
+
+    <article class="mn-guide" id="mn-guide" hidden>
+      <header class="mn-head">
+        <span class="mn-head-icon" id="mn-icon"></span>
+        <div>
+          <h1 class="album-heading" id="mn-title"></h1>
+          <p class="mn-meta" id="mn-meta"></p>
+        </div>
+      </header>
+      <p class="mn-intro" id="mn-intro"></p>
+      <div class="mn-progress" id="mn-progress">
+        <div class="mn-progress-bar"><div class="mn-progress-fill" id="mn-progress-fill"></div></div>
+        <span id="mn-progress-text"></span>
+        <button type="button" class="text-btn inline" id="mn-reset">tout décocher</button>
+      </div>
+      <div id="mn-parts"></div>
+      <section class="mn-trouble" id="mn-trouble" hidden>
+        <h2 class="mn-part-title">Si ça bloque</h2>
+        <table class="mn-table" id="mn-trouble-table"></table>
+      </section>
+      <nav class="mn-others" id="mn-others"></nav>
+    </article>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/manuals.js"></script>
+  <script src="../js/manuals-page.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

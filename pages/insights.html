@@ -16,7 +16,7 @@
 
       <form class="search" role="search" action="../index.html" method="get">
         <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
-        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
       <a href="insights.html" class="header-link is-current">insights</a>
@@ -31,8 +31,10 @@
     <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
 
     <h1 class="album-heading">insights</h1>
-    <p class="album-facts">Votre collection en chiffres. Cliquez sur une barre pour voir les albums concernés.
-      <a href="complete.html" class="text-link in-complete">fiches à compléter →</a></p>
+    <p class="album-facts">Votre collection en chiffres.<br>
+      <a href="complete.html" class="text-link in-complete" id="in-incomplete">fiches à compléter →</a>
+      <span class="in-sep">|</span>
+      <button type="button" class="text-btn in-export" id="in-export" title="Toute la collection (et next up) dans un tableau : Excel, LibreOffice…">exporter en CSV ↓</button></p>
 
     <p class="empty" id="in-empty" hidden>La collection est vide pour l'instant.</p>
 

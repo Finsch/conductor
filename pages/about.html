@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>à propos · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page about-page">
+    <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <div class="ab-layout">
+
+      <nav class="ab-toc" aria-label="Sommaire">
+        <p class="ab-toc-title">sommaire</p>
+        <ol id="ab-toc"></ol>
+      </nav>
+
+      <article class="about" id="about">
+
+        <header class="ab-hero">
+          <h1 class="album-heading">à propos de conductor.</h1>
+          <p class="ab-lead">Une discothèque personnelle, un lecteur audio et un journal d’écoute, qui tiennent dans un dossier sur votre PC.</p>
+        </header>
+
+        <!-- 1 -->
+        <section id="en-bref">
+          <h2>En bref</h2>
+          <p>conductor. est un site web <strong>qui ne vit que sur votre ordinateur</strong>. On l’ouvre dans Chrome ou Edge comme un simple fichier : pas de compte, pas d’abonnement, pas d’installation, pas de serveur.</p>
+          <div class="ab-cards">
+            <div class="ab-card"><b>Cataloguer</b><span>Les albums que vous écoutez, avec pochette, genres, ressenti, note et vos propres étiquettes.</span></div>
+            <div class="ab-card"><b>Écouter</b><span>Vos propres fichiers MP3 / FLAC, depuis une carte SD, une clé USB, un dossier du PC ou votre téléphone.</span></div>
+            <div class="ab-card"><b>Se souvenir</b><span>Un journal qui garde chaque écoute, avec une note par jour, et des statistiques sur vos goûts.</span></div>
+          </div>
+          <figure class="ab-shot">
+            <img src="../assets/about/collection.jpg" width="1200" height="750" alt="La collection : une grille de pochettes, les filtres à droite et le mini-lecteur en bas à droite" loading="lazy">
+            <figcaption>La collection : les pochettes, les filtres à droite, le mini-lecteur en bas.</figcaption>
+          </figure>
+        </section>
+
+        <!-- 2 -->
+        <section id="pourquoi">
+          <h2>Pourquoi ce projet</h2>
+          <p>Les plateformes de streaming savent ce que vous écoutez, mais ce souvenir leur appartient : il disparaît avec l’abonnement, et l’album lui-même peut disparaître du catalogue. conductor. part de l’idée inverse :</p>
+          <ul>
+            <li><strong>L’album d’abord.</strong> On écoute des disques entiers, du premier au dernier titre, comme sur Bandcamp ou Musicboard (les deux inspirations du projet).</li>
+            <li><strong>Vos données restent chez vous.</strong> Tout est rangé dans un dossier lisible (fichiers texte, images, Markdown), que vous pouvez sauvegarder, copier ou ouvrir avec d’autres logiciels.</li>
+            <li><strong>Ça marche sans internet.</strong> Une fois les albums ajoutés, la collection, la lecture, les paroles et le journal fonctionnent hors ligne.</li>
+            <li><strong>Simple à garder.</strong> Du HTML, du CSS et du JavaScript, sans outil de construction : le code se lit et se modifie avec un éditeur de texte.</li>
+          </ul>
+        </section>
+
+        <!-- 3 -->
+        <section id="fonctionnalites">
+          <h2>Ce qu’on peut faire</h2>
+
+          <h3 id="f-collection">La collection</h3>
+          <ul>
+            <li>Grille ou liste, tri (ajout, titre, artiste, intensité, date de sortie, durée).</li>
+            <li>Filtres : familles et genres, décennies, intensité, tier S / A / B, favoris, « sur le téléphone », lettre.</li>
+            <li>Recherche dans tous les champs, accents ignorés : <code>jazz+fusion</code> (les deux mots), <code>radiohead/bowie</code> (l’un ou l’autre).</li>
+            <li>Boutons sur les pochettes : ▶ lancer l’album, ≡+ l’ajouter à la file d’attente. <b>Surprise me</b> pioche un album au hasard.</li>
+          </ul>
+
+          <h3 id="f-album">La page album</h3>
+          <figure class="ab-shot">
+            <img src="../assets/about/album.jpg" width="1200" height="750" alt="Page d’un album : lecteur et liste des titres à gauche, pochette et fiche à droite" loading="lazy">
+            <figcaption>Une page album : lecteur et titres à gauche, fiche à droite.</figcaption>
+          </figure>
+          <ul>
+            <li>Lecteur et liste des titres, titres favoris ★, paroles de chaque titre.</li>
+            <li>La fiche : date de sortie, label, genre, styles, <em>ressenti</em> (ambiances), étiquettes, intensité de 1 à 10 et tier (S chef-d’œuvre, A excellent, B très bon).</li>
+            <li>Nombre d’écoutes, albums proches dans votre collection, liens Genius et Wikipédia.</li>
+            <li>La fiche se remplit toute seule à l’ajout (Deezer, Discogs, MusicBrainz) et se corrige avec <b>Modifier la fiche</b>.</li>
+          </ul>
+
+          <h3 id="f-lecture">La lecture</h3>
+          <figure class="ab-shot ab-shot-side">
+            <img src="../assets/about/queue.jpg" width="540" height="650" alt="Le panneau file d’attente au-dessus du mini-lecteur" loading="lazy">
+            <figcaption>La file d’attente, au-dessus du mini-lecteur.</figcaption>
+          </figure>
+          <ul>
+            <li><strong>Un seul lecteur pour tout le site</strong> : la musique continue quand on change de page, et reprend au même endroit après un rechargement.</li>
+            <li>Mini-lecteur en bas à droite, <strong>file d’attente</strong> d’albums (glisser-déposer pour réordonner, temps restant).</li>
+            <li><strong>Enchaînement sans blanc</strong> entre les morceaux (le suivant est préparé avant la fin).</li>
+            <li>Un album compte comme « écouté » quand presque tous ses titres ont été joués, ou après 30 min d’écoute.</li>
+          </ul>
+
+          <h3 id="f-plein-ecran">Plein écran et karaoké</h3>
+          <figure class="ab-shot">
+            <img src="../assets/about/fullscreen.jpg" width="1200" height="750" alt="Le mode plein écran : grande pochette, titre, commandes, morceau et album suivants" loading="lazy">
+            <figcaption>Le plein écran (touche <kbd>P</kbd>) : grande pochette, commandes, titre et album suivants.</figcaption>
+          </figure>
+          <figure class="ab-shot">
+            <img src="../assets/about/karaoke.jpg" width="1200" height="750" alt="Le karaoké : les paroles défilent à droite de la pochette, la ligne chantée est en blanc" loading="lazy">
+            <figcaption>Le karaoké (touche <kbd>K</kbd>) : la ligne chantée s’allume. Paroles d’exemple.</figcaption>
+          </figure>
+          <ul>
+            <li>Les paroles <strong>synchronisées</strong> défilent avec la musique ; un clic sur une ligne y ramène la lecture.</li>
+            <li>Quand un morceau n’a pas de paroles synchronisées, vous pouvez les <strong>caler à la main</strong> : une pression sur Entrée au début de chaque ligne. C’est gardé pour toujours (voir le manuel <a href="manual.html?g=calage-paroles">Caler les paroles</a>).</li>
+          </ul>
+
+          <h3 id="f-journal">Le journal</h3>
+          <figure class="ab-shot">
+            <img src="../assets/about/journal.jpg" width="1200" height="750" alt="Le journal : un calendrier avec les pochettes écoutées chaque jour et des statistiques du mois" loading="lazy">
+            <figcaption>Le journal : les écoutes de chaque jour et le bilan du mois.</figcaption>
+          </figure>
+          <ul>
+            <li>Un calendrier avec les pochettes écoutées chaque jour, le temps d’écoute, le bilan du mois, « il y a un an », l’historique.</li>
+            <li>Une <strong>note par jour</strong>, en Markdown (titres, listes, tâches, liens <code>[[album]]</code>, <code>#étiquettes</code>), aussi enregistrée en fichier <code>.md</code> lisible dans Obsidian.</li>
+          </ul>
+
+          <h3 id="f-nextup">Next up et insights</h3>
+          <figure class="ab-shot">
+            <img src="../assets/about/nextup.jpg" width="1200" height="750" alt="La page next up : un top 5 de pochettes puis la liste des albums à écouter" loading="lazy">
+            <figcaption>Next up : les albums à découvrir, avec un top 5.</figcaption>
+          </figure>
+          <ul>
+            <li><b>Next up</b> : la liste des albums à découvrir, à part de la collection. Ceux qui y dorment depuis plus de 3 mois sont signalés.</li>
+            <li><b>Insights</b> : la collection en chiffres (familles, artistes, décennies, intensité), des albums à redécouvrir, les fiches à compléter et l’export en tableur (CSV).</li>
+          </ul>
+          <figure class="ab-shot">
+            <img src="../assets/about/insights.jpg" width="1200" height="750" alt="La page insights : chiffres clés, albums à redécouvrir, barres par famille et par artiste" loading="lazy">
+            <figcaption>Insights : la collection en chiffres.</figcaption>
+          </figure>
+
+          <h3 id="f-fichiers">Vos fichiers audio</h3>
+          <figure class="ab-shot">
+            <img src="../assets/about/files.jpg" width="1200" height="750" alt="La page audio-files : ajouter un dossier local, se connecter au téléphone" loading="lazy">
+            <figcaption>La page audio-files : dossiers du PC et téléphone.</figcaption>
+          </figure>
+          <ul>
+            <li><strong>Stockage local</strong> : carte SD, clé USB, disque externe ou n’importe quel dossier du PC. conductor. lit les étiquettes des fichiers (titre, numéro, durée, pochette, paroles) et relie chaque dossier à l’album de la collection.</li>
+            <li><strong>Téléphone</strong> : un téléphone Android qui fait tourner Navidrome envoie sa musique au PC, en Wi-Fi, en partage de connexion ou par <strong>câble USB</strong> (sans aucun réseau). Voir les <a href="manuals.html">manuels</a>.</li>
+            <li>Sans fichier, la page album propose les extraits de 30 secondes de Deezer.</li>
+          </ul>
+        </section>
+
+        <!-- 4 -->
+        <section id="musique">
+          <h2>D’où vient la musique</h2>
+          <p>conductor. ne vend ni ne télécharge de musique : il joue <strong>vos fichiers</strong>. Pour chaque morceau, il essaie dans cet ordre :</p>
+          <ol class="ab-flow">
+            <li><b>Un dossier du PC</b><span>carte SD, clé USB, disque, dossier « Musique »</span></li>
+            <li><b>Le téléphone</b><span>Navidrome, en Wi-Fi ou par câble USB</span></li>
+            <li><b>Un extrait Deezer</b><span>30 secondes, avec internet, si vous n’avez pas le fichier</span></li>
+          </ol>
+          <p>Formats lus : <strong>MP3</strong> et <strong>FLAC</strong>.</p>
+        </section>
+
+        <!-- 5 -->
+        <section id="besoins">
+          <h2>Ce qu’il faut</h2>
+          <div class="ab-two">
+            <div>
+              <h3>Indispensable</h3>
+              <ul>
+                <li>Un PC avec <strong>Chrome</strong> ou <strong>Edge</strong> (récents).</li>
+                <li>Le dossier <code>conductor</code>, avec ses deux sous-dossiers côte à côte : <code>app</code> (le site) et <code>datastorage</code> (vos données).</li>
+                <li>Un clic sur <b>Autoriser</b> à chaque session, pour que le site puisse écrire dans <code>datastorage</code>.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Facultatif</h3>
+              <ul>
+                <li><strong>Une connexion internet</strong>, pour ajouter de nouveaux albums et compléter automatiquement leurs fiches.</li>
+                <li><strong>Vos fichiers MP3 / FLAC</strong> sur une carte SD, une clé ou un disque (un lecteur de carte si besoin).</li>
+                <li><strong>Un téléphone Android</strong> avec Termux et Navidrome (gratuits), et un câble USB qui transfère les données.</li>
+                <li>Une clé <strong>Discogs</strong> (gratuite) pour plus de résultats de recherche.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="ab-note">Tout est gratuit : aucun des services utilisés ne demande de paiement ni de compte, sauf la clé Discogs (compte gratuit).</p>
+        </section>
+
+        <!-- 6 -->
+        <section id="internet">
+          <h2>Avec ou sans internet</h2>
+          <table class="mn-table ab-table">
+            <thead><tr><th>Fonction</th><th>Sans internet</th><th>Avec internet</th></tr></thead>
+            <tbody>
+              <tr><td>Parcourir la collection, filtres, recherche</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Pochettes</td><td class="ok">oui (copies locales)</td><td class="ok">oui</td></tr>
+              <tr><td>Écouter vos fichiers du PC</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Écouter depuis le téléphone</td><td class="ok">oui, en Wi-Fi local ou câble USB</td><td class="ok">oui</td></tr>
+              <tr><td>Plein écran, karaoké, paroles déjà trouvées ou calées</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Journal, notes, insights, next up, export CSV</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Ajouter un album depuis vos dossiers</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Ajouter un album par la recherche, compléter une fiche</td><td class="no">non</td><td class="ok">oui</td></tr>
+              <tr><td>Paroles jamais chargées auparavant</td><td class="mid">seulement celles de vos fichiers</td><td class="ok">oui (LRCLIB)</td></tr>
+              <tr><td>Extraits de 30 s</td><td class="no">non</td><td class="ok">oui (Deezer)</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Les services en ligne utilisés</h3>
+          <p>Uniquement pour <em>lire</em> des informations publiques ; rien de vos données ne leur est envoyé, à part le nom de l’album ou du morceau cherché.</p>
+          <table class="mn-table ab-table">
+            <thead><tr><th>Service</th><th>Sert à</th></tr></thead>
+            <tbody>
+              <tr><td>Deezer</td><td>trouver un album, sa liste de titres, sa pochette, les extraits de 30 s</td></tr>
+              <tr><td>Discogs</td><td>genres, styles, label, pochettes, recherche d’albums</td></tr>
+              <tr><td>MusicBrainz</td><td>date de sortie originale, genres</td></tr>
+              <tr><td>LRCLIB</td><td>paroles, simples et synchronisées</td></tr>
+              <tr><td>Genius, Wikipédia</td><td>simples liens depuis la page album</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 7 -->
+        <section id="donnees">
+          <h2>Vos données</h2>
+          <p>Tout ce que vous faites est écrit dans le dossier <code>datastorage</code>, une fraction de seconde après chaque changement. Ce sont des fichiers ordinaires :</p>
+          <pre class="ab-tree"><code>datastorage/
+├── collection.js        la collection, les notes, le temps d’écoute
+├── collection.prev.js   la version précédente (filet de sécurité)
+├── collection.csv       copie pour Excel / tableur
+├── backups/             une copie par jour (les 7 dernières)
+├── covers/              les pochettes
+├── lyrics/              les paroles simples
+├── lyrics-synced/       les paroles synchronisées (.lrc)
+└── journal-entries/     une note par jour (.md)</code></pre>
+          <ul>
+            <li><strong>Sauvegarder</strong>, c’est copier ce dossier (sur une clé, un cloud…).</li>
+            <li><strong>Changer de PC</strong>, c’est copier le dossier <code>conductor</code> entier.</li>
+            <li>Aucun compte, aucune publicité, aucun suivi : rien ne quitte votre ordinateur.</li>
+          </ul>
+        </section>
+
+        <!-- 8 -->
+        <section id="demarrer">
+          <h2>Bien démarrer</h2>
+          <ol class="ab-steps">
+            <li>Ouvrez <code>app/index.html</code> dans <strong>Chrome</strong> ou <strong>Edge</strong>.</li>
+            <li>En bas à gauche, cliquez <b>Choisir le dossier datastorage</b> et désignez <code>conductor/datastorage</code>. Ensuite, un clic sur <b>Autoriser</b> par session suffit.</li>
+            <li>Ajoutez un premier album : bouton <b>Ajouter un album</b> (touche <kbd>N</kbd>), tapez son nom, choisissez le bon résultat.</li>
+            <li>Facultatif : page <b>audio-files</b>, <b>Ajouter un dossier…</b> pour votre musique, ou connectez votre téléphone (voir les <a href="manuals.html">manuels</a>).</li>
+            <li>Lancez un album, puis <kbd>P</kbd> pour le plein écran et <kbd>K</kbd> pour le karaoké.</li>
+          </ol>
+        </section>
+
+        <!-- 9 -->
+        <section id="raccourcis">
+          <h2>Raccourcis clavier</h2>
+          <p>La touche <kbd>?</kbd> les affiche à tout moment. Les plus utiles :</p>
+          <dl class="ab-keys">
+            <dt><kbd>Espace</kbd></dt><dd>lecture / pause</dd>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>titre précédent / suivant</dd>
+            <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>volume</dd>
+            <dt><kbd>P</kbd></dt><dd>plein écran</dd>
+            <dt><kbd>K</kbd></dt><dd>karaoké</dd>
+            <dt><kbd>T</kbd></dt><dd>file d’attente</dd>
+            <dt><kbd>O</kbd></dt><dd>ouvrir l’album en cours</dd>
+            <dt><kbd>N</kbd></dt><dd>ajouter un album</dd>
+            <dt><kbd>S</kbd></dt><dd>rechercher</dd>
+            <dt><kbd>R</kbd></dt><dd>album au hasard</dd>
+            <dt><kbd>E</kbd></dt><dd>modifier la fiche</dd>
+            <dt><kbd>J</kbd></dt><dd>note du jour</dd>
+          </dl>
+        </section>
+
+        <!-- 10 -->
+        <section id="limites">
+          <h2>Limites connues</h2>
+          <ul>
+            <li><strong>Chrome ou Edge uniquement</strong> : l’écriture dans <code>datastorage</code> et la lecture des dossiers utilisent une fonction que Firefox et Safari n’ont pas.</li>
+            <li><strong>Un utilisateur, un PC</strong> : pas de synchronisation entre appareils, pas de version mobile (le téléphone sert de source de musique).</li>
+            <li>Un téléphone branché en USB n’est pas vu comme un disque par le navigateur : passez par sa carte SD (lecteur de carte) ou par Navidrome.</li>
+            <li>Le navigateur ne laisse pas taper un chemin de dossier : chaque dossier se choisit une fois dans la fenêtre de sélection.</li>
+            <li>Avec certains MP3, l’enchaînement sans blanc peut laisser quelques millisecondes de silence (le FLAC est parfait).</li>
+          </ul>
+        </section>
+
+        <!-- 11 -->
+        <section id="technique">
+          <h2>Sous le capot</h2>
+          <p>Pour les curieux : une seule page, <code>conductor.html</code>, reste ouverte en permanence. Elle contient le lecteur et affiche les autres pages (collection, album, journal…) dans un cadre. C’est pour ça que la musique ne s’arrête jamais quand on navigue.</p>
+          <div class="ab-diagram" role="img" aria-label="Schéma : le navigateur contient conductor.html, qui contient le lecteur et les pages ; il lit et écrit datastorage, lit vos dossiers et le téléphone, et interroge les services en ligne">
+            <div class="ab-d-box ab-d-main">
+              <b>conductor.html</b>
+              <span>lecteur · mini-lecteur · file d’attente · plein écran</span>
+              <div class="ab-d-inner">pages : collection · album · artiste · journal · next up · insights · audio-files</div>
+            </div>
+            <div class="ab-d-row">
+              <div class="ab-d-box"><b>datastorage/</b><span>lecture et écriture</span></div>
+              <div class="ab-d-box"><b>vos dossiers</b><span>MP3 / FLAC, lecture seule</span></div>
+              <div class="ab-d-box"><b>téléphone</b><span>Navidrome · Wi-Fi ou USB</span></div>
+              <div class="ab-d-box ab-d-net"><b>internet</b><span>facultatif · Deezer, Discogs, LRCLIB…</span></div>
+            </div>
+          </div>
+          <ul>
+            <li>HTML, CSS et JavaScript « nus » : aucune bibliothèque, aucune étape de construction.</li>
+            <li>Les étiquettes MP3 (ID3) et FLAC sont lues directement par le site.</li>
+            <li>Le disque est atteint par l’API <em>File System Access</em> du navigateur, avec votre autorisation.</li>
+          </ul>
+        </section>
+
+        <!-- 12 -->
+        <section id="liens">
+          <h2>Liens</h2>
+          <ul>
+            <li>Code source : <a href="https://github.com/Finsch/conductor" target="_blank" rel="noopener">github.com/Finsch/conductor</a></li>
+            <li>Guides pas à pas : <a href="manuals.html">manuels</a> (Navidrome, câble USB, calage des paroles, tiers).</li>
+            <li>Inspirations : Bandcamp, Musicboard, Obsidian.</li>
+            <li>Données musicales : Deezer, Discogs, MusicBrainz, LRCLIB.</li> 
+            <li>Lecture depuis le téléphone : Navidrome.</li>
+          </ul>
+        </section>
+
+      </article>
+    </div>
+  </main>
+
+  <div class="ab-zoom" id="ab-zoom" hidden><img alt=""></div>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/about.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>
