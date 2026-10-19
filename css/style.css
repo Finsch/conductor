@@ -4493,6 +4493,11 @@ body.has-mini-player {
   padding-left: 1.5em;
 }
 
+/* Listes numérotées : place pour « 10. », « 11. »… (sinon le 1er chiffre est coupé) */
+.jr-md ol {
+  padding-left: 2.6em;
+}
+
 .jr-md li + li {
   margin-top: 0.15em;
 }
