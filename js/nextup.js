@@ -7,6 +7,9 @@
 // - Le reste en listes numérotées : sur le téléphone / pas sur le téléphone.
 //   Sans bibliothèque connectée : une seule liste.
 // - nextup.html?album=<id> ouvre directement la fiche de cet album.
+// - Au survol d'une pochette : bouton « ajouter à la collection ».
+// - Glisser-déposer : le top 5 entre eux ; chaque liste entre ses éléments ;
+//   un album « sur le téléphone » vers une place du top 5.
 
 (function () {
   const $ = id => document.getElementById(id);
@@ -89,7 +92,8 @@
   function computeTop(list) {
     const byRank = new Map(list.filter(a => a.priority).map(a => [a.priority, a]));
     // Pas de priorité (ou en attente au-delà du 5e rang) : par récence
-    const recent = list.filter(a => !a.priority || a.priority > TOP);   // plus récents d'abord
+    const recent = list.filter(a => !a.priority || a.priority > TOP)
+      .sort((a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || ""));   // plus récents d'abord
     return Array.from({ length: TOP }, (_, i) => {
       const chosen = byRank.get(i + 1);
       if (chosen) return { album: chosen, auto: false };
@@ -98,10 +102,33 @@
     });
   }
 
+  // Bouton « ajouter à la collection » (coin bas droit de la pochette, au survol)
+  const COLLECT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+    '<path d="M7 20.5h12.5a1 1 0 0 0 1-1V7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<path d="M9.5 6.5v6M6.5 9.5h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  function collectBtn(album) {
+    const b = el("span", "cover-queue nu-collect");
+    b.setAttribute("role", "button");
+    b.tabIndex = 0;
+    b.title = "Ajouter à la collection et ouvrir sa fiche";
+    b.setAttribute("aria-label", "Ajouter « " + album.title + " » à la collection");
+    b.innerHTML = COLLECT_ICON;
+    const go = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      addAndOpen(album.id);
+    };
+    b.addEventListener("click", go);
+    b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") go(e); });
+    return b;
+  }
+
   function topCard(album, rank, auto) {
     if (!album) {
       const slot = el("div", "nu-slot");
       slot.append(el("span", "nu-rank", String(rank)), el("span", "nu-slot-text", "libre"));
+      dropTop(slot, rank);
       return slot;
     }
     const card = el("button", "album-card nu-card");
@@ -111,14 +138,17 @@
     badge.title = auto ? "Rang par récence (pas de priorité choisie)" : "Priorité " + rank;
     cover.appendChild(badge);
     if (onPhone(album)) cover.appendChild(el("span", "phone-badge", "sur le tél."));
+    cover.appendChild(collectBtn(album));
     card.append(cover, el("p", "album-title", album.title), el("p", "album-artist", album.artist));
     card.addEventListener("click", () => openCard(album.id));
+    dragSource(card, album.id, "top");
+    dropTop(card, rank);
     return card;
   }
 
   // ---------- Listes numérotées ----------
 
-  function row(album, n) {
+  function row(album, n, listName) {
     const li = el("li");
     const b = el("button", "nu-row");
     b.type = "button";
@@ -128,7 +158,7 @@
     const length = durationOf(album);
     b.append(
       el("span", "nu-num", String(n)),
-      coverEl(album, "row-cover", 100),
+      (() => { const c = coverEl(album, "row-cover", 100); c.appendChild(collectBtn(album)); return c; })(),
       text,
       el("span", "row-cell nu-year", yearOf(album)),
       el("span", "row-cell nu-genre", album.genre || ""),
@@ -138,7 +168,104 @@
     );
     b.addEventListener("click", () => openCard(album.id));
     li.appendChild(b);
+    li.dataset.id = album.id;
+    dragSource(li, album.id, listName);
+    dropList(li, listName);
     return li;
+  }
+
+  // ---------- Glisser-déposer ----------
+  // top 5 ↔ top 5 ; « sur le téléphone » ↔ elle-même et → top 5 ;
+  // « pas sur le téléphone » ↔ elle-même.
+
+  let drag = null;   // { id, from: "top" | "phone" | "other" }
+  let pending = null;   // modification à appliquer une fois le glisser terminé
+
+  // Appliquée après « dragend » : la liste redessinée ne coupe pas le glisser en cours
+  function later(fn) {
+    pending = fn;
+    setTimeout(runPending, 150);   // au cas où « dragend » n'arrive pas
+  }
+  function runPending() {
+    const fn = pending;
+    pending = null;
+    if (fn) fn();
+  }
+
+  function clearMarks() {
+    document.querySelectorAll(".is-drop-before, .is-drop-after, .is-drop-target")
+      .forEach(n => n.classList.remove("is-drop-before", "is-drop-after", "is-drop-target"));
+  }
+
+  function dragSource(node, id, from) {
+    node.draggable = true;
+    node.addEventListener("dragstart", e => {
+      drag = { id, from };
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", id); } catch (err) {}
+      node.classList.add("is-dragging");
+    });
+    node.addEventListener("dragend", () => {
+      drag = null;
+      node.classList.remove("is-dragging");
+      clearMarks();
+      runPending();
+    });
+  }
+
+  // Place du top 5 : accepte le top 5 et la liste « sur le téléphone »
+  function dropTop(node, rank) {
+    const ok = () => drag && (drag.from === "top" || drag.from === "phone");
+    node.addEventListener("dragover", e => {
+      if (!ok()) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      clearMarks();
+      node.classList.add("is-drop-target");
+    });
+    node.addEventListener("dragleave", () => node.classList.remove("is-drop-target"));
+    node.addEventListener("drop", e => {
+      if (!ok()) return;
+      e.preventDefault();
+      const d = drag;
+      clearMarks();
+      if (d.from === "top") {
+        const ids = top.map(t => t.album && t.album.id);
+        const from = ids.indexOf(d.id);
+        if (from < 0 || from === rank - 1) return;
+        ids.splice(from, 1);
+        ids.splice(rank - 1, 0, d.id);
+        later(() => Store.setTop(ids.filter(Boolean)));
+      } else {
+        later(() => Store.setPriority(d.id, rank));
+      }
+    });
+  }
+
+  // Ligne d'une liste : accepte seulement les lignes de la même liste
+  function dropList(li, listName) {
+    const after = e => {
+      const r = li.getBoundingClientRect();
+      return e.clientY > r.top + r.height / 2;
+    };
+    li.addEventListener("dragover", e => {
+      if (!drag || drag.from !== listName || drag.id === li.dataset.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      clearMarks();
+      li.classList.add(after(e) ? "is-drop-after" : "is-drop-before");
+    });
+    li.addEventListener("drop", e => {
+      if (!drag || drag.from !== listName || drag.id === li.dataset.id) return;
+      e.preventDefault();
+      const ids = [...li.parentNode.children].map(n => n.dataset.id);
+      const from = ids.indexOf(drag.id);
+      ids.splice(from, 1);
+      let to = ids.indexOf(li.dataset.id) + (after(e) ? 1 : 0);
+      ids.splice(to, 0, drag.id);
+      clearMarks();
+      later(() => Store.setNextUpOrder(ids));
+    });
   }
 
   // ---------- Rendu ----------
@@ -169,7 +296,7 @@
 
     $("nu-phone").hidden = !phone.length;
     $("nu-phone-count").textContent = phone.length || "";
-    $("nu-phone-list").replaceChildren(...phone.map((a, i) => row(a, i + 1)));
+    $("nu-phone-list").replaceChildren(...phone.map((a, i) => row(a, i + 1, "phone")));
 
     $("nu-other").hidden = !other.length;
     $("nu-other-count").textContent = other.length || "";
@@ -177,7 +304,7 @@
     $("nu-other-hint").textContent = linked
       ? "Extraits de 30 secondes seulement, en attendant d'avoir les fichiers."
       : "Connectez votre bibliothèque (audio-files) pour voir lesquels sont sur le téléphone.";
-    $("nu-other-list").replaceChildren(...other.map((a, i) => row(a, i + 1)));
+    $("nu-other-list").replaceChildren(...other.map((a, i) => row(a, i + 1, "other")));
 
     if (dialog.open && current) fillCard();
   }
@@ -260,14 +387,16 @@
   $("nu-d-close").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", e => { if (e.target === dialog) dialog.close(); });
 
-  $("nu-d-add").addEventListener("click", () => {
-    const album = Store.get(current);
-    if (!album) return;
-    Store.toCollection(album.id);   // un ajout, pas une écoute
-    const go = () => { location.href = "album.html?id=" + encodeURIComponent(album.id); };
+  // Range l'album dans la collection (un ajout, pas une écoute) et ouvre sa page
+  function addAndOpen(id) {
+    if (!Store.get(id)) return;
+    Store.toCollection(id);
+    const go = () => { location.href = "album.html?id=" + encodeURIComponent(id); };
     const write = typeof Disk !== "undefined" ? Promise.resolve(Disk.writeNow()) : Promise.resolve();
     Promise.race([write.catch(() => {}), new Promise(r => setTimeout(r, 3000))]).then(go);
-  });
+  }
+
+  $("nu-d-add").addEventListener("click", () => { if (current) addAndOpen(current); });
 
   $("nu-d-remove").addEventListener("click", () => {
     const album = Store.get(current);

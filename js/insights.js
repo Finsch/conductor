@@ -179,7 +179,7 @@
     // Artistes (2 albums et plus)
     const art = countBy(all, a => [a.artist]);
     hbars($("in-artists"), [...art].filter(([, n]) => n > 1).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], "fr"))
-      .slice(0, 10).map(([name, n]) => ({ label: name, value: n, href: HOME + "?reset=1&q=" + encodeURIComponent(name) })));
+      .slice(0, 10).map(([name, n]) => ({ label: name, value: n, href: artistUrl(name) })));
 
     // Décennies
     const dec = countBy(all, a => { const y = yearOf(a); return y ? [String(Math.floor(y / 10) * 10)] : []; });

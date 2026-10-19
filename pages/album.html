@@ -21,6 +21,7 @@
       </form>
 
       <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
       <a href="nextup.html" class="header-link">next up</a>
       <a href="library.html" class="header-link">audio-files</a>
       <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
@@ -51,6 +52,7 @@
           </button>
           <div class="player-body">
             <p class="player-line">
+              <span class="player-pos" id="p-pos"></span>
               <span class="player-track" id="p-track"></span>
               <span class="player-time" id="p-time">00:00 / 00:00</span>
             </p>
@@ -97,6 +99,12 @@
             </div>
           </div>
 
+          <!-- Tier : S, A ou B (recliquer retire) -->
+          <div class="tier-edit">
+            <p class="label">Tier <span class="optional" id="tier-value"></span></p>
+            <div class="tier-scale" id="tier-scale" role="radiogroup" aria-label="Tier"></div>
+          </div>
+
           <p class="plays" id="a-plays"></p>
           <ul class="logs" id="a-logs"></ul>
         </section>
@@ -131,7 +139,12 @@
 
         <!-- Recommandations : albums proches dans votre collection -->
         <section class="recs" id="recs" hidden>
-          <h2 class="block-title">vous aimerez peut-être aussi :</h2>
+          <div class="recs-head">
+            <h2 class="block-title">vous aimerez peut-être aussi :</h2>
+            <button type="button" class="recs-refresh" id="recs-refresh" title="Autres suggestions" aria-label="Autres suggestions">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19.5 4.5v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
           <ul class="recs-list" id="recs-list"></ul>
         </section>
       </aside>

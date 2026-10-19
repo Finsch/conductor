@@ -3,6 +3,7 @@
 // (le code est dans conductor/app/, les données dans conductor/datastorage/)
 //   datastorage/collection.js       votre collection (relue au démarrage, même sans internet)
 //   datastorage/collection.prev.js  la version précédente (filet de sécurité)
+//   datastorage/backups/…           une copie par jour (collection-AAAA-MM-JJ.js), les 7 dernières
 //   datastorage/covers/…            les pochettes, copiées en local
 //
 // Lire : le site charge collection.js avec une simple balise <script>,
@@ -62,7 +63,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
   // ---------- Écriture de la collection ----------
 
   function fileContent() {
-    const data = { version: 1, savedAt: Store.savedAt(), albums: Store.raw() };
+    const data = { version: 1, savedAt: Store.savedAt(), albums: Store.raw(), notes: Store.notes() };
     return "// conductor. — votre collection. Fichier écrit par le site : ne pas modifier à la main.\n" +
       "window.CONDUCTOR_DATA = " + JSON.stringify(data, null, 1) + ";\n";
   }
@@ -90,7 +91,10 @@ const Disk = window.top !== window ? frameDisk() : (function () {
         busy = "Enregistrement…";
         render();
         const previous = await readText("collection.js");
-        if (previous) await writeFile(handle, "collection.prev.js", previous);
+        if (previous) {
+          await writeFile(handle, "collection.prev.js", previous);
+          await dailyBackup(previous);
+        }
         await writeFile(handle, "collection.js", fileContent());
         await flushLyrics();
         dirty = false;
@@ -106,6 +110,32 @@ const Disk = window.top !== window ? frameDisk() : (function () {
       }
     })();
     return writing;
+  }
+
+  // ---------- Sauvegarde du jour : datastorage/backups/ ----------
+  // À la première écriture de la journée, la collection telle qu'elle était
+  // avant est copiée dans backups/collection-AAAA-MM-JJ.js. On garde les 7 dernières.
+
+  const BACKUPS_DIR = "backups";
+  const BACKUPS_KEEP = 7;
+
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  async function dailyBackup(content) {
+    try {
+      const dir = await handle.getDirectoryHandle(BACKUPS_DIR, { create: true });
+      const name = "collection-" + today() + ".js";
+      try { await dir.getFileHandle(name); return; } catch (e) { /* pas encore de copie aujourd'hui */ }
+      await writeFile(dir, name, content);
+      const names = [];
+      for await (const [n] of dir.entries()) if (/^collection-\d{4}-\d\d-\d\d\.js$/.test(n)) names.push(n);
+      names.sort().reverse().slice(BACKUPS_KEEP).forEach(n => dir.removeEntry(n).catch(() => {}));
+    } catch (e) {
+      console.warn("Sauvegarde du jour impossible :", e);
+    }
   }
 
   // Appelé par Store à chaque modification

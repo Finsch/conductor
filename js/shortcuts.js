@@ -3,7 +3,9 @@
 //   N         ajouter un album
 //   S         rechercher
 //   Échap     quitter un champ ; sinon retour à la collection
-//   Z         accueil, filtres et recherche réinitialisés
+//   Z         filtres réinitialisés (collection ; recherche et tri gardés)
+//   H         retour à l'accueil, tout réinitialisé (recherche, filtres, tri)
+//   F         filtre « Albums favoris » (collection)
 //   Espace    lecture / pause            (page album)
 //   ← →       titre précédent / suivant  (page album, pendant la lecture)
 //   ↑ ↓       volume + / − 1 (sur 20)    (page album, pendant la lecture)
@@ -27,14 +29,17 @@
   const PAGE = /\/pages\/album\.html$/.test(location.pathname) ? "album"
     : /\/pages\/library\.html$/.test(location.pathname) ? "library"
     : /\/pages\/nextup\.html$/.test(location.pathname) ? "nextup"
-    : /\/pages\/insights\.html$/.test(location.pathname) ? "insights" : "home";
+    : /\/pages\/insights\.html$/.test(location.pathname) ? "insights"
+    : /\/pages\//.test(location.pathname) ? "page" : "home";   // artiste, journal, à compléter…
 
   const SHORTCUTS = [
     ["N", "Ajouter un album"],
     ["S", "Rechercher"],
     ["R", "Surprise me : un album au hasard (collection)"],
     ["Échap", "Quitter un champ · retour à la collection"],
-    ["Z", "Accueil, filtres réinitialisés"],
+    ["Z", "Réinitialiser les filtres (collection)"],
+    ["H", "Accueil, tout réinitialisé"],
+    ["F", "Filtre « Albums favoris » (collection)"],
     ["Espace", "Lecture / pause (page album)"],
     ["← →", "Titre précédent / suivant (pendant la lecture)"],
     ["↑ ↓", "Volume + / − (sur 20, pendant la lecture)"],
@@ -81,13 +86,20 @@
     input.select();
   }
 
-  function backToCollection() {
+  // Échap : retour à la collection (lien « retour » de la page)
+  function goBack() {
     if (PAGE === "home") return false;
     const back = document.getElementById("back-link");
     location.href = back ? back.href : ROOT + "index.html";
     return true;
   }
 
+  // Z : filtres seulement (la recherche et le tri restent)
+  function resetFilters() {
+    if (PAGE === "home") document.dispatchEvent(new CustomEvent("conductor:filters-reset"));
+  }
+
+  // H : accueil, tout remis à zéro
   function homeReset() {
     if (PAGE === "home") {
       document.dispatchEvent(new CustomEvent("conductor:reset"));
@@ -118,7 +130,7 @@
         target.blur();
         return;
       }
-      if (backToCollection()) e.preventDefault();
+      if (goBack()) e.preventDefault();
       return;
     }
 
@@ -149,7 +161,9 @@
     // e.code = position physique : marche en AZERTY comme en QWERTY
     if (e.code === "KeyS") { e.preventDefault(); focusSearch(); return; }
     // Z : la lettre Z quelle que soit la disposition (AZERTY : pas à la place du Z QWERTY)
-    if (e.key.toLowerCase() === "z") { e.preventDefault(); homeReset(); return; }
+    if (e.key.toLowerCase() === "z") { e.preventDefault(); resetFilters(); return; }
+    if (e.key.toLowerCase() === "h") { e.preventDefault(); homeReset(); return; }
+    if (e.key.toLowerCase() === "f" && PAGE === "home") { e.preventDefault(); document.dispatchEvent(new CustomEvent("conductor:toggle-fav")); return; }
     if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
 
     // Lecteur (page album)

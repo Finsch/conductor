@@ -20,6 +20,7 @@
       </form>
 
       <a href="pages/insights.html" class="header-link">insights</a>
+      <a href="pages/journal.html" class="header-link">journal</a>
       <a href="pages/nextup.html" class="header-link">next up</a>
       <a href="pages/library.html" class="header-link">audio-files</a>
       <button type="button" class="btn" id="add-album-btn" title="Raccourci : N">Ajouter un album</button>
@@ -76,10 +77,15 @@
       <section class="filter-group">
         <h2 class="filter-title">Favoris</h2>
         <label class="check">
-          <input type="checkbox" id="fav-only">
+          <input type="checkbox" id="fav-only" autocomplete="off">
           <span class="check-name">Albums favoris <span class="fav-mark" id="fav-filter-icon"></span></span>
           <span class="count" id="fav-count"></span>
         </label>
+      </section>
+
+      <section class="filter-group">
+        <h2 class="filter-title">Tier</h2>
+        <div class="tier-list" id="tier-list"></div>
       </section>
 
       <section class="filter-group">

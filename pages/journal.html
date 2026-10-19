@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>journal · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link is-current">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page journal">
+    <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <div class="jr-layout">
+      <div class="jr-main">
+        <div class="jr-title-row">
+          <h1 class="album-heading">journal</h1>
+          <button type="button" class="jr-icon-btn" id="jr-search-btn" title="Rechercher dans les notes" aria-label="Rechercher dans les notes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h9l4 4V11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M5 3.5v17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8 8.5h5M8 12h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.5" cy="16.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19 19l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <p class="album-facts">Vos écoutes et vos notes, jour après jour.</p>
+
+        <div class="jr-month-head">
+          <h2 class="jr-month" id="jr-month"></h2>
+          <div class="jr-nav">
+            <button type="button" class="jr-arrow" id="jr-prev" aria-label="Mois précédent" title="Mois précédent">‹</button>
+            <button type="button" class="jr-today-btn" id="jr-today">aujourd'hui</button>
+            <button type="button" class="jr-arrow" id="jr-next" aria-label="Mois suivant" title="Mois suivant">›</button>
+          </div>
+        </div>
+
+        <div class="jr-cal" id="jr-cal"></div>
+      </div>
+
+      <aside class="jr-side">
+        <section class="jr-card" id="jr-ago-card" hidden>
+          <h2 class="block-title">il y a un an, vous écoutiez…</h2>
+          <div id="jr-ago"></div>
+        </section>
+
+        <section class="jr-card">
+          <h2 class="block-title">12 derniers mois</h2>
+          <div class="jr-heat" id="jr-heat"></div>
+          <p class="hint" id="jr-heat-note"></p>
+        </section>
+
+        <section class="jr-card">
+          <h2 class="block-title" id="jr-month-title">ce mois-ci</h2>
+          <p class="jr-summary" id="jr-summary"></p>
+          <dl class="jr-stats" id="jr-stats"></dl>
+        </section>
+
+        <section class="jr-card">
+          <h2 class="block-title">historique des écoutes</h2>
+          <p class="hint" id="jr-empty" hidden></p>
+          <div class="jr-list" id="jr-list"></div>
+          <div class="jr-pager" id="jr-pager" hidden>
+            <button type="button" class="text-btn inline" id="jr-hist-prev">‹ plus récentes</button>
+            <span class="hint" id="jr-hist-page"></span>
+            <button type="button" class="text-btn inline" id="jr-hist-next">plus anciennes ›</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Note du jour (markdown, mise en forme façon Obsidian) -->
+  <dialog class="modal modal-wide" id="jr-note" aria-labelledby="jr-note-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="jr-note-title">Note</h2>
+      <div class="jr-note-tabs" role="tablist">
+        <button type="button" class="jr-tab" id="jr-note-edit" role="tab">écrire</button>
+        <button type="button" class="jr-tab" id="jr-note-view" role="tab">aperçu</button>
+      </div>
+      <button type="button" class="icon-btn" id="jr-note-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-step">
+      <textarea class="field jr-note-area" id="jr-note-area" rows="16" spellcheck="true"
+        placeholder="# Titre&#10;Vos impressions du jour…&#10;&#10;**gras**, *italique*, ==surligné==, - [ ] tâche, [[OK Computer]] pour lier un album ou un artiste"></textarea>
+      <div class="jr-md" id="jr-note-preview" hidden></div>
+      <div class="modal-actions jr-note-actions">
+        <button type="button" class="btn btn-ghost" id="jr-note-delete">Supprimer la note</button>
+        <span class="hint" id="jr-note-hint">Ctrl+Entrée : enregistrer · Ctrl+E : aperçu</span>
+        <button type="button" class="btn" id="jr-note-save">Enregistrer</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Recherche dans les notes -->
+  <dialog class="modal" id="jr-find" aria-labelledby="jr-find-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="jr-find-title">Rechercher dans les notes</h2>
+      <button type="button" class="icon-btn" id="jr-find-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-step">
+      <input type="search" class="field" id="jr-find-input" placeholder="Un mot, un album, #tag…" autocomplete="off">
+      <p class="hint" id="jr-find-status"></p>
+      <ul class="jr-find-list" id="jr-find-list"></ul>
+    </div>
+  </dialog>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/journal.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

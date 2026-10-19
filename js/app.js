@@ -32,8 +32,8 @@
           openFamilies: [...state.openFamilies],
           decades: [...state.decades],
           filesOnly: state.filesOnly,
-          favOnly: state.favOnly,
           intensities: [...state.intensities],
+          tiers: [...state.tiers],
           letter: state.letter
         }
       }));
@@ -50,8 +50,9 @@
     openFamilies: new Set(list(saved.openFamilies)),  // familles dépliées dans le filtre
     decades: new Set(list(saved.decades)),
     filesOnly: !!saved.filesOnly,
-    favOnly: !!saved.favOnly,
+    favOnly: false,   // « Albums favoris » : jamais repris d'une visite à l'autre (touche F)
     intensities: new Set(list(saved.intensities)),
+    tiers: new Set(list(saved.tiers).filter(t => TIERS.includes(t)).slice(0, 1)),   // un seul tier à la fois
     letter: typeof saved.letter === "string" ? saved.letter : "",
     page: 1
   };
@@ -156,6 +157,7 @@
     if (skip !== "intensity" && state.intensities.size && !state.intensities.has(a.aggressivity || 0)) return false;
     if (skip !== "files" && state.filesOnly && !onPhone(a)) return false;
     if (skip !== "fav" && state.favOnly && !a.favorite) return false;
+    if (skip !== "tier" && state.tiers.size && !state.tiers.has(a.tier)) return false;
     if (skip !== "genre" && state.genres.size && !state.genres.has(genreKey(a))) return false;
     if (skip !== "decade" && state.decades.size && !state.decades.has(decadeOf(a))) return false;
     return true;
@@ -296,6 +298,29 @@
     document.getElementById("fav-count").textContent =
       String(base.filter(a => matchesFilters(a, "fav") && a.favorite).length);
 
+    // Tier S / A / B (un seul à la fois ; recliquer le retire)
+    const tierCount = new Map();
+    base.filter(a => matchesFilters(a, "tier")).forEach(a => {
+      if (a.tier) tierCount.set(a.tier, (tierCount.get(a.tier) || 0) + 1);
+    });
+    document.getElementById("tier-list").replaceChildren(...TIERS.map(t => {
+      const c = tierCount.get(t) || 0;
+      const on = state.tiers.has(t);
+      const b = el("button", "tier-chip tier-" + t + (on ? " is-active" : ""));
+      b.type = "button";
+      b.append(el("span", "tier-letter", t), el("span", "count", String(c)));
+      b.title = "Tier " + t + " · " + TIER_NAMES[t] + " · " + c + " album" + (c > 1 ? "s" : "");
+      b.disabled = !c && !on;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(on));
+      b.addEventListener("click", () => {
+        state.tiers.clear();
+        if (!on) state.tiers.add(t);
+        refresh();
+      });
+      return b;
+    }));
+
     // Alphabet (tri Titre ou Artiste A → Z)
     const field = letterField();
     document.getElementById("letter-group").hidden = !field;
@@ -333,7 +358,7 @@
     }));
 
     resetBtn.hidden = !state.genres.size && !state.decades.size && !state.filesOnly && !state.favOnly &&
-      !state.intensities.size && !state.letter;
+      !state.intensities.size && !state.tiers.size && !state.letter;
   }
 
   document.getElementById("fav-only").addEventListener("change", e => {
@@ -352,6 +377,7 @@
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();
+    state.tiers.clear();
     state.letter = "";
     refresh();
   });
@@ -380,7 +406,7 @@
       star.title = "Album favori";
       cover.appendChild(star);
     }
-    cover.appendChild(queueBtn(album));
+    cover.appendChild(coverActions(album));
     // Pas de pochette en ligne : celle de vos fichiers
     const src = album.cover || (album.serverCover && Server.isConfigured() ? Server.coverUrl(album.serverCover, 600) : "");
     if (src) {
@@ -394,62 +420,105 @@
     return cover;
   }
 
-  // ---------- Bouton « file d'attente » sur la pochette ----------
-  // Visible au survol ; une fois l'album dans la file : coche verte, toujours visible.
-  // Recliquer le retire de la file.
+  // ---------- Boutons de lecture sur la pochette (au survol) ----------
+  // - Rien en lecture : ▶ lance l'album.
+  // - Un album en lecture :
+  //     · ▶ (à gauche) : écouter cet album à la place de celui en cours, la file
+  //       d'attente est gardée ; sur l'album en cours : pause / lecture ;
+  //     · « 3 traits + » : ajoute l'album à la file (autant de fois qu'on veut) ;
+  //       la coche verte s'affiche quelques secondes pour confirmer.
 
   const QUEUE_ICONS = {
     add: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 13v7M14.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15 13v7.5l6-3.75z" fill="currentColor"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
     done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="q-check" d="M13.5 16.5l2.8 2.8 5.2-5.6" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
+  const PLAY_ICONS = {
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>'
+  };
+  const DONE_FOR = 2000;   // ms : durée de la coche après un ajout
 
-  function queued(id) {
-    return !!(window.Playback && (Playback.inQueue(id) || (Playback.isAlbum && Playback.isAlbum(id))));
+  const hasPlayer = () => !!window.Playback;
+  const idle = () => hasPlayer() && !Playback.state();
+  const isCurrent = id => hasPlayer() && Playback.isAlbum && Playback.isAlbum(id);
+  const isPlaying = () => hasPlayer() && Playback.audio && !Playback.audio.paused;
+
+  function paintActions(box) {
+    const id = box.dataset.id;
+    const q = box.querySelector(".cover-queue");
+    const p = box.querySelector(".cover-play");
+    const done = Number(q.dataset.doneUntil || 0) > Date.now();
+    const qMode = done ? "done" : idle() ? "play" : "add";
+    if (q.dataset.mode !== qMode) {
+      q.dataset.mode = qMode;
+      q.innerHTML = QUEUE_ICONS[qMode];
+      q.classList.toggle("is-on", done);
+      const label = done ? "Ajouté à la file d'attente" : qMode === "play" ? "Écouter l'album" : "Ajouter à la file d'attente";
+      q.title = label;
+      q.setAttribute("aria-label", label);
+    }
+    // ▶ / ⏸ : seulement quand un album est chargé dans le lecteur
+    const current = isCurrent(id);
+    p.hidden = idle();
+    const pMode = current && isPlaying() ? "pause" : "play";
+    if (p.dataset.mode !== pMode || p.dataset.current !== String(current)) {
+      p.dataset.mode = pMode;
+      p.dataset.current = String(current);
+      p.innerHTML = PLAY_ICONS[pMode];
+      const label = current ? (pMode === "pause" ? "Pause" : "Reprendre la lecture")
+        : "Écouter cet album maintenant (la file d'attente est gardée)";
+      p.title = label;
+      p.setAttribute("aria-label", label);
+    }
+    box.classList.toggle("is-current", current);
   }
 
-  // Rien en lecture (lecteur fermé) : le bouton lance l'album
-  function idle() {
-    return !!window.Playback && !Playback.state();
-  }
+  function coverActions(album) {
+    const box = el("div", "cover-actions");
+    box.dataset.id = album.id;
+    const p = el("button", "cover-play");
+    p.type = "button";
+    const q = el("button", "cover-queue");
+    q.type = "button";
+    box.append(p, q);
+    const stop = e => { e.preventDefault(); e.stopPropagation(); };
 
-  function paintQueueBtn(b) {
-    const on = queued(b.dataset.id);
-    const playing = !!(window.Playback && Playback.isAlbum && Playback.isAlbum(b.dataset.id));
-    const mode = on ? "done" : idle() ? "play" : "add";
-    if (b.dataset.mode === mode) return;
-    b.dataset.mode = mode;
-    b.classList.toggle("is-on", on);
-    b.innerHTML = QUEUE_ICONS[mode];
-    const label = playing ? "En cours de lecture" : on ? "Dans la file d'attente (cliquer pour retirer)"
-      : mode === "play" ? "Écouter l'album" : "Ajouter à la file d'attente";
-    b.title = label;
-    b.setAttribute("aria-label", label);
-  }
-
-  function queueBtn(album) {
-    const b = el("button", "cover-queue");
-    b.type = "button";
-    b.dataset.id = album.id;
-    paintQueueBtn(b);
-    b.addEventListener("click", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!window.Playback) return;
-      const id = album.id;
-      if (Playback.isAlbum && Playback.isAlbum(id)) return;
-      if (Playback.inQueue(id)) Playback.removeFromQueue(id);
-      else if (idle()) Playback.playId(id);
-      else Playback.addToQueue(id);
-      delete b.dataset.mode;
-      paintQueueBtn(b);
+    p.addEventListener("click", e => {
+      stop(e);
+      if (!hasPlayer()) return;
+      if (isCurrent(album.id)) Playback.toggle();
+      else Playback.playId(album.id, true);   // remplace l'album en cours, file gardée
     });
-    return b;
+    q.addEventListener("click", e => {
+      stop(e);
+      if (!hasPlayer()) return;
+      if (idle()) { Playback.playId(album.id); return; }
+      Playback.addToQueue(album.id);
+      q.dataset.doneUntil = String(Date.now() + DONE_FOR);
+      paintActions(box);
+      setTimeout(() => paintActions(box), DONE_FOR + 50);
+    });
+    paintActions(box);
+    return box;
   }
 
-  document.addEventListener("playback:change", () => {
-    document.querySelectorAll(".cover-queue").forEach(b => { delete b.dataset.mode; paintQueueBtn(b); });
-  });
+  function repaintActions() {
+    document.querySelectorAll(".cover-actions").forEach(paintActions);
+  }
+  document.addEventListener("playback:change", repaintActions);
+  if (window.Playback && Playback.audio) {
+    Playback.audio.addEventListener("play", repaintActions);
+    Playback.audio.addEventListener("pause", repaintActions);
+  } else {
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.Playback && Playback.audio) {
+        Playback.audio.addEventListener("play", repaintActions);
+        Playback.audio.addEventListener("pause", repaintActions);
+      }
+      repaintActions();
+    });
+  }
 
   function albumLink(album, cls) {
     const a = el("a", cls);
@@ -457,12 +526,27 @@
     return a;
   }
 
+  // Nom de l'artiste : mène à sa page (dans la carte, qui est déjà un lien vers l'album)
+  function artistEl(album, cls) {
+    const p = el("p", cls);
+    const span = el("span", "artist-link", album.artist);
+    span.setAttribute("role", "link");
+    span.title = "Tous les albums de " + album.artist;
+    span.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      location.href = artistUrl(album.artist);
+    });
+    p.appendChild(span);
+    return p;
+  }
+
   function createCard(album) {
     const card = albumLink(album, "album-card");
     card.append(
       coverEl(album, "album-cover"),
       el("p", "album-title", album.title),
-      el("p", "album-artist", album.artist)
+      artistEl(album, "album-artist")
     );
     return card;
   }
@@ -480,7 +564,7 @@
   function createRow(album) {
     const row = albumLink(album, "album-row");
     const text = el("div", "row-text");
-    text.append(el("p", "row-title", album.title), el("p", "row-artist", album.artist));
+    text.append(el("p", "row-title", album.title), artistEl(album, "row-artist"));
 
     const tracks = trackCountOf(album);
     const length = durationOf(album);
@@ -489,12 +573,31 @@
       coverEl(album, "row-cover"),
       text,
       el("span", "row-cell row-year", yearOf(album) ? String(yearOf(album)) : ""),
-      el("span", "row-cell row-genre", album.genre || ""),
+      genreCell(album),
       el("span", "row-cell row-tracks", tracks ? formatTracks(tracks) : ""),
       el("span", "row-cell row-length", length ? formatLength(length) : ""),
       el("span", "row-cell row-num row-aggro", album.aggressivity ? album.aggressivity + "/10" : "")
     );
     return row;
+  }
+
+  // Genre (vue liste) : recherche dans la collection, filtres remis à zéro
+  function genreCell(album) {
+    const c = el("span", "row-cell row-genre");
+    if (!album.genre) return c;
+    const g = el("span", "artist-link", album.genre);
+    g.setAttribute("role", "link");
+    g.title = "Chercher « " + album.genre + " » dans la collection";
+    g.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      searchInput.value = album.genre;
+      resetBtn.click();          // filtres à zéro (et nouveau rendu)
+      refresh();
+      window.scrollTo({ top: 0 });
+    });
+    c.appendChild(g);
+    return c;
   }
 
   function listHeader() {
@@ -753,7 +856,7 @@
   const genre = params.get("genre");
   const decade = params.get("decennie");
   const intensity = Number(params.get("intensite")) || 0;
-  // ?accueil=1 (touche Z depuis une autre page) : tout à zéro, tri compris
+  // ?accueil=1 (touche H depuis une autre page) : tout à zéro, tri compris
   if (params.get("accueil")) state.sort = "added-desc";
   if (fam || genre || decade || intensity || params.get("reset") || params.get("accueil")) {
     state.genres.clear();
@@ -761,6 +864,7 @@
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();
+    state.tiers.clear();
     state.letter = "";
     if (fam || genre) {
       Store.all().forEach(a => {
@@ -780,7 +884,16 @@
 
   render();
 
-  // Z (js/shortcuts.js) : accueil remis à zéro (recherche, filtres, page)
+  // Z (js/shortcuts.js) : filtres seulement (recherche et tri gardés)
+  document.addEventListener("conductor:filters-reset", () => resetBtn.click());
+
+  // F (js/shortcuts.js) : « Albums favoris » coché / décoché
+  document.addEventListener("conductor:toggle-fav", () => {
+    state.favOnly = !state.favOnly;
+    refresh();
+  });
+
+  // H (js/shortcuts.js) : accueil remis à zéro (recherche, filtres, tri, page)
   document.addEventListener("conductor:reset", () => {
     searchInput.value = "";
     state.sort = "added-desc";   // tri par défaut : ajouts récents
@@ -789,6 +902,7 @@
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();
+    state.tiers.clear();
     state.letter = "";
     refresh();
   });

@@ -12,7 +12,7 @@
 //   genre: "Alternative",
 //   trackCount: 10,
 //   cover: "https://…/600x600bb.jpg",
-//   logs: [ { date: "2026-10-15", rating: 4, review: "…", loggedAt: "2026-10-15T21:20:00.000Z" } ]
+//   logs: [ { date: "2026-10-15", loggedAt: "2026-10-15T21:20:00.000Z" } ]   (ajouts)
 // }
 
 // ---------- Nettoyage des titres ----------
@@ -121,6 +121,17 @@ function trackIcon(on) {
     'fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
 }
 
+// ---------- Tier (S, A, B) ----------
+// album.tier : "S" | "A" | "B" (null = pas classé). Choisi sur la page album,
+// filtré dans la collection.
+const TIERS = ["S", "A", "B"];
+const TIER_NAMES = { S: "Masterpiece", A: "Excellent work", B: "Very good job" };
+
+// ---------- Page artiste ----------
+function artistUrl(name) {
+  return APP_ROOT + "pages/artist.html?name=" + encodeURIComponent(name || "");
+}
+
 // ---------- Nettoyage des styles et genres ----------
 // Les sources en ligne (surtout les tags MusicBrainz) mêlent de vrais styles,
 // des étiquettes de classement ("offizielle charts", "1–4 wochen") et des
@@ -201,6 +212,14 @@ const Store = (function () {
 
   // Au démarrage : si datastorage/collection.js est plus récent que la copie
   // du navigateur (ou si le navigateur est vide), c'est lui qui fait foi.
+  // Notes du journal : { "AAAA-MM-JJ": { text, updatedAt } }, écrites avec la
+  // collection dans datastorage/collection.js
+  const NOTES_KEY = "conductor01.notes";
+
+  function loadNotes() {
+    try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || {}; } catch (e) { return {}; }
+  }
+
   (function adoptFile() {
     const file = window.CONDUCTOR_DATA;
     if (!file || !Array.isArray(file.albums)) return;
@@ -209,6 +228,7 @@ const Store = (function () {
     if (!localSaved || (file.savedAt || "") > localSaved) {
       try {
         localStorage.setItem(KEY, JSON.stringify(file.albums));
+        if (file.notes && typeof file.notes === "object") localStorage.setItem(NOTES_KEY, JSON.stringify(file.notes));
         localStorage.setItem(SAVED_KEY, file.savedAt || new Date().toISOString());
       } catch (e) {
         console.warn("Copie de datastorage dans le navigateur impossible :", e);
@@ -239,6 +259,8 @@ const Store = (function () {
       if (Array.isArray(a.moods)) a.moods = a.moods.map(m => String(m).toLowerCase());
       // Styles en minuscules, nettoyés (étiquettes parasites, doublons d'orthographe), genre inclus
       if (Array.isArray(a.styles) || a.genre) a.styles = cleanStyles(a.styles, a.genre);
+      // Notes et avis : fonction retirée, on efface ce qui aurait été saisi
+      delete a.rating; delete a.review; delete a.reviewAt;
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
     });
@@ -256,6 +278,11 @@ const Store = (function () {
   // Données modifiées ailleurs (le cadre ↔ l'enveloppe) : chacun se met à jour.
   // Une page du cadre a modifié les données : l'enveloppe les écrit dans datastorage.
   window.addEventListener("storage", e => {
+    if (e.key === NOTES_KEY) {
+      document.dispatchEvent(new CustomEvent("notes:changed"));
+      if (typeof Disk !== "undefined") Disk.changed();
+      return;
+    }
     if (e.key !== KEY) return;
     document.dispatchEvent(new CustomEvent("albums:changed"));
     if (typeof Disk !== "undefined") Disk.changed();
@@ -276,6 +303,7 @@ const Store = (function () {
     delete entry.nextUp;
     delete entry.nextUpAt;
     delete entry.priority;
+    delete entry.nextUpOrder;
     entry.addedAt = new Date().toISOString();
   }
 
@@ -295,6 +323,27 @@ const Store = (function () {
       return load();
     },
 
+    // ---------- Notes du journal ----------
+    notes() {
+      return loadNotes();
+    },
+
+    note(day) {
+      return loadNotes()[day] || null;
+    },
+
+    // Texte vide : la note est supprimée
+    setNote(day, text) {
+      const notes = loadNotes();
+      text = (text || "").replace(/\s+$/, "");
+      if (text.trim()) notes[day] = { text, updatedAt: new Date().toISOString() };
+      else delete notes[day];
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+      localStorage.setItem(SAVED_KEY, new Date().toISOString());
+      document.dispatchEvent(new CustomEvent("notes:changed"));
+      if (typeof Disk !== "undefined") Disk.changed();
+    },
+
     savedAt() {
       try { return localStorage.getItem(SAVED_KEY) || ""; } catch (e) { return ""; }
     },
@@ -306,10 +355,44 @@ const Store = (function () {
         .sort((a, b) => lastLoggedAt(b).localeCompare(lastLoggedAt(a)));
     },
 
-    // Next up : albums repérés, pas encore écoutés (les plus récents d'abord)
+    // Next up : albums repérés, pas encore écoutés. Ordre choisi à la main
+    // (glisser-déposer, album.nextUpOrder) ; les nouveaux, pas encore placés,
+    // en tête, du plus récent au plus ancien.
     nextUp() {
-      return load().filter(a => a.nextUp)
-        .sort((a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || ""));
+      const recent = (a, b) => (b.nextUpAt || "").localeCompare(a.nextUpAt || "");
+      return load().filter(a => a.nextUp).sort((a, b) => {
+        const x = a.nextUpOrder, y = b.nextUpOrder;
+        if (x == null && y == null) return recent(a, b);
+        if (x == null) return -1;
+        if (y == null) return 1;
+        return x - y || recent(a, b);
+      });
+    },
+
+    // Ordre d'une liste next up après un glisser-déposer : ids dans le nouvel ordre
+    setNextUpOrder(ids) {
+      const albums = load();
+      ids.forEach((id, i) => {
+        const a = albums.find(x => x.id === id);
+        if (a && a.nextUp) a.nextUpOrder = i;
+      });
+      save(albums);
+    },
+
+    // Top 5 réordonné (glisser-déposer) : ces albums prennent les rangs 1, 2, 3…
+    // Les albums en attente au-delà du 5e rang gardent leur place derrière.
+    setTop(ids) {
+      const albums = load();
+      const waiting = albums.filter(a => a.nextUp && a.priority && !ids.includes(a.id))
+        .sort((a, b) => a.priority - b.priority);
+      ids.forEach((id, i) => {
+        const a = albums.find(x => x.id === id);
+        if (a && a.nextUp) a.priority = i + 1;
+      });
+      // (seulement si un rang est déjà pris : ils passent derrière)
+      let next = ids.length + 1;
+      waiting.forEach(a => { if (a.priority < next) a.priority = next; next = a.priority + 1; });
+      save(albums);
     },
 
     // Priorité 1 à 5 dans next up (null = pas de priorité choisie).

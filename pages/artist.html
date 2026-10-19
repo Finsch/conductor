@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>artiste · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page artist-page">
+    <a href="../index.html" class="back-link" id="back-link">← retour à la collection</a>
+
+    <p class="empty" id="ar-empty" hidden>
+      Aucun album de cet artiste dans votre collection. <a href="../index.html" class="text-link">Retour à l'accueil</a>
+    </p>
+
+    <div id="ar-body" hidden>
+      <h1 class="album-heading" id="ar-name"></h1>
+      <p class="album-facts" id="ar-facts"></p>
+
+      <dl class="facts ar-sheet" id="ar-sheet"></dl>
+
+      <section class="block">
+        <div class="ar-albums-head">
+          <h2 class="block-title">albums</h2>
+          <button type="button" class="icon-square icon-square-small" id="ar-copy" title="Copier la liste (album (année) - artiste)" aria-label="Copier la liste des albums dans le presse-papiers">
+            <svg class="icon-copy" viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 4.5v-.7a1.8 1.8 0 0 0-1.8-1.8H5.3a1.8 1.8 0 0 0-1.8 1.8v6.4a1.8 1.8 0 0 0 1.8 1.8h.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <svg class="icon-done" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="album-grid ar-grid" id="ar-albums"></div>
+      </section>
+
+      <section class="block" id="ar-tracks-block" hidden>
+        <h2 class="block-title">morceaux préférés</h2>
+        <ul class="ar-tracks" id="ar-tracks"></ul>
+      </section>
+
+      <section class="block" id="ar-nextup-block" hidden>
+        <h2 class="block-title">dans next up</h2>
+        <ul class="ar-tracks" id="ar-nextup"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/artist.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

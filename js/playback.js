@@ -123,7 +123,7 @@
     removeFromQueue: id => removeFromQueue(id),
     moveInQueue: (a, b) => moveInQueue(a, b),
     clearQueue: () => clearQueue(),
-    playId: id => playId(id),
+    playId: (id, keep) => playId(id, keep),
     volume: (v, m) => { audio.volume = Math.max(0, Math.min(1, v)); audio.muted = !!m; }
   };
 
@@ -132,6 +132,7 @@
     if (!f || e.source !== f.contentWindow || !e.data || !e.data.conductor) return;
     const d = e.data;
     if (d.type === "cmd" && COMMANDS[d.name]) COMMANDS[d.name].apply(null, d.args || []);
+    else if (d.type === "frame-click") panelOpen(false);   // clic dans la page : la file se ferme
     else if (d.type === "page") {
       framePage = { path: d.path || "", albumId: d.albumId || null };
       if (d.path) history.replaceState(null, "", "#" + d.path);
@@ -198,10 +199,9 @@
       index: 0,
       time: 0,
       heard: same ? state.heard : {},
-      done: same ? state.done : []
+      done: same ? state.done : [],
+      startedAt: same ? state.startedAt : null
     });
-    // L'album lancé quitte la file s'il y était
-    if (queue.includes(meta.albumId)) { queue = queue.filter(id => id !== meta.albumId); saveQueue(); }
     loadTrack(index || 0, 0, true);
   }
 
@@ -320,16 +320,19 @@
     });
   }
 
+  // Un album peut être ajouté autant de fois qu'on veut (même celui en cours)
   function addToQueue(albumId) {
-    if (!albumId || queue.includes(albumId) || (state && state.albumId === albumId)) return false;
+    if (!albumId) return false;
     queue.push(albumId);
     saveQueue();
     emit();
     return true;
   }
 
-  function removeFromQueue(albumId) {
-    queue = queue.filter(id => id !== albumId);
+  // Retire une place de la file (index) ; avec un id : toutes ses occurrences
+  function removeFromQueue(albumId, index) {
+    if (Number.isInteger(index) && queue[index] === albumId) queue.splice(index, 1);
+    else queue = queue.filter(id => id !== albumId);
     saveQueue();
     emit();
   }
@@ -342,11 +345,13 @@
     emit();
   }
 
-  // Lance un album par son id (tracks chargés comme pour la file).
-  // Lancement manuel : la file d'attente est remplacée.
-  function playId(id) {
+  // Lance un album par son id (titres chargés comme pour la file).
+  // keepQueue : remplace l'album en cours sans toucher à la file ;
+  // sinon (lancement manuel depuis rien) la file est remplacée.
+  function playId(id, keepQueue) {
     if (!id) return;
-    queue = [id];
+    if (keepQueue) queue.unshift(id);
+    else queue = [id];
     saveQueue();
     playNextAlbum();
   }
@@ -364,7 +369,11 @@
     const t = audio.currentTime;
     if (lastTime != null) {
       const d = t - lastTime;
-      if (d > 0 && d < 2) state.heard[state.index] = (state.heard[state.index] || 0) + d;
+      if (d > 0 && d < 2) {
+        state.heard[state.index] = (state.heard[state.index] || 0) + d;
+        // Début de l'écoute (journal) : la première seconde réellement jouée
+        if (!state.startedAt) state.startedAt = new Date(Date.now() - d * 1000).toISOString();
+      }
     }
     lastTime = t;
     const i = state.index;
@@ -374,9 +383,11 @@
       state.done.push(i);
       const n = state.tracks.length;
       if (n && state.done.length >= Math.ceil(n * ALBUM_SHARE)) {
-        Store.addPlay(state.albumId, { tracks: state.done.length, of: n, source: state.source || "" });
+        Store.addPlay(state.albumId, { tracks: state.done.length, of: n, source: state.source || "",
+          startedAt: state.startedAt || null });
         state.heard = {};
         state.done = [];
+        state.startedAt = null;
       }
     }
   }
@@ -485,9 +496,6 @@
     mp.setAttribute("role", "region");
     mp.setAttribute("aria-label", "Lecture en cours");
 
-    // Fond : la pochette floutée, en transparence
-    const bg = el("div", "mp-bg");
-
     // Haut : pochette, ★ du morceau à côté (en bas), outils en haut à droite
     const cover = el("a", "mp-cover");
     const star = el("button", "mp-btn mp-star");
@@ -504,7 +512,7 @@
 
     // Milieu : artiste + titre, ⏮ ⏭ puis ▶ (rond)
     const meta = el("div", "mp-meta");
-    meta.append(el("p", "mp-sub"), el("p", "mp-title"));
+    meta.append(el("a", "mp-sub"), el("p", "mp-title"));
     const controls = el("div", "mp-controls");
     const prevBtn = iconBtn("mp-prev", "Titre précédent", ICON.prev);
     const nextBtn = iconBtn("mp-next", "Titre suivant", ICON.next);
@@ -522,7 +530,7 @@
     const times = el("div", "mp-times");
     times.append(el("span", "mp-cur", "0:00"), el("span", "mp-dur", "0:00"));
 
-    mp.append(bg, head, mid, bar, times);
+    mp.append(head, mid, bar, times);
 
     playBtn.addEventListener("click", toggle);
     prevBtn.addEventListener("click", prev);
@@ -586,13 +594,13 @@
       i.onerror = () => i.remove();
       cover.replaceChildren(i);
     } else if (!src) cover.replaceChildren();
-    const bg = mp.querySelector(".mp-bg");
-    const bgUrl = src ? 'url("' + src.replace(/"/g, '\\"') + '")' : "none";
-    if (bg.style.backgroundImage !== bgUrl) bg.style.backgroundImage = bgUrl;
 
     mp.querySelector(".mp-title").textContent = t.title || state.title;
     mp.querySelector(".mp-title").title = t.title || "";
-    mp.querySelector(".mp-sub").textContent = state.artist;
+    const sub = mp.querySelector(".mp-sub");
+    sub.textContent = state.artist;
+    sub.title = "Tous les albums de " + state.artist;
+    frameLink(sub, "pages/artist.html?name=" + encodeURIComponent(state.artist || ""));
 
     const playing = !audio.paused;
     const play = mp.querySelector(".mp-play");
@@ -674,7 +682,7 @@
       x.type = "button";
       x.title = "Retirer de la file";
       x.setAttribute("aria-label", "Retirer " + a.title + " de la file");
-      x.addEventListener("click", () => removeFromQueue(a.id));
+      x.addEventListener("click", () => removeFromQueue(a.id, opts.index));
       r.appendChild(x);
     }
     return r;
@@ -693,16 +701,17 @@
       const left = Math.max(0, curLen - done);
       total += curLen;
       remaining += left;
-      items.push(el("p", "mq-label", "En cours"));
+      // « En cours (6/11) » : morceau en cours / nombre de morceaux
+      items.push(el("p", "mq-label", "En cours (" + (state.index + 1) + "/" + state.tracks.length + ")"));
       items.push(row(Store.get(state.albumId) || state, { current: true, time: "reste " + hm(left) }));
     }
 
     items.push(el("p", "mq-label", "Suite"));
-    const albums = queue.map(id => Store.get(id)).filter(Boolean);
+    const albums = queue.map((id, i) => ({ a: Store.get(id), i })).filter(x => x.a);
     if (!albums.length) {
       items.push(el("p", "mq-empty", "Ajoutez des albums avec « + file d'attente » sur leur page."));
     }
-    albums.forEach((a, i) => {
+    albums.forEach(({ a, i }) => {
       const len = albumLength(a);
       total += len;
       remaining += len;
@@ -738,9 +747,17 @@
   document.addEventListener("DOMContentLoaded", () => { build(); render(); });
 
   // Après un clic sur le mini-lecteur, le clavier revient à la page (raccourcis)
+  let refocusAt = 0;
   document.addEventListener("click", () => {
     const f = frame();
-    if (f) setTimeout(() => { try { f.contentWindow.focus(); } catch (e) {} }, 0);
+    if (f) setTimeout(() => { refocusAt = Date.now(); try { f.contentWindow.focus(); } catch (e) {} }, 0);
+  });
+
+  // Clic dans la page (le cadre prend le focus) : la file d'attente se ferme.
+  // (en plus du message « frame-click » envoyé par la page)
+  window.addEventListener("blur", () => {
+    if (Date.now() - refocusAt < 300) return;   // focus rendu à la page par le code ci-dessus
+    setTimeout(() => { if (document.activeElement === frame()) panelOpen(false); }, 0);
   });
 
   window.Playback = {
@@ -814,6 +831,8 @@
       return (typeof APP_ROOT !== "undefined" && APP_ROOT) || "./";
     }
     announce();
+    // Clic dans la page : l'enveloppe ferme le panneau « file d'attente »
+    document.addEventListener("pointerdown", () => parent.postMessage({ conductor: true, type: "frame-click" }, "*"), true);
     document.addEventListener("DOMContentLoaded", () => {
       announce();
       const t = document.querySelector("title");
@@ -836,11 +855,11 @@
       seek: sec => cmd("seek", sec),
       duration: () => mirror.time.duration || 0,
       close: () => cmd("close"),
-      addToQueue: id => { if (!mirror.queue.includes(id)) mirror.queue.push(id); cmd("addToQueue", id); },
-      removeFromQueue: id => { mirror.queue = mirror.queue.filter(x => x !== id); cmd("removeFromQueue", id); },
+      addToQueue: id => { mirror.queue.push(id); cmd("addToQueue", id); },
+      removeFromQueue: (id, index) => { mirror.queue = mirror.queue.filter(x => x !== id); cmd("removeFromQueue", id, index); },
       moveInQueue: (a, b) => cmd("moveInQueue", a, b),
       clearQueue: () => cmd("clearQueue"),
-      playId: id => cmd("playId", id),
+      playId: (id, keep) => cmd("playId", id, !!keep),
       queue: () => mirror.queue.slice(),
       inQueue: id => mirror.queue.includes(id),
       state: () => mirror.state,

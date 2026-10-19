@@ -28,6 +28,8 @@
   try {
     const back = $("back-link");
     if (back.href.includes("nextup.html")) back.textContent = "← retour à next up";
+    else if (back.href.includes("artist.html")) back.textContent = "← retour à " + (new URL(back.href).searchParams.get("name") || "l'artiste");
+    else if (back.href.includes("complete.html")) back.textContent = "← retour à « à compléter »";
   } catch (e) {}
 
   // ---------- Formats ----------
@@ -151,6 +153,45 @@
     return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
   }
 
+  // « 3 traits + » à côté d'une recommandation (au survol) : ajoute à la file ;
+  // rien en lecture : ▶ lance l'album
+  const REC_ICONS = {
+    add: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 13v7M14.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
+    done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h11M3.5 11.5h11M3.5 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.5 16.5l2.8 2.8 5.2-5.6" fill="none" stroke="#3ecf6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  function paintRecBtn(b) {
+    const mode = Number(b.dataset.doneUntil || 0) > Date.now() ? "done" : !Playback.state() ? "play" : "add";
+    if (b.dataset.mode === mode) return;
+    b.dataset.mode = mode;
+    b.innerHTML = REC_ICONS[mode];
+    b.classList.toggle("is-done", mode === "done");
+    b.title = mode === "done" ? "Ajouté à la file d'attente" : mode === "play" ? "Écouter l'album" : "Ajouter à la file d'attente";
+    b.setAttribute("aria-label", b.title);
+  }
+
+  function recQueueBtn(rec) {
+    const b = el("button", "rec-queue");
+    b.type = "button";
+    b.addEventListener("click", () => {
+      if (!Playback.state()) { Playback.playId(rec.id); return; }
+      Playback.addToQueue(rec.id);
+      b.dataset.doneUntil = String(Date.now() + 2000);
+      paintRecBtn(b);
+      setTimeout(() => paintRecBtn(b), 2050);
+    });
+    paintRecBtn(b);
+    return b;
+  }
+  document.addEventListener("playback:change", () => document.querySelectorAll(".rec-queue").forEach(paintRecBtn));
+
+  // Actualiser : un nouveau tirage parmi les albums proches
+  $("recs-refresh").addEventListener("click", () => {
+    recPicked = null;
+    renderRecs();
+  });
+
   function renderRecs() {
     const ranked = Store.all()
       .filter(b => b.id !== album.id)
@@ -169,7 +210,7 @@
       a.href = "album.html?id=" + encodeURIComponent(r.album.id);
       a.append(el("span", "rec-title", shorten(r.album.title, REC_TITLE_MAX)), document.createTextNode(" - " + r.album.artist));
       a.title = r.album.title + " — " + r.album.artist + "\n" + r.why.join(" · ");
-      li.appendChild(a);
+      li.append(a, recQueueBtn(r.album));
       return li;
     }));
   }
@@ -180,7 +221,8 @@
     $("a-title").textContent = album.title;
     renderFavorite();
     $("a-artist").textContent = album.artist;
-    $("a-artist").href = searchLink(album.artist);
+    $("a-artist").href = artistUrl(album.artist);
+    $("a-artist").title = "Tous les albums de " + album.artist;
 
     const facts = [];
     const date = album.releaseDate || (album.year ? String(album.year) : "");
@@ -228,11 +270,11 @@
       rows.push(el("dt", null, "famille"), dd);
     }
     if (album.genre) {
-      // Genre → filtre « Genres » de la collection (et non la recherche)
+      // Genre → recherche dans la collection (filtres remis à zéro)
       const dd = el("dd");
       const a = el("a", "sheet-link", album.genre);
-      a.href = "../index.html?genre=" + encodeURIComponent(album.genre);
-      a.title = "Filtrer la collection sur " + album.genre;
+      a.href = "../index.html?reset=1&q=" + encodeURIComponent(album.genre);
+      a.title = "Chercher « " + album.genre + " » dans la collection";
       dd.appendChild(a);
       rows.push(el("dt", null, "genre"), dd);
     }
@@ -512,6 +554,8 @@
     const playing = current > -1 && !audio.paused;
 
     $("p-track").textContent = list[shown] ? list[shown].title : "";
+    // « (6/11) » devant le titre, pendant la lecture de cet album
+    $("p-pos").textContent = current > -1 && list.length ? "(" + (current + 1) + "/" + list.length + ")" : "";
     $("player").classList.toggle("is-playing", playing);
     $("p-play").setAttribute("aria-label", playing ? "Pause" : "Lecture");
 
@@ -570,18 +614,24 @@
     if (e.key === "ArrowLeft") Playback.seek(Math.max(0, audio.currentTime - 5));
   });
 
-  // + file d'attente : l'album passera après celui en cours
+  // + file d'attente : l'album passera après ceux déjà prévus (autant de fois
+  // qu'on veut) ; « ✓ ajouté » s'affiche quelques secondes pour confirmer.
+  let queueDoneUntil = 0;
   function renderQueueButton() {
     const b = $("queue-add");
     if (!b) return;
-    const inQ = Playback.inQueue(album.id);
-    b.hidden = own() || !(Playback.state() || inQ);
-    b.textContent = inQ ? "✓ dans la file d'attente" : "+ file d'attente";
-    b.title = inQ ? "Cliquer pour retirer de la file d'attente" : "Écouter cet album après celui en cours";
+    const done = queueDoneUntil > Date.now();
+    b.hidden = !Playback.state();
+    b.textContent = done ? "✓ ajouté à la file d'attente" : "+ file d'attente";
+    b.classList.toggle("is-done", done);
+    b.title = "Écouter cet album après ceux déjà prévus";
   }
 
   $("queue-add").addEventListener("click", () => {
-    Playback.inQueue(album.id) ? Playback.removeFromQueue(album.id) : Playback.addToQueue(album.id);
+    Playback.addToQueue(album.id);
+    queueDoneUntil = Date.now() + 2000;
+    renderQueueButton();
+    setTimeout(renderQueueButton, 2050);
   });
 
   // ---------- Votre écoute ----------
@@ -612,6 +662,31 @@
     });
     $("aggro-scale").appendChild(b);
   }
+
+  // ---------- Tier (S, A, B) ----------
+
+  function renderTier() {
+    const t = album.tier || "";
+    // « Tier S · Masterpiece », comme « Intensité 9/10 · agressif »
+    $("tier-value").textContent = t ? t + " · " + TIER_NAMES[t] : "non classé";
+    [...$("tier-scale").children].forEach(b => {
+      b.classList.toggle("is-active", b.dataset.tier === t);
+      b.setAttribute("aria-checked", String(b.dataset.tier === t));
+    });
+  }
+
+  TIERS.forEach(t => {
+    const b = el("button", "tier-step tier-" + t, t);
+    b.type = "button";
+    b.dataset.tier = t;
+    b.setAttribute("role", "radio");
+    b.title = "Tier " + t + " · " + TIER_NAMES[t] + " (recliquer pour retirer)";
+    b.addEventListener("click", () => {
+      album = Store.update(album.id, { tier: album.tier === t ? null : t }) || album;
+      renderTier();
+    });
+    $("tier-scale").appendChild(b);
+  });
 
   // ---------- Écoutes ----------
   // Comptées par le moteur de lecture (js/playback.js), même hors de cette page :
@@ -941,6 +1016,7 @@
   renderInfo();
   renderTracks();
   renderAggro();
+  renderTier();
   renderLogs();
   renderPlays();
 

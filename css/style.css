@@ -632,6 +632,7 @@ a.btn {
 
 .album-card:hover .cover-queue,
 .album-row:hover .cover-queue,
+.nu-row:hover .cover-queue,
 .cover-queue:focus-visible,
 .cover-queue.is-on {
   visibility: visible;
@@ -651,6 +652,79 @@ a.btn {
 
 @media (hover: none) {
   .cover-queue {
+    visibility: visible;
+  }
+}
+
+/* Collection : ▶/⏸ + file d'attente, groupés en bas à droite de la pochette */
+.cover-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+}
+
+.cover-actions .cover-queue,
+.cover-play {
+  position: static;
+}
+
+.cover-play {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.78);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.cover-play[hidden] {
+  display: none;
+}
+
+.cover-play svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cover-play:hover {
+  background: rgba(20, 20, 20, 0.92);
+}
+
+.album-card:hover .cover-play,
+.album-row:hover .cover-play,
+.cover-play:focus-visible,
+.cover-actions.is-current .cover-play {
+  visibility: visible;
+}
+
+.row-cover .cover-actions {
+  right: 2px;
+  bottom: 2px;
+  gap: 2px;
+}
+
+.row-cover .cover-play,
+.row-cover .cover-actions .cover-queue {
+  width: 20px;
+  height: 20px;
+}
+
+.row-cover .cover-play svg,
+.row-cover .cover-actions .cover-queue svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (hover: none) {
+  .cover-play {
     visibility: visible;
   }
 }
@@ -1408,11 +1482,106 @@ a.album-card:hover .album-cover {
   margin-top: 4px;
 }
 
-/* Une suggestion par ligne */
+/* Titre + bouton « actualiser » (au survol du bloc) */
+.recs-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.recs-head .block-title {
+  margin-bottom: 0;
+}
+
+.recs-refresh {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.recs-refresh svg {
+  width: 15px;
+  height: 15px;
+}
+
+.recs-refresh:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.recs:hover .recs-refresh,
+.recs-refresh:focus-visible {
+  visibility: visible;
+}
+
+.recs-refresh:active svg {
+  transform: rotate(90deg);
+}
+
+@media (hover: none) {
+  .recs-refresh {
+    visibility: visible;
+  }
+}
+
+/* Une suggestion par ligne, « + file d'attente » au survol */
 .recs-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recs-list .rec-link {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.rec-queue {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.rec-queue svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rec-queue:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.recs-list li:hover .rec-queue,
+.rec-queue:focus-visible,
+.rec-queue.is-done {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .rec-queue {
+    visibility: visible;
+  }
 }
 
 .rec-link {
@@ -2840,33 +3009,15 @@ body.shell .mq {
   width: 340px;
   max-width: calc(100vw - 32px);
   padding: 16px 18px 14px;
-  overflow: hidden;
-  color: #f2f2f2;
-  background: rgba(40, 40, 40, 0.86);
-  border-radius: 22px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+  color: var(--text);
+  background: #1b1b1b;
+  border: 1px solid #2f2f2f;
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
 }
 
 .mp[hidden] {
   display: none;
-}
-
-/* pochette floutée en fond */
-.mp-bg {
-  position: absolute;
-  inset: -40px;
-  z-index: 0;
-  background: center / cover no-repeat;
-  filter: blur(40px) saturate(0.8);
-  opacity: 0.2;
-  pointer-events: none;
-}
-
-.mp > :not(.mp-bg) {
-  position: relative;
-  z-index: 1;
 }
 
 /* le bas de page n'est pas caché sous le mini-lecteur */
@@ -2887,8 +3038,7 @@ body.has-mini-player {
   height: 104px;
   overflow: hidden;
   background: var(--cover-placeholder);
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
 }
 
 .mp-cover img {
@@ -2900,8 +3050,8 @@ body.has-mini-player {
 
 .mp-tools {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 16px;
+  right: 18px;
   display: flex;
   gap: 4px;
 }
@@ -2913,7 +3063,7 @@ body.has-mini-player {
   width: 30px;
   height: 30px;
   padding: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-muted);
   background: none;
   border: none;
   border-radius: 50%;
@@ -2922,7 +3072,7 @@ body.has-mini-player {
 
 .mp-btn:hover,
 .mp-btn.is-on {
-  color: #fff;
+  color: var(--text);
 }
 
 .mp-btn svg {
@@ -2935,11 +3085,11 @@ body.has-mini-player {
 }
 
 .mp-tools .mp-btn {
-  background: rgba(255, 255, 255, 0.08);
+  background: #262626;
 }
 
 .mp-tools .mp-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: #303030;
 }
 
 .mp-tools .mp-btn svg {
@@ -2968,8 +3118,8 @@ body.has-mini-player {
   font-weight: 700;
   line-height: 15px;
   text-align: center;
-  color: #222;
-  background: #eee;
+  color: #1b1b1b;
+  background: var(--text);
   border-radius: 8px;
 }
 
@@ -3000,11 +3150,11 @@ body.has-mini-player {
 .mp-sub {
   margin-bottom: 3px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
 }
 
 .mp-title {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -3017,7 +3167,7 @@ body.has-mini-player {
 }
 
 .mp-controls .mp-btn {
-  color: #f2f2f2;
+  color: var(--text);
 }
 
 .mp-prev svg,
@@ -3030,11 +3180,11 @@ body.has-mini-player {
   width: 44px;
   height: 44px;
   margin-left: 4px;
-  background: rgba(255, 255, 255, 0.16);
+  background: #2e2e2e;
 }
 
 .mp-play:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: #383838;
 }
 
 .mp-play svg {
@@ -3053,10 +3203,10 @@ body.has-mini-player {
 
 .mp-bar {
   position: relative;
-  height: 5px;
+  height: 4px;
   margin-top: 16px;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 2px;
   cursor: pointer;
 }
 
@@ -3069,7 +3219,7 @@ body.has-mini-player {
 .mp-fill {
   display: block;
   height: 100%;
-  background: #f2f2f2;
+  background: var(--text);
   border-radius: inherit;
 }
 
@@ -3077,8 +3227,8 @@ body.has-mini-player {
   display: flex;
   justify-content: space-between;
   margin-top: 8px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3266,6 +3416,18 @@ body.has-mini-player {
   color: var(--text);
 }
 
+/* Page album : position du morceau en cours, discrète */
+.player-pos {
+  margin-right: -4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-pos:empty {
+  display: none;
+}
+
 /* Page album : + file d'attente */
 .queue-add {
   margin-top: 6px;
@@ -3273,6 +3435,10 @@ body.has-mini-player {
 
 .queue-add[hidden] {
   display: none;
+}
+
+.queue-add.is-done {
+  color: #3ecf6e;
 }
 
 /* ---------- Icônes de l'en-tête ---------- */
@@ -3300,14 +3466,12 @@ body.has-mini-player {
   padding-right: 36px;
 }
 
-.header-link,
 .site-header .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.header-link::before,
 .site-header .btn::before {
   content: "";
   flex: none;
@@ -3318,10 +3482,996 @@ body.has-mini-player {
   mask: var(--hicon) center / contain no-repeat;
 }
 
-.header-link[href$="insights.html"] { --hicon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h16'/%3E%3Cpath d='M7 16v-5M12 16V6M17 16v-8'/%3E%3C/svg%3E"); }
-.header-link[href$="nextup.html"] { --hicon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3.5h10a1 1 0 0 1 1 1V21l-6-4-6 4V4.5a1 1 0 0 1 1-1z'/%3E%3C/svg%3E"); }
-.header-link[href$="library.html"] { --hicon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18V5.5l11-2V16'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='17.5' cy='16' r='2.5'/%3E%3C/svg%3E"); }
 .site-header .btn { --hicon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); padding-left: 12px; }
+
+/* ---------- Nom d'artiste cliquable ---------- */
+
+.artist-link {
+  cursor: pointer;
+}
+
+.artist-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.mp-sub {
+  display: block;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.mp-sub:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* ---------- Page artiste ---------- */
+
+.ar-albums-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ar-albums-head .block-title {
+  margin: 0;
+}
+
+.icon-square-small {
+  width: 26px;
+  height: 24px;
+}
+
+/* Page artiste : icône « copier » sans bordure, visible au survol de « albums » */
+.ar-albums-head .icon-square {
+  border: none;
+  visibility: hidden;
+}
+
+.ar-albums-head:hover .icon-square,
+.ar-albums-head .icon-square:focus-visible,
+.ar-albums-head .icon-square.is-done {
+  visibility: visible;
+}
+
+.ar-albums-head .icon-square:hover {
+  color: var(--text);
+}
+
+.icon-square-small svg {
+  width: 14px;
+  height: 14px;
+}
+
+#ar-facts span {
+  display: inline;
+}
+
+#ar-facts span + span::before {
+  content: " · ";
+}
+
+.ar-sheet {
+  max-width: 560px;
+  margin: 20px 0 8px;
+}
+
+.ar-grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.ar-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ar-tracks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.ar-star {
+  display: inline-grid;
+  color: var(--text);
+}
+
+.ar-star .track-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ar-sep {
+  color: var(--text-muted);
+}
+
+/* ---------- Page « à compléter » ---------- */
+
+.in-complete {
+  margin-left: 8px;
+}
+
+.co-filters {
+  margin: 20px 0 24px;
+}
+
+.co-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.co-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 16px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.co-row:hover {
+  background: var(--surface);
+}
+
+.co-album {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.co-album:hover .row-title {
+  text-decoration: underline;
+}
+
+.co-album .row-cover {
+  flex: none;
+}
+
+.co-gaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.co-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 4px 0 9px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.co-gap.is-match {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.co-ignore {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.co-row:hover .co-ignore,
+.co-ignore:focus-visible {
+  opacity: 1;
+}
+
+.co-ignore:hover {
+  color: var(--text);
+  background: #333;
+}
+
+@media (max-width: 640px) {
+  .co-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .co-ignore {
+    opacity: 1;
+  }
+}
+
+/* ---------- Next up : glisser-déposer ---------- */
+
+.nu-card,
+.nu-list li {
+  cursor: grab;
+}
+
+.nu-card img,
+.nu-list img {
+  -webkit-user-drag: none;
+}
+
+.is-dragging {
+  opacity: 0.4;
+}
+
+.nu-list li.is-drop-before {
+  box-shadow: inset 0 2px 0 var(--text);
+}
+
+.nu-list li.is-drop-after {
+  box-shadow: inset 0 -2px 0 var(--text);
+}
+
+.nu-card.is-drop-target .album-cover,
+.nu-slot.is-drop-target {
+  outline: 2px dashed var(--text);
+  outline-offset: 3px;
+}
+
+/* ---------- Journal d'écoute ---------- */
+
+.jr-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 48px;
+  align-items: start;
+}
+
+.jr-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jr-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.jr-icon-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.jr-icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* En-tête du calendrier : « octobre 2026     ‹ aujourd'hui › » */
+.jr-month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 26px 0 12px;
+}
+
+.jr-month {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.jr-month::first-letter {
+  text-transform: uppercase;
+}
+
+.jr-nav {
+  display: flex;
+  align-items: stretch;
+}
+
+.jr-arrow,
+.jr-today-btn {
+  height: 30px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.jr-arrow {
+  width: 32px;
+  padding: 0 0 2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.jr-arrow:first-child {
+  border-radius: 2px 0 0 2px;
+}
+
+.jr-arrow:last-child {
+  border-radius: 0 2px 2px 0;
+}
+
+.jr-today-btn {
+  border-left: none;
+  border-right: none;
+}
+
+.jr-arrow:hover,
+.jr-today-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.jr-today-btn:disabled {
+  color: var(--text);
+  cursor: default;
+}
+
+.jr-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.jr-dow {
+  padding-bottom: 4px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.jr-day {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #262626;
+}
+
+.jr-day.has-plays {
+  cursor: pointer;
+}
+
+.jr-day.has-plays:hover img {
+  opacity: 1;
+}
+
+.jr-day.is-out {
+  background: none;
+}
+
+.jr-day.is-future {
+  background: #242424;
+}
+
+.jr-day img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+.jr-num {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.jr-day.has-plays .jr-num {
+  color: #fff;
+}
+
+/* Aujourd'hui : cadre clair (au-dessus de la pochette) et numéro en pastille */
+.jr-day.is-today::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 2px solid var(--text);
+  pointer-events: none;
+}
+
+.jr-day.is-today .jr-num {
+  z-index: 3;
+  top: 4px;
+  left: 4px;
+  padding: 1px 6px;
+  font-weight: 700;
+  color: #1b1b1b;
+  background: var(--text);
+  border-radius: 8px;
+  text-shadow: none;
+}
+
+.jr-more {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  z-index: 1;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 8px;
+}
+
+.jr-day-title {
+  position: absolute;
+  inset: 22px 6px 6px;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+/* Note du jour : bouton au survol ; plein et toujours visible une fois écrite */
+.jr-note-btn {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.8);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.jr-note-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.jr-day:hover .jr-note-btn,
+.jr-note-btn:focus-visible,
+.jr-note-btn.has-note {
+  visibility: visible;
+}
+
+.jr-note-btn:hover {
+  background: rgba(20, 20, 20, 0.95);
+}
+
+.jr-note-btn.has-note {
+  color: #1b1b1b;
+  background: var(--text);
+}
+
+.jr-note-btn.has-note svg path:first-child {
+  fill: #1b1b1b;
+}
+
+.jr-note-btn.has-note svg path + path {
+  stroke: var(--text);
+}
+
+@media (hover: none) {
+  .jr-note-btn {
+    visibility: visible;
+  }
+}
+
+/* Colonne de droite */
+.jr-card {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+
+.jr-card .block-title {
+  margin-top: 0;
+}
+
+.jr-summary {
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.jr-ago {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jr-ago + .jr-ago {
+  margin-top: 10px;
+}
+
+.jr-ago-cover {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  background: var(--cover-placeholder);
+}
+
+.jr-ago-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jr-ago:hover .row-title {
+  text-decoration: underline;
+}
+
+.jr-ago .row-title,
+.jr-ago .row-artist {
+  white-space: normal;
+}
+
+.jr-ago .hint {
+  margin: 4px 0 0;
+}
+
+.jr-heat {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+}
+
+.jr-heat i {
+  aspect-ratio: 1 / 1;
+  background: #2c2c2c;
+}
+
+.jr-heat .jr-heat-1 { background: #555; }
+.jr-heat .jr-heat-2 { background: #8a8a8a; }
+.jr-heat .jr-heat-3 { background: var(--text); }
+
+.jr-heat .is-today {
+  outline: 1px solid var(--text);
+}
+
+.jr-stats {
+  margin: 0;
+}
+
+.jr-stats dt {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.jr-stats dd {
+  margin: 2px 0 10px;
+  font-weight: 600;
+}
+
+.jr-stats dd:last-child {
+  margin-bottom: 0;
+}
+
+.jr-stats dd.is-small {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.jr-link:hover {
+  text-decoration: underline;
+}
+
+/* Historique des écoutes */
+.jr-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.jr-row:last-child {
+  border-bottom: none;
+}
+
+.jr-row:hover {
+  background: var(--surface);
+}
+
+.jr-row:hover .row-title {
+  text-decoration: underline;
+}
+
+.jr-row.is-highlight {
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--text);
+}
+
+.jr-row .row-cover {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.jr-row .row-title,
+.jr-row .row-artist {
+  display: block;
+  font-size: 13px;
+}
+
+.jr-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.jr-when-time {
+  color: var(--text);
+}
+
+.jr-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.jr-pager .hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.jr-pager .text-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  text-decoration: none;
+}
+
+/* Fenêtre « note » */
+.modal-wide {
+  width: min(760px, calc(100% - 32px));
+}
+
+.jr-note-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.jr-tab {
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.jr-tab:hover {
+  color: var(--text);
+}
+
+.jr-tab.is-active {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.jr-note-area {
+  min-height: 340px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.jr-note-area[hidden] {
+  display: none;
+}
+
+.jr-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.jr-note-actions .hint {
+  margin: 0 auto;
+  font-size: 12px;
+}
+
+.jr-note-actions .btn[hidden] {
+  display: none;
+}
+
+/* Rendu markdown (façon Obsidian) */
+.jr-md {
+  min-height: 340px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+  line-height: 1.65;
+}
+
+.jr-md > :first-child {
+  margin-top: 0;
+}
+
+.jr-md h1,
+.jr-md h2,
+.jr-md h3,
+.jr-md h4 {
+  margin: 1.2em 0 0.4em;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.jr-md h1 { font-size: 1.7em; }
+.jr-md h2 { font-size: 1.4em; }
+.jr-md h3 { font-size: 1.2em; }
+.jr-md h4 { font-size: 1.05em; }
+
+.jr-md p,
+.jr-md ul,
+.jr-md ol,
+.jr-md blockquote,
+.jr-md pre {
+  margin: 0 0 0.8em;
+}
+
+.jr-md ul,
+.jr-md ol {
+  padding-left: 1.5em;
+}
+
+.jr-md li + li {
+  margin-top: 0.15em;
+}
+
+.jr-md .jr-task {
+  list-style: none;
+  margin-left: -1.3em;
+  cursor: pointer;
+}
+
+.jr-md .jr-task input {
+  margin: 0 6px 0 0;
+  vertical-align: -1px;
+  accent-color: var(--text);
+  pointer-events: none;
+}
+
+.jr-md .jr-task.is-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.jr-md blockquote {
+  padding: 2px 0 2px 14px;
+  color: var(--text-muted);
+  border-left: 3px solid var(--border);
+}
+
+.jr-md code {
+  padding: 1px 5px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--surface);
+  border-radius: 3px;
+}
+
+.jr-md pre {
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: 3px;
+}
+
+.jr-md pre code {
+  padding: 0;
+  background: none;
+}
+
+.jr-md mark {
+  padding: 0 2px;
+  color: #1b1b1b;
+  background: #e8d36a;
+  border-radius: 2px;
+}
+
+.jr-md hr {
+  margin: 1.2em 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.jr-md a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.jr-md .jr-wiki {
+  color: #a88bfa;
+  text-decoration: none;
+}
+
+.jr-md a.jr-wiki:hover {
+  text-decoration: underline;
+}
+
+.jr-md .jr-wiki.is-missing {
+  opacity: 0.6;
+}
+
+.jr-md .jr-tag {
+  padding: 1px 7px;
+  font-size: 0.88em;
+  color: #c4b5fd;
+  background: rgba(168, 139, 250, 0.15);
+  border-radius: 10px;
+}
+
+/* Recherche dans les notes */
+.jr-find-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.jr-find-item {
+  display: block;
+  width: 100%;
+  padding: 10px 8px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.jr-find-item:hover {
+  background: var(--surface);
+}
+
+.jr-find-date {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jr-find-snippet {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.jr-find-snippet mark {
+  color: #1b1b1b;
+  background: #e8d36a;
+}
+
+@media (max-width: 900px) {
+  .jr-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Tier (S, A, B) : mêmes couleurs que le reste du site ---------- */
+
+/* Page album : choix du tier, sous l'intensité (comme l'échelle d'intensité) */
+.tier-edit {
+  margin-top: 24px;
+}
+
+.tier-scale {
+  display: flex;
+  gap: 4px;
+}
+
+.tier-step {
+  width: 56px;
+  height: 34px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.tier-step:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.tier-step.is-active {
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+/* Filtre : S / A / B avec le nombre d'albums (comme les autres boutons du filtre) */
+.tier-list {
+  display: flex;
+  gap: 6px;
+}
+
+.tier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.tier-chip .tier-letter {
+  font-weight: 600;
+}
+
+.tier-chip:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.tier-chip.is-active {
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.tier-chip.is-active .count {
+  color: var(--bg);
+}
+
+.tier-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 
 /* ---------- Mobile ---------- */
 
