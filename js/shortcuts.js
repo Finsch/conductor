@@ -6,6 +6,7 @@
 //   Z         filtres réinitialisés (collection ; recherche et tri gardés)
 //   H         retour à l'accueil, tout réinitialisé (recherche, filtres, tri)
 //   F         filtre « Albums favoris » (collection)
+//   Maj + ← → page précédente / suivante (collection, historique du journal)
 //   Espace    lecture / pause            (page album)
 //   ← →       titre précédent / suivant  (page album, pendant la lecture)
 //   ↑ ↓       volume + / − 1 (sur 20)    (page album, pendant la lecture)
@@ -39,10 +40,15 @@
     ["Échap", "Quitter un champ · retour à la collection"],
     ["Z", "Réinitialiser les filtres (collection)"],
     ["H", "Accueil, tout réinitialisé"],
+    ["J", "Note du jour (page journal)"],
     ["F", "Filtre « Albums favoris » (collection)"],
+    ["Maj + ← →", "Page précédente / suivante (collection, historique du journal)"],
     ["Espace", "Lecture / pause (page album)"],
     ["← →", "Titre précédent / suivant (pendant la lecture)"],
     ["↑ ↓", "Volume + / − (sur 20, pendant la lecture)"],
+    ["T", "File d'attente : ouvrir / fermer (mini-lecteur)"],
+    ["Q", "Fermer le mini-lecteur"],
+    ["P", "Plein écran (pendant la lecture)"],
     ["M", "Couper / rétablir le son"],
     ["0", "Volume à zéro"],
     ["1", "Volume au maximum"],
@@ -97,6 +103,16 @@
   // Z : filtres seulement (la recherche et le tri restent)
   function resetFilters() {
     if (PAGE === "home") document.dispatchEvent(new CustomEvent("conductor:filters-reset"));
+  }
+
+  // Maj + ← → : clique le bouton « page précédente / suivante » de la page
+  function turnPage(dir) {
+    const ids = dir < 0 ? ["page-prev", "jr-hist-prev"] : ["page-next", "jr-hist-next"];
+    for (const id of ids) {
+      const b = document.getElementById(id);
+      if (b && !b.disabled && b.offsetParent !== null) { b.click(); return true; }
+    }
+    return false;
   }
 
   // H : accueil, tout remis à zéro
@@ -155,6 +171,12 @@
     if (canVolume && (e.code === "Digit0" || e.code === "Numpad0")) { e.preventDefault(); volume.zero(); return; }
     if (canVolume && (e.code === "Digit1" || e.code === "Numpad1")) { e.preventDefault(); volume.max(); return; }
 
+    // Maj + ← → : page précédente / suivante (collection, historique du journal)
+    if (e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      if (turnPage(e.key === "ArrowLeft" ? -1 : 1)) e.preventDefault();
+      return;
+    }
+
     if (e.shiftKey) return;
 
     if (e.code === "KeyN") { e.preventDefault(); addAlbum(); return; }
@@ -163,7 +185,15 @@
     // Z : la lettre Z quelle que soit la disposition (AZERTY : pas à la place du Z QWERTY)
     if (e.key.toLowerCase() === "z") { e.preventDefault(); resetFilters(); return; }
     if (e.key.toLowerCase() === "h") { e.preventDefault(); homeReset(); return; }
+    if (e.key.toLowerCase() === "j") { const t = document.getElementById("today-note"); if (t) { e.preventDefault(); t.click(); } return; }
     if (e.key.toLowerCase() === "f" && PAGE === "home") { e.preventDefault(); document.dispatchEvent(new CustomEvent("conductor:toggle-fav")); return; }
+    // T / Q : mini-lecteur (file d'attente, fermer)
+    const pb = window.Playback;
+    if (pb && pb.togglePanel && pb.state()) {
+      if (e.key.toLowerCase() === "t") { e.preventDefault(); pb.togglePanel(); return; }
+      if (e.key.toLowerCase() === "q") { e.preventDefault(); pb.closeMini(); return; }
+      if (e.key.toLowerCase() === "p") { e.preventDefault(); pb.fullscreen(); return; }
+    }
     if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
 
     // Lecteur (page album)

@@ -11,15 +11,15 @@ Data lives on your PC (`datastorage/`), so it works offline.
 - **Add an album**: Deezer / Discogs search, original titles and release dates (via MusicBrainz).
 - **Album page**: player (Deezer previews or your own files), lyrics, ★ favourite tracks, genre/styles, moods, custom tags, intensity 1–10, **tier S / A / B** (filter in the collection), **"you may also like"** (4 similar albums).
 - **Artist page**: all their albums, total length, favourite tracks, average intensity, genres. Artist names link to it everywhere.
-- **Listens**: counted automatically when 90 % of an album's tracks are played. Adding an album is not a listen.
+- **Listens**: counted automatically when 90 % of an album's tracks are played, or after 30 min of listening. Adding an album is not a listen.
 - **Next up**: a to-listen list kept apart from the collection, with a top 5 priority grid. Drag and drop to reorder, one click to move an album to the collection.
-- **Journal**: your listens month by month — a calendar of covers (today highlighted), each listen with its start time, "a year ago", the last 12 months at a glance.
+- **Journal**: your listens month by month — a calendar of covers (today highlighted), each listen with its start time, listening time per day, notes, "a year ago", the last 12 months at a glance.
 - **Insights**: the collection in numbers, every bar links to the filtered collection.
 - **To complete**: albums missing a cover, genre, date, tracklist, intensity or mood (dismissable per album).
 - **audio-files**: streams your MP3/FLAC from an Android phone running **Navidrome** (Termux), over Wi-Fi or hotspot.
 - **Continuous playback**: floating mini player (cover, track, play/pause, progress, ★, back to album) and an album **queue** (reorder, remove, total and remaining time).
 - **Daily backup**: a dated copy of the collection in `datastorage/backups/`, last 7 kept.
-- **Volume** (0–20, remembered) and **keyboard shortcuts**: `N` add, `S` search, `R` surprise, `Esc` back to collection, `Z` reset filters, `F` favourites filter, `H` home (reset all), `Space` play, `← →` tracks, `↑ ↓` volume, `M` mute, `?` help.
+- **Volume** (0–20, remembered) and **keyboard shortcuts**: `N` add, `S` search, `R` surprise, `Esc` back to collection, `Z` reset filters, `F` favourites filter, `Shift + ← →` previous / next page, `H` home (reset all), `J` today's note (journal page), `Space` play, `← →` tracks, `↑ ↓` volume, `T` queue panel, `Q` close mini player, `P` full screen, `M` mute, `?` help.
 
 ## Structure
 

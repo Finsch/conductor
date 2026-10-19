@@ -379,6 +379,7 @@
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
+    state.openFamilies.clear();   // familles de genres repliées
     refresh();
   });
 
@@ -866,6 +867,7 @@
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
+    state.openFamilies.clear();   // familles de genres repliées
     if (fam || genre) {
       Store.all().forEach(a => {
         if (!a.genre) return;
@@ -904,6 +906,7 @@
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
+    state.openFamilies.clear();   // familles de genres repliées
     refresh();
   });
 

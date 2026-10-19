@@ -216,6 +216,13 @@ const Store = (function () {
   // collection dans datastorage/collection.js
   const NOTES_KEY = "conductor01.notes";
 
+  // Temps d'écoute par jour (journal) : { "AAAA-MM-JJ": secondes }
+  const LISTEN_KEY = "conductor01.listening";
+
+  function loadListening() {
+    try { return JSON.parse(localStorage.getItem(LISTEN_KEY)) || {}; } catch (e) { return {}; }
+  }
+
   function loadNotes() {
     try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || {}; } catch (e) { return {}; }
   }
@@ -229,6 +236,7 @@ const Store = (function () {
       try {
         localStorage.setItem(KEY, JSON.stringify(file.albums));
         if (file.notes && typeof file.notes === "object") localStorage.setItem(NOTES_KEY, JSON.stringify(file.notes));
+        if (file.listening && typeof file.listening === "object") localStorage.setItem(LISTEN_KEY, JSON.stringify(file.listening));
         localStorage.setItem(SAVED_KEY, file.savedAt || new Date().toISOString());
       } catch (e) {
         console.warn("Copie de datastorage dans le navigateur impossible :", e);
@@ -278,6 +286,10 @@ const Store = (function () {
   // Données modifiées ailleurs (le cadre ↔ l'enveloppe) : chacun se met à jour.
   // Une page du cadre a modifié les données : l'enveloppe les écrit dans datastorage.
   window.addEventListener("storage", e => {
+    if (e.key === LISTEN_KEY) {
+      document.dispatchEvent(new CustomEvent("listening:changed"));
+      return;
+    }
     if (e.key === NOTES_KEY) {
       document.dispatchEvent(new CustomEvent("notes:changed"));
       if (typeof Disk !== "undefined") Disk.changed();
@@ -321,6 +333,23 @@ const Store = (function () {
     // Données brutes, pour l'écriture sur le disque
     raw() {
       return load();
+    },
+
+    // ---------- Temps d'écoute par jour ----------
+    listening() {
+      return loadListening();
+    },
+
+    // { "AAAA-MM-JJ": secondes } ajoutées au total de chaque jour
+    addListening(byDay) {
+      const days = Object.keys(byDay || {}).filter(k => byDay[k] > 0);
+      if (!days.length) return;
+      const all = loadListening();
+      days.forEach(k => { all[k] = Math.round((all[k] || 0) + byDay[k]); });
+      localStorage.setItem(LISTEN_KEY, JSON.stringify(all));
+      localStorage.setItem(SAVED_KEY, new Date().toISOString());
+      document.dispatchEvent(new CustomEvent("listening:changed"));
+      if (typeof Disk !== "undefined") Disk.changed();
     },
 
     // ---------- Notes du journal ----------

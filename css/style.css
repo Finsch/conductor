@@ -3931,6 +3931,163 @@ body.has-mini-player {
   overflow: hidden;
 }
 
+/* Temps d'écoute par jour : barres (une couleur, celle du texte) */
+.jr-time {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.jr-time-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.jr-time-head .block-title {
+  margin: 0;
+}
+
+.jr-time-sum {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.jr-time-sum b {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.jr-chart {
+  position: relative;
+  margin-top: 10px;
+}
+
+.jr-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.jr-gridline {
+  stroke: #3a3a3a;
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.jr-baseline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.jr-gridtext,
+.jr-axistext {
+  font-size: 11px;
+  fill: var(--text-muted);
+}
+
+/* Repères et valeurs lisibles même sur la courbe : liseré couleur du fond */
+.jr-gridtext,
+.jr-valtext {
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.jr-valtext {
+  font-size: 12px;
+  fill: var(--text);
+}
+
+.jr-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.jr-today-dot {
+  fill: var(--text);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.jr-cross {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.jr-hover-dot {
+  fill: var(--bg);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.jr-tip {
+  position: absolute;
+  top: -12px;
+  z-index: 2;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text);
+  background: #1b1b1b;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.jr-tip[hidden] {
+  display: none;
+}
+
+/* Copier les écoutes du jour : coin haut droit, au survol */
+.jr-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.8);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.jr-copy-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.jr-copy-btn:hover {
+  background: rgba(20, 20, 20, 0.95);
+}
+
+.jr-day:hover .jr-copy-btn,
+.jr-copy-btn:focus-visible,
+.jr-copy-btn.is-done {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .jr-copy-btn {
+    visibility: visible;
+  }
+}
+
 /* Note du jour : bouton au survol ; plein et toujours visible une fois écrite */
 .jr-note-btn {
   position: absolute;
@@ -4145,6 +4302,10 @@ body.has-mini-player {
   margin-top: 10px;
 }
 
+.jr-pager[hidden] {
+  display: none;
+}
+
 .jr-pager .hint {
   margin: 0;
   font-size: 12px;
@@ -4161,39 +4322,106 @@ body.has-mini-player {
   width: min(760px, calc(100% - 32px));
 }
 
-.jr-note-tabs {
+.jr-note-tools {
   display: flex;
   gap: 4px;
   margin-left: auto;
-  margin-right: 12px;
+  margin-right: 10px;
 }
 
-.jr-tab {
-  height: 28px;
-  padding: 0 10px;
-  font: inherit;
-  font-size: 13px;
+.jr-tool {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
   color: var(--text-muted);
   background: none;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 2px;
   cursor: pointer;
 }
 
-.jr-tab:hover {
+.jr-tool:hover {
   color: var(--text);
+  border-color: var(--text-muted);
 }
 
-.jr-tab.is-active {
-  color: var(--text);
-  border-color: var(--border);
+.jr-tool svg {
+  width: 17px;
+  height: 17px;
+}
+
+.jr-tool.is-done {
+  color: #3ecf6e;
+}
+
+.jr-tool[hidden] {
+  display: none;
+}
+
+/* Supprimer : armé après un premier clic (le second supprime) */
+.jr-tool-delete.is-armed {
+  color: #fff;
+  background: #e23636;
+  border-color: #e23636;
+}
+
+/* Barres de défilement de l'éditeur et de l'aperçu : fines, arrondies, discrètes */
+.jr-note-area,
+.jr-md {
+  scrollbar-width: thin;
+  scrollbar-color: #3d4249 transparent;
+}
+
+.jr-note-area::-webkit-scrollbar,
+.jr-md::-webkit-scrollbar {
+  width: 10px;
+}
+
+.jr-note-area::-webkit-scrollbar-track,
+.jr-md::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.jr-note-area::-webkit-scrollbar-thumb,
+.jr-md::-webkit-scrollbar-thumb {
+  background: #3d4249;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background-clip: padding-box;
+}
+
+.jr-note-area::-webkit-scrollbar-thumb:hover,
+.jr-md::-webkit-scrollbar-thumb:hover {
+  background-color: #50565e;
+}
+
+.jr-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jr-icon-text svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Notes : police Cascadia Code, 14 px (éditeur et aperçu) */
+.jr-note-area,
+.jr-md {
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono", ui-monospace, monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #d6d9dc;
 }
 
 .jr-note-area {
+  height: min(60vh, 520px);
   min-height: 340px;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-size: 14px;
-  line-height: 1.6;
+  resize: none;
+  tab-size: 2;
 }
 
 .jr-note-area[hidden] {
@@ -4208,7 +4436,7 @@ body.has-mini-player {
 }
 
 .jr-note-actions .hint {
-  margin: 0 auto;
+  margin: 0;
   font-size: 12px;
 }
 
@@ -4232,16 +4460,25 @@ body.has-mini-player {
 .jr-md h1,
 .jr-md h2,
 .jr-md h3,
-.jr-md h4 {
-  margin: 1.2em 0 0.4em;
-  line-height: 1.25;
+.jr-md h4,
+.jr-md h5,
+.jr-md h6 {
+  margin: 1.1em 0 0.45em;
+  line-height: 1.3;
   font-weight: 700;
 }
 
-.jr-md h1 { font-size: 1.7em; }
-.jr-md h2 { font-size: 1.4em; }
-.jr-md h3 { font-size: 1.2em; }
-.jr-md h4 { font-size: 1.05em; }
+/* Titres façon éditeur de code : 1-2 clairs et grands, puis bleu, ambre, rouge */
+.jr-md h1 { font-size: 1.75em; color: #e8eaec; }
+.jr-md h2 { font-size: 1.45em; color: #e8eaec; }
+.jr-md h3 { font-size: 1.2em; color: #3b8eea; }
+.jr-md h4 { font-size: 1.1em; color: #e5c07b; }
+.jr-md h5 { font-size: 1em; color: #e23636; }
+.jr-md h6 { font-size: 1em; color: #e23636; font-weight: 600; }
+
+.jr-md u {
+  text-underline-offset: 3px;
+}
 
 .jr-md p,
 .jr-md ul,
@@ -4260,17 +4497,57 @@ body.has-mini-player {
   margin-top: 0.15em;
 }
 
+.jr-md li::marker {
+  color: #6b7280;
+}
+
+.jr-md ul ul,
+.jr-md ol ol,
+.jr-md ul ol,
+.jr-md ol ul {
+  margin: 0.15em 0 0;
+}
+
 .jr-md .jr-task {
   list-style: none;
-  margin-left: -1.3em;
+  margin-left: -1.4em;
   cursor: pointer;
 }
 
+/* Sous-liste sous une tâche : décalée comme sous une puce */
+.jr-md .jr-task > ul,
+.jr-md .jr-task > ol {
+  padding-left: 3em;
+}
+
+/* Case à cocher arrondie, au trait gris (cochée : pleine, couleur du texte) */
 .jr-md .jr-task input {
-  margin: 0 6px 0 0;
-  vertical-align: -1px;
-  accent-color: var(--text);
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 8px 0 0;
+  vertical-align: -3px;
+  border: 1.5px solid #6b7280;
+  border-radius: 4px;
   pointer-events: none;
+}
+
+.jr-md .jr-task input:checked {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.jr-md .jr-task input:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid #1b1b1b;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .jr-md .jr-task.is-done {
@@ -4323,12 +4600,41 @@ body.has-mini-player {
 }
 
 .jr-md .jr-wiki {
-  color: #a88bfa;
+  color: inherit;
   text-decoration: none;
 }
 
 .jr-md a.jr-wiki:hover {
   text-decoration: underline;
+}
+
+/* Album lié : ▶ / « 3 traits + », toujours visible */
+.jr-wiki-wrap {
+  white-space: nowrap;
+}
+
+.jr-wiki-play {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 3px;
+  padding: 0;
+  vertical-align: -5px;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.jr-wiki-play svg {
+  width: 13px;
+  height: 13px;
+}
+
+.jr-wiki-play:hover {
+  background: var(--hover);
 }
 
 .jr-md .jr-wiki.is-missing {
@@ -4494,5 +4800,345 @@ body.has-mini-player {
   .album-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 24px 16px;
+  }
+}
+
+
+/* Deux boutons côte à côte à droite du titre « journal » */
+.jr-icon-btn + .jr-icon-btn {
+  margin-left: -4px;
+}
+
+/* ---------- Plein écran (P) ---------- */
+/* Grande pochette à gauche, morceau à droite ; fond = pochette floutée */
+
+.fs {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  color: #e8eaec;
+  background: #1b1b1b;
+  outline: none;
+}
+
+.fs[hidden] {
+  display: none;
+}
+
+/* La file d'attente s'ouvre par-dessus le plein écran */
+body.has-fs .mq {
+  z-index: 90;
+}
+
+.fs-bg {
+  position: absolute;
+  inset: -80px;
+  background: center / cover no-repeat;
+  filter: blur(70px) saturate(1.1) brightness(0.38);
+  transform: scale(1.15);
+}
+
+.fs-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 40%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 75%);
+}
+
+.fs-top {
+  position: absolute;
+  top: 28px;
+  left: 40px;
+  right: 40px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: opacity 0.4s;
+}
+
+.fs-logo {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #cfd2d5;
+}
+
+.fs-tools {
+  display: flex;
+  gap: 10px;
+}
+
+.fs-tool {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #cfd2d5;
+  background: rgba(255, 255, 255, 0.07);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.fs-tool:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.fs-tool svg {
+  width: 18px;
+  height: 18px;
+}
+
+.fs-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(32px, 5vw, 72px);
+  padding: 90px 40px;
+}
+
+.fs-art {
+  flex: none;
+  width: min(520px, 58vh, 42vw);
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: #2a2a2a center / cover no-repeat;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+.fs-info {
+  width: min(460px, 40vw);
+}
+
+.fs-pos {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8b9096;
+}
+
+.fs-title {
+  margin: 14px 0 6px;
+  font-size: clamp(30px, 3.2vw, 44px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.8px;
+  overflow-wrap: anywhere;
+}
+
+.fs-artist,
+.fs-album {
+  display: block;
+  width: fit-content;
+  color: #c9cdd1;
+  text-decoration: none;
+}
+
+.fs-artist {
+  font-size: 20px;
+}
+
+.fs-album {
+  margin-top: 6px;
+  font-size: 15px;
+  color: #8b9096;
+}
+
+.fs-artist:hover,
+.fs-album:hover {
+  text-decoration: underline;
+}
+
+.fs-bar {
+  position: relative;
+  height: 4px;
+  margin-top: 40px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+.fs-bar::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.fs-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 2px;
+  background: #e8eaec;
+}
+
+.fs-knob {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+
+.fs-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8b9096;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.fs-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #e8eaec;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.fs-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.fs-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fs-play {
+  width: 62px;
+  height: 62px;
+  color: #1b1b1b;
+  background: #f2f3f4;
+}
+
+.fs-play:hover {
+  background: #fff;
+}
+
+.fs-play svg {
+  width: 26px;
+  height: 26px;
+}
+
+.fs-star {
+  margin-left: auto;
+  color: #8b9096;
+}
+
+.fs-star svg {
+  width: 20px;
+  height: 20px;
+}
+
+.fs-star.is-on {
+  color: #e5c07b;
+}
+
+.fs-upnext {
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  line-height: 1.7;
+  color: #8b9096;
+}
+
+.fs-upnext[hidden],
+.fs-upnext p[hidden] {
+  display: none;
+}
+
+.fs-upnext p {
+  margin: 0;
+}
+
+.fs-upnext b {
+  font-weight: 500;
+  color: #cfd2d5;
+}
+
+.fs-hint {
+  position: absolute;
+  bottom: 26px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  text-align: center;
+  font-size: 12px;
+  color: #777d84;
+  transition: opacity 0.4s;
+}
+
+.fs-hint kbd {
+  margin: 0 2px;
+  padding: 1px 5px;
+  font: inherit;
+  font-size: 11px;
+  color: #aab;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+/* Souris immobile : aides et curseur masqués */
+.fs.is-idle {
+  cursor: none;
+}
+
+.fs.is-idle .fs-top,
+.fs.is-idle .fs-hint {
+  opacity: 0;
+}
+
+/* Téléphone : pochette au-dessus */
+@media (max-width: 760px) {
+  .fs-stage {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 24px;
+    padding: 88px 24px 32px;
+    overflow-y: auto;
+  }
+
+  .fs-art {
+    width: min(78vw, 40vh);
+  }
+
+  .fs-info {
+    width: min(78vw, 460px);
+  }
+
+  .fs-bar {
+    margin-top: 24px;
+  }
+
+  .fs-upnext {
+    margin-top: 24px;
+  }
+
+  .fs-hint {
+    display: none;
   }
 }

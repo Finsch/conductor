@@ -18,8 +18,11 @@
 // - le mini-lecteur (en bas à droite) n'apparaît que hors de la page de l'album
 //   en cours ;
 // - file d'attente d'albums : à la fin d'un album, le suivant démarre ;
-// - écoutes comptées ici (90 % des morceaux, chacun au moins à moitié), même
-//   en changeant de page → Store.addPlay.
+// - écoutes comptées ici, même en changeant de page → Store.addPlay :
+//   90 % des morceaux écoutés (chacun au moins à moitié) ou plus de 30 min
+//   d'écoute de l'album ;
+// - temps d'écoute par jour (journal) → Store.addListening, enregistré après
+//   chaque écoute d'album, à la pause, en changeant d'album ou en fermant.
 
 (function () {
   const FRAMED = window.top !== window;
@@ -31,14 +34,104 @@
   const QUEUE_KEY = "conductor01.queue";
   const RESUME_WITHIN = 12 * 3600 * 1000;    // au-delà de 12 h, on ne relance pas le son tout seul
   const TRACK_SHARE = 0.5, TRACK_MAX = 240, ALBUM_SHARE = 0.9;
+  const ALBUM_TIME = 30 * 60;   // ou 30 min d'écoute de l'album : écoute comptée
 
   const ROOT = typeof APP_ROOT !== "undefined" ? APP_ROOT : "";
   // Page affichée dans le cadre (envoyée par la page elle-même)
   const frame = () => document.getElementById("page");
   let framePage = { path: "", albumId: null };
 
-  const audio = new Audio();
-  audio.preload = "auto";
+  // ---------- Deux platines : enchaînement sans blanc ----------
+  // Le morceau suivant de l'album se charge sur la 2e platine pendant la fin
+  // du morceau en cours, puis démarre pile à la fin de celui-ci.
+  // « audio » est une façade : elle pilote la platine en cours et ne relaie
+  // que ses événements, le reste du code ne voit qu'un seul lecteur.
+  const PRELOAD_BEFORE = 30;   // s avant la fin : chargement du suivant
+  const SWITCH_LEAD = 0.015;   // s : démarrage anticipé (latence de play())
+  const decks = [new Audio(), new Audio()];
+  decks.forEach(d => { d.preload = "auto"; });
+  let cur = 0;
+  const deck = () => decks[cur];
+  const spare = () => decks[1 - cur];
+  let spareIndex = -1;         // morceau chargé sur la platine de réserve
+  let switchTimer = null;
+  let lastSwap = 0;
+
+  const audio = new EventTarget();
+  Object.defineProperties(audio, {
+    src: { get: () => deck().src, set: v => { deck().src = v; } },
+    currentTime: { get: () => deck().currentTime, set: v => { deck().currentTime = v; } },
+    duration: { get: () => deck().duration },
+    paused: { get: () => deck().paused },
+    seeking: { get: () => deck().seeking },
+    readyState: { get: () => deck().readyState },
+    volume: { get: () => deck().volume, set: v => decks.forEach(d => { d.volume = v; }) },
+    muted: { get: () => deck().muted, set: m => decks.forEach(d => { d.muted = m; }) }
+  });
+  audio.play = () => deck().play();
+  audio.pause = () => { clearTimeout(switchTimer); switchTimer = null; deck().pause(); };
+  audio.load = () => deck().load();
+  audio.removeAttribute = name => deck().removeAttribute(name);
+  ["play", "pause", "ended", "timeupdate", "seeking", "loadedmetadata", "error"].forEach(ev =>
+    decks.forEach((d, i) => d.addEventListener(ev, () => { if (i === cur) audio.dispatchEvent(new Event(ev)); })));
+
+  function resetSpare() {
+    clearTimeout(switchTimer);
+    switchTimer = null;
+    spareIndex = -1;
+    const d = spare();
+    d.pause();
+    if (d.getAttribute("src")) { d.removeAttribute("src"); d.load(); }
+  }
+
+  function nextIndex() {
+    return state ? firstPlayable(state.index + 1, 1) : -1;
+  }
+
+  // Charge le morceau suivant à l'avance, et programme son démarrage
+  function prepareNext() {
+    if (!state || deck().paused || deck().seeking) { clearTimeout(switchTimer); switchTimer = null; return; }
+    const dur = deck().duration;
+    if (!isFinite(dur) || !dur) return;
+    const left = dur - deck().currentTime;
+    const i = nextIndex();
+    if (i < 0) return;
+    // (on attend que l'ancienne platine ait fini avant de la recharger)
+    if (left <= PRELOAD_BEFORE && spareIndex !== i && Date.now() - lastSwap > 500) {
+      spareIndex = i;
+      const d = spare();
+      d.src = state.tracks[i].src;
+      d.currentTime = 0;
+      d.load();
+    }
+    // Dernière seconde : démarrage précis au minuteur (timeupdate est trop espacé)
+    if (left < 1.2 && spareIndex === i && spare().readyState >= 3 && !switchTimer) {
+      switchTimer = setTimeout(() => { switchTimer = null; swapTo(i); }, Math.max(0, (left - SWITCH_LEAD) * 1000));
+    }
+  }
+
+  // Passe sur la platine de réserve (déjà chargée avec le morceau i)
+  function swapTo(i) {
+    if (!state || spareIndex !== i) return false;
+    clearTimeout(switchTimer);
+    switchTimer = null;
+    const old = deck();
+    const d = spare();
+    d.currentTime = 0;
+    d.play().catch(() => {});
+    cur = 1 - cur;
+    spareIndex = -1;
+    // L'ancienne platine finit ses dernières millisecondes, puis s'arrête
+    lastSwap = Date.now();
+    setTimeout(() => { if (old !== deck()) old.pause(); }, 400);
+    state.index = i;
+    state.time = 0;
+    lastTime = null;
+    save();
+    emit();
+    postTime("loadedmetadata");
+    return true;
+  }
   // Volume : réglé par les pages (js/volume.js) ; en attendant, le dernier choisi
   try {
     const v = JSON.parse(localStorage.getItem("conductor01.volume") || "null");
@@ -119,6 +212,9 @@
     prev: () => prev(),
     seek: sec => seek(sec),
     close: () => close(),
+    togglePanel: () => togglePanel(),
+    closeMini: () => closeMini(),
+    fullscreen: () => fsOpen(!fsIsOpen()),
     addToQueue: id => addToQueue(id),
     removeFromQueue: id => removeFromQueue(id),
     moveInQueue: (a, b) => moveInQueue(a, b),
@@ -174,6 +270,8 @@
 
   function loadTrack(i, at, autoplay) {
     if (!playable(i)) return;
+    if (!at && spareIndex === i && spare().readyState >= 2 && autoplay) { swapTo(i); return; }
+    resetSpare();
     state.index = i;
     state.time = at || 0;
     audio.src = state.tracks[i].src;
@@ -194,6 +292,7 @@
   function playAlbum(meta, tracks, index, fromQueue) {
     const same = state && state.albumId === meta.albumId;
     if (!fromQueue && !same && queue.length) { queue = []; saveQueue(); }
+    if (!same) flushTime();   // temps d'écoute de l'album précédent
     state = Object.assign({}, meta, {
       tracks: tracks.map(t => ({ title: t.title, duration: t.duration || 0, src: t.src || "" })),
       index: 0,
@@ -235,6 +334,8 @@
   }
 
   function close() {
+    flushTime();
+    resetSpare();
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
@@ -247,6 +348,7 @@
 
   audio.addEventListener("ended", () => {
     const i = firstPlayable(state ? state.index + 1 : 0, 1);
+    if (i > -1 && swapTo(i)) return;
     if (i > -1) loadTrack(i, 0, true);
     else playNextAlbum();
   });
@@ -364,6 +466,21 @@
 
   // ---------- Écoutes ----------
 
+  // Temps réellement écouté, par jour, en attente d'enregistrement
+  const pendingTime = {};
+  function addTime(sec) {
+    const d = new Date();
+    const k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    pendingTime[k] = (pendingTime[k] || 0) + sec;
+  }
+  function flushTime() {
+    const days = Object.keys(pendingTime).filter(k => pendingTime[k] >= 1);
+    if (!days.length) return;
+    const out = {};
+    days.forEach(k => { out[k] = pendingTime[k]; delete pendingTime[k]; });
+    Store.addListening(out);
+  }
+
   function countListening() {
     if (!state || audio.paused || audio.seeking) { lastTime = null; return; }
     const t = audio.currentTime;
@@ -371,6 +488,7 @@
       const d = t - lastTime;
       if (d > 0 && d < 2) {
         state.heard[state.index] = (state.heard[state.index] || 0) + d;
+        addTime(d);
         // Début de l'écoute (journal) : la première seconde réellement jouée
         if (!state.startedAt) state.startedAt = new Date(Date.now() - d * 1000).toISOString();
       }
@@ -379,34 +497,35 @@
     const i = state.index;
     const dur = (state.tracks[i] && state.tracks[i].duration) || duration();
     const need = dur ? Math.min(TRACK_MAX, dur * TRACK_SHARE) : Infinity;
-    if (!state.done.includes(i) && (state.heard[i] || 0) >= need) {
-      state.done.push(i);
-      const n = state.tracks.length;
-      if (n && state.done.length >= Math.ceil(n * ALBUM_SHARE)) {
-        Store.addPlay(state.albumId, { tracks: state.done.length, of: n, source: state.source || "",
-          startedAt: state.startedAt || null });
-        state.heard = {};
-        state.done = [];
-        state.startedAt = null;
-      }
+    if (!state.done.includes(i) && (state.heard[i] || 0) >= need) state.done.push(i);
+    const n = state.tracks.length;
+    const heardTotal = Object.values(state.heard).reduce((s, x) => s + x, 0);
+    if (n && (state.done.length >= Math.ceil(n * ALBUM_SHARE) || heardTotal >= ALBUM_TIME)) {
+      Store.addPlay(state.albumId, { tracks: state.done.length, of: n, source: state.source || "",
+        startedAt: state.startedAt || null, seconds: Math.round(heardTotal) });
+      state.heard = {};
+      state.done = [];
+      state.startedAt = null;
+      flushTime();
     }
   }
 
-  audio.addEventListener("seeking", () => { lastTime = null; });
+  audio.addEventListener("seeking", () => { lastTime = null; clearTimeout(switchTimer); switchTimer = null; });
   audio.addEventListener("play", () => { lastTime = null; save(); emit(); });
-  audio.addEventListener("pause", () => { save(); emit(); });
+  audio.addEventListener("pause", () => { flushTime(); save(); emit(); });
   function postTime(event) {
     post({ type: "time", event, time: { currentTime: audio.currentTime || 0, duration: duration(), paused: audio.paused, seeking: audio.seeking } });
   }
 
   audio.addEventListener("timeupdate", () => {
     countListening();
+    prepareNext();
     if (Date.now() - lastSave > 1000) { lastSave = Date.now(); save(); }
     renderProgress();
     postTime("timeupdate");
   });
   audio.addEventListener("loadedmetadata", () => postTime("loadedmetadata"));
-  window.addEventListener("pagehide", save);
+  window.addEventListener("pagehide", () => { flushTime(); save(); });
 
   // ---------- Reprise à l'ouverture de la page ----------
 
@@ -434,7 +553,9 @@
     next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5H18v14h-2.2zM5 5.5v13l9.5-6.5z" fill="currentColor"/></svg>',
     album: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg>',
     queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h12M4 11.5h12M4 16.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15.5 14.5v6l5-3z" fill="currentColor"/></svg>',
-    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    shrink: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l6.5-6.5M10 14l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
   let mp = null, panel = null;
@@ -505,8 +626,9 @@
     const qBtn = iconBtn("mp-queue", "File d'attente", ICON.queue);
     const badge = el("span", "mp-badge");
     qBtn.appendChild(badge);
+    const fsBtn = iconBtn("mp-full", "Plein écran (P)", ICON.expand);
     const closeBtn = iconBtn("mp-close", "Fermer le lecteur", ICON.close);
-    tools.append(toAlbum, qBtn, closeBtn);
+    tools.append(toAlbum, qBtn, fsBtn, closeBtn);
     const head = el("div", "mp-head");
     head.append(cover, star, tools);
 
@@ -538,6 +660,7 @@
     toAlbum.addEventListener("click", () => { if (state) navigate(albumUrl(state.albumId)); });
     closeBtn.addEventListener("click", () => { panelOpen(false); close(); });
     qBtn.addEventListener("click", () => panelOpen(!(panel && !panel.hidden)));
+    fsBtn.addEventListener("click", () => fsOpen(true));
     star.addEventListener("click", toggleTrackStar);
     bar.addEventListener("click", e => {
       const r = bar.getBoundingClientRect();
@@ -550,6 +673,7 @@
 
     document.body.appendChild(mp);
     buildPanel();
+    buildFs();
   }
 
   // Étoile du morceau en cours (même enregistrement que sur la page album)
@@ -578,7 +702,7 @@
     const show = visible();
     mp.hidden = !show;
     document.body.classList.toggle("has-mini-player", show);
-    if (!show) { panelOpen(false); return; }
+    if (!show) { panelOpen(false); fsOpen(false); return; }
 
     const t = state.tracks[state.index] || {};
     const a = Store.get(state.albumId);
@@ -625,15 +749,172 @@
 
     renderProgress();
     if (panel && !panel.hidden) renderPanel();
+    renderFs();
   }
 
   function renderProgress() {
+    renderFsProgress();
     if (!mp || mp.hidden) return;
     const dur = duration();
     mp.querySelector(".mp-fill").style.width = (dur ? Math.min(100, audio.currentTime / dur * 100) : 0) + "%";
     mp.querySelector(".mp-bar").title = mmss(audio.currentTime) + " / " + mmss(dur);
     mp.querySelector(".mp-cur").textContent = mmss(audio.currentTime);
     mp.querySelector(".mp-dur").textContent = mmss(dur);
+  }
+
+  // ---------- Plein écran (P) ----------
+  // Grande pochette, morceau en cours, commandes ; fond = pochette floutée.
+  // Entrée : P ou le bouton du mini-lecteur. Sortie : Échap, P ou le bouton.
+
+  let fs = null, fsIdleTimer = null;
+
+  function buildFs() {
+    fs = el("div", "fs");
+    fs.hidden = true;
+    fs.tabIndex = -1;
+    fs.setAttribute("role", "dialog");
+    fs.setAttribute("aria-label", "Lecture en plein écran");
+    fs.innerHTML =
+      '<div class="fs-bg"></div><div class="fs-veil"></div>' +
+      '<div class="fs-top"><span class="fs-logo">conductor.</span><div class="fs-tools">' +
+        '<button type="button" class="fs-tool fs-queue" title="File d\'attente (T)" aria-label="File d\'attente">' + ICON.queue + '</button>' +
+        '<button type="button" class="fs-tool fs-exit" title="Quitter le plein écran (Échap)" aria-label="Quitter le plein écran">' + ICON.shrink + '</button>' +
+      '</div></div>' +
+      '<div class="fs-stage">' +
+        '<div class="fs-art"></div>' +
+        '<div class="fs-info">' +
+          '<p class="fs-pos"></p>' +
+          '<h1 class="fs-title"></h1>' +
+          '<a class="fs-artist"></a>' +
+          '<a class="fs-album"></a>' +
+          '<div class="fs-bar" role="slider" aria-label="Position dans le morceau"><div class="fs-fill"></div><div class="fs-knob"></div></div>' +
+          '<div class="fs-times"><span class="fs-cur">0:00</span><span class="fs-left"></span></div>' +
+          '<div class="fs-ctrls">' +
+            '<button type="button" class="fs-btn fs-prev" aria-label="Titre précédent" title="Titre précédent (←)">' + ICON.prev + '</button>' +
+            '<button type="button" class="fs-btn fs-play" aria-label="Lecture"></button>' +
+            '<button type="button" class="fs-btn fs-next" aria-label="Titre suivant" title="Titre suivant (→)">' + ICON.next + '</button>' +
+            '<button type="button" class="fs-btn fs-star"></button>' +
+          '</div>' +
+          '<div class="fs-upnext"><p class="fs-next-track"></p><p class="fs-next-album"></p></div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="fs-hint"><kbd>Espace</kbd> lecture · <kbd>← →</kbd> titres · <kbd>T</kbd> file · <kbd>Échap</kbd> quitter</p>';
+    document.body.appendChild(fs);
+
+    fs.querySelector(".fs-exit").addEventListener("click", () => fsOpen(false));
+    fs.querySelector(".fs-queue").addEventListener("click", () => panelOpen(!(panel && !panel.hidden)));
+    fs.querySelector(".fs-play").addEventListener("click", toggle);
+    fs.querySelector(".fs-prev").addEventListener("click", prev);
+    fs.querySelector(".fs-next").addEventListener("click", next);
+    fs.querySelector(".fs-star").addEventListener("click", toggleTrackStar);
+    fs.querySelector(".fs-bar").addEventListener("click", e => {
+      const r = e.currentTarget.getBoundingClientRect();
+      seek(((e.clientX - r.left) / r.width) * duration());
+    });
+    // Souris immobile 3 s : curseur et aides masqués
+    fs.addEventListener("pointermove", wakeFs);
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement && fs && !fs.hidden) fsOpen(false);   // Échap du navigateur
+    });
+  }
+
+  function wakeFs() {
+    if (!fs) return;
+    fs.classList.remove("is-idle");
+    clearTimeout(fsIdleTimer);
+    fsIdleTimer = setTimeout(() => fs.classList.add("is-idle"), 3000);
+  }
+
+  function fsIsOpen() {
+    return !!(fs && !fs.hidden);
+  }
+
+  function fsOpen(open) {
+    if (!fs) return;
+    if (open && !state) return;
+    if (open === fsIsOpen()) return;
+    fs.hidden = !open;
+    document.body.classList.toggle("has-fs", open);
+    if (open) {
+      renderFs();
+      fs.focus();
+      wakeFs();
+      const root = document.documentElement;
+      if (root.requestFullscreen && !document.fullscreenElement) root.requestFullscreen().catch(() => {});
+    } else {
+      clearTimeout(fsIdleTimer);
+      panelOpen(false);
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      const f = frame();
+      if (f) f.focus();
+    }
+  }
+
+  function fsLink(a, path) {
+    a.href = "#" + path;
+    a.onclick = e => { e.preventDefault(); fsOpen(false); navigate(path); };
+  }
+
+  function renderFs() {
+    if (!fsIsOpen() || !state) return;
+    const t = state.tracks[state.index] || {};
+    const a = Store.get(state.albumId);
+    const src = coverSrc(a ? Object.assign({}, a, { serverCover: a.serverCover || state.serverCover }) : state, 1000);
+    const bg = src ? 'url("' + src.replace(/"/g, '\\"') + '")' : "none";
+    const art = fs.querySelector(".fs-art");
+    if (art.dataset.src !== src) {
+      art.dataset.src = src;
+      art.style.backgroundImage = bg;
+      fs.querySelector(".fs-bg").style.backgroundImage = bg;
+    }
+    fs.querySelector(".fs-pos").textContent = "titre " + (state.index + 1) + " / " + state.tracks.length;
+    fs.querySelector(".fs-title").textContent = t.title || state.title;
+    const artist = fs.querySelector(".fs-artist");
+    artist.textContent = state.artist || "";
+    fsLink(artist, "pages/artist.html?name=" + encodeURIComponent(state.artist || ""));
+    const album = fs.querySelector(".fs-album");
+    album.textContent = state.title + (a && a.year ? " · " + a.year : "");
+    fsLink(album, albumUrl(state.albumId));
+
+    const playing = !audio.paused;
+    const play = fs.querySelector(".fs-play");
+    play.innerHTML = playing ? ICON.pause : ICON.play;
+    play.title = (playing ? "Pause" : "Lecture") + " (Espace)";
+    play.setAttribute("aria-label", playing ? "Pause" : "Lecture");
+
+    const starred = !!(a && (a.favorites || []).includes(currentTrackKey()));
+    const star = fs.querySelector(".fs-star");
+    star.innerHTML = trackIcon(starred);
+    star.classList.toggle("is-on", starred);
+    star.title = starred ? "Morceau préféré (cliquer pour retirer)" : "Marquer le morceau comme préféré";
+    star.setAttribute("aria-label", star.title);
+    star.hidden = !a;
+
+    // En bas : morceau suivant, puis album suivant de la file
+    const ni = firstPlayable(state.index + 1, 1);
+    const nt = fs.querySelector(".fs-next-track");
+    nt.hidden = ni < 0;
+    nt.innerHTML = "";
+    if (ni > -1) nt.append("next track : ", el("b", "", state.tracks[ni].title));
+    const na = fs.querySelector(".fs-next-album");
+    const nextAlbum = queue.length ? Store.get(queue[0]) : null;
+    na.hidden = !nextAlbum;
+    na.innerHTML = "";
+    if (nextAlbum) na.append("next album : ", el("b", "", nextAlbum.title + " - " + nextAlbum.artist));
+    fs.querySelector(".fs-upnext").hidden = nt.hidden && na.hidden;
+
+    renderFsProgress();
+  }
+
+  function renderFsProgress() {
+    if (!fsIsOpen()) return;
+    const dur = duration();
+    const cur = audio.currentTime || 0;
+    const pct = (dur ? Math.min(100, cur / dur * 100) : 0) + "%";
+    fs.querySelector(".fs-fill").style.width = pct;
+    fs.querySelector(".fs-knob").style.left = pct;
+    fs.querySelector(".fs-cur").textContent = mmss(cur);
+    fs.querySelector(".fs-left").textContent = dur ? "−" + mmss(dur - cur) : "";
   }
 
   // ---------- Panneau « file d'attente » ----------
@@ -650,7 +931,8 @@
     panel.querySelector(".mq-clear").addEventListener("click", clearQueue);
     document.body.appendChild(panel);
     document.addEventListener("pointerdown", e => {
-      if (!panel.hidden && !panel.contains(e.target) && !mp.querySelector(".mp-queue").contains(e.target)) panelOpen(false);
+      if (!panel.hidden && !panel.contains(e.target) && !mp.querySelector(".mp-queue").contains(e.target) &&
+        !(fs && fs.querySelector(".fs-queue").contains(e.target))) panelOpen(false);
     });
   }
 
@@ -744,6 +1026,34 @@
   document.addEventListener("playback:change", render);
   document.addEventListener("albums:changed", () => { if (mp && !mp.hidden) render(); });
   window.addEventListener("storage", e => { if (e.key === "conductor01.albums" && mp && !mp.hidden) render(); });
+  // T : file d'attente ouverte / fermée · Q : fermer le mini-lecteur
+  function togglePanel() {
+    if (state) panelOpen(!(panel && !panel.hidden));
+  }
+  function closeMini() {
+    if (!state) return;
+    panelOpen(false);
+    fsOpen(false);
+    close();
+  }
+  // Mêmes touches quand le focus est dans l'enveloppe (après un clic sur le mini-lecteur)
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+    const k = e.key.toLowerCase();
+    if (k === "t") { e.preventDefault(); togglePanel(); }
+    else if (k === "q") { e.preventDefault(); closeMini(); }
+    else if (k === "p") { e.preventDefault(); fsOpen(!fsIsOpen()); }
+    else if (fsIsOpen()) {
+      // Plein écran : le focus est ici, pas dans la page du cadre
+      if (e.key === "Escape") { e.preventDefault(); if (panel && !panel.hidden) panelOpen(false); else fsOpen(false); }
+      else if (e.code === "Space") { if (/^(button|a)$/i.test(t.tagName)) return; e.preventDefault(); if (!e.repeat) toggle(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", () => { build(); render(); });
 
   // Après un clic sur le mini-lecteur, le clavier revient à la page (raccourcis)
@@ -855,6 +1165,9 @@
       seek: sec => cmd("seek", sec),
       duration: () => mirror.time.duration || 0,
       close: () => cmd("close"),
+      togglePanel: () => cmd("togglePanel"),
+      closeMini: () => cmd("closeMini"),
+      fullscreen: () => cmd("fullscreen"),
       addToQueue: id => { mirror.queue.push(id); cmd("addToQueue", id); },
       removeFromQueue: (id, index) => { mirror.queue = mirror.queue.filter(x => x !== id); cmd("removeFromQueue", id, index); },
       moveInQueue: (a, b) => cmd("moveInQueue", a, b),
