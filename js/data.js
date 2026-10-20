@@ -208,6 +208,55 @@ function wrappedReady(year, now) {
   return year < now.getFullYear() || (year === now.getFullYear() && now >= wrappedDropDate(year));
 }
 
+// ---------- Couleur dominante des pochettes (js/colors.js) ----------
+const COVER_COLORS = [
+  ["rouge", "#d64545"], ["orange", "#e8843a"], ["jaune", "#e3c04a"], ["vert", "#4caf6a"],
+  ["turquoise", "#3bb5b5"], ["bleu", "#3d74d6"], ["violet", "#8a5cc7"], ["rose", "#e070a8"],
+  ["brun", "#8a5a3a"], ["noir", "#111111"], ["gris", "#8a8a8a"], ["blanc", "#f0f0f0"]
+];
+
+// ---------- Objectif de la semaine : 1 album découvert ----------
+// Découvert = écouté pour la première fois avec le lecteur. Semaine = lundi → dimanche.
+const WEEKLY_GOAL = 1;
+
+function weekStart(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+// { count, albums, start, end, daysLeft, done, history: [{ start, count, ok }], streak }
+function weeklyGoal(now) {
+  now = now || new Date();
+  const first = new Map();   // album → première écoute
+  Store.raw().forEach(a => (a.plays || []).forEach(p => {
+    const d = new Date(p.startedAt || p.at);
+    if (isNaN(d)) return;
+    const f = first.get(a.id);
+    if (!f || d < f.d) first.set(a.id, { a, d });
+  }));
+  const start = weekStart(now);
+  const week = s => { const e = new Date(s); e.setDate(e.getDate() + 7); return e; };
+  const inWeek = s => [...first.values()].filter(x => x.d >= s && x.d < week(s));
+  const cur = inWeek(start).sort((x, y) => x.d - y.d);
+  // Semaines finies : atteint (vert), manqué (rouge), ou avant la première écoute comptée (gris)
+  const firstEver = [...first.values()].reduce((m, x) => (!m || x.d < m ? x.d : m), null);
+  const history = [];
+  for (let i = 8; i >= 1; i--) {
+    const s = new Date(start);
+    s.setDate(s.getDate() - 7 * i);
+    const n = inWeek(s).length;
+    const before = !firstEver || week(s) <= weekStart(firstEver);
+    history.push({ start: s, count: n, ok: n >= WEEKLY_GOAL, before });
+  }
+  const done = cur.length >= WEEKLY_GOAL;
+  let streak = done ? 1 : 0;
+  for (let i = history.length - 1; i >= 0 && history[i].ok; i--) streak += 1;
+  const end = week(start);
+  return { count: cur.length, albums: cur.map(x => x.a), start, end, done, history, streak,
+    daysLeft: Math.ceil((end - now) / 86400000) };
+}
+
 // ---------- Durées ----------
 // 2505 → "41 min 45 s" ; 3840 → "1 h 4 min"
 function formatLength(sec) {
@@ -350,6 +399,8 @@ const Store = (function () {
       delete a.rating; delete a.review; delete a.reviewAt;
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
+      // Bacs : fonctionnalité retirée, on efface ce qui aurait été rangé
+      delete a.crates;
       // Album ajouté plusieurs fois : on garde le premier ajout (et les commentaires écrits)
       if (Array.isArray(a.logs) && a.logs.length > 1) {
         a.logs = a.logs.filter((log, i) => i === 0 || (log.review || "").trim());
@@ -599,6 +650,15 @@ const Store = (function () {
     has(album) {
       const found = findSame(load(), album);
       return !!(found && !found.nextUp);
+    },
+
+    // Plusieurs albums modifiés d'un coup, une seule écriture : { id: { champ: valeur } }
+    patchMany(patches) {
+      const albums = load();
+      let n = 0;
+      albums.forEach(a => { if (patches[a.id]) { Object.assign(a, patches[a.id]); n += 1; } });
+      if (n) save(albums);
+      return n;
     },
 
     // L'album déjà enregistré (collection ou next up) qui correspond, sinon null

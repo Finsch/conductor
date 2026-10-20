@@ -40,6 +40,7 @@ The interface is in French.
   - combinable: `jazz+fusion/ambient`.
 - **Play buttons on covers** (on hover): ▶ plays the album now (the queue is kept; pause/resume on the album playing), "3 lines +" adds it to the queue (green check for 2 s). With nothing playing, a single ▶ starts the album.
 - **Surprise me** (`R`): a random album.
+- **Colours**: browse the collection by the dominant colour of the covers (red, orange, yellow, green, turquoise, blue, purple, pink, brown, black, grey, white) — a foldable **Couleurs** section of the filters, one colour at a time (click again to remove it). The colour is computed once per cover, from the local copy in `datastorage/covers/` (so the folder must be authorised), and again when the cover changes.
 - **.txt export** of a search or filter result.
 - **No duplicates**: an album already in the collection (or in next up) is recognised when you add it again — same id, or a close name ("Remastered 2009", "[Deluxe]", "The Beatles" / "Beatles", "feat. …", "&" / "and") — and is not added twice; the add window offers to open its page instead.
 
@@ -47,7 +48,7 @@ The interface is in French.
 
 - **Player**: your own files (local folders or Navidrome) or, without files, 30-second Deezer previews.
 - **Tracklist** with ★ favourite tracks and per-track **lyrics** (see [Lyrics](#lyrics)).
-- **Sheet**: release date, label, genre, styles, family, moods ("ressenti"), custom tags; edit with **Modifier la fiche** (`E`), including the cover (URL, image from the PC, or the cover of your files).
+- **Sheet**: release date, label, genre, styles, family, moods ("ressenti"), custom tags; edit with **Modifier la fiche** (`E`), including the cover (URL, image from the PC, or the cover of your files). In that window, an image copied elsewhere can be pasted as the cover: **right-click the cover preview → Coller la pochette depuis le presse-papiers**, or `Ctrl + V` (Chrome may ask once for clipboard access for the right-click).
 - **Intensity** 1–10 and **tier S / A / B** (Masterpiece / Excellent work / Very good job — see `docs/tier-guide.md`).
 - **Listens**: count and date of the last one.
 - **You may also like**: 4 similar albums from your collection, refresh for others.
@@ -71,6 +72,7 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 - **Gapless playback**: the next track is preloaded 30 s before the end and starts exactly when the current one ends.
 - **Listen counting**: an album counts as listened when 90 % of its tracks were played (each at least halfway) or after 30 min of listening. Listening time per day feeds the journal.
 - **Volume** 0–20, remembered.
+- **Media keys and Windows media panel**: the keyboard's play/pause, next and previous keys work even when the browser is in the background, and Windows' volume / media panel shows the track, artist, album and cover (the local cover once `datastorage` is authorised, otherwise the online one).
 
 ### Full screen and karaoke
 
@@ -114,6 +116,8 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - **Calendar** of the month with the covers of each day's listens (today highlighted); per day: copy the list (`1. [[Artist]] - [[Album]]`) and open the day's note.
 - **Listening time chart** for the displayed month (with its own ‹ aujourd'hui › navigation), month total and today.
 - **This month**: most played album and artist, busiest day, top 3 genres (links to the search).
+- **Weekly goal**: discover 1 album a week (an album played with the player for the first time; weeks run Monday–Sunday). The journal's side column shows the progress, the days left, the last 8 weeks (green = reached), the current streak and the last two discoveries. Each time the app opens, while the goal isn't reached, a reminder with a red edge appears at the top of the collection (× to hide it).
+- **Ce jour-là**: at the top of the journal, one banner per album celebrating its release anniversary, stacked like notifications — "Aujourd'hui, *OK Computer* de Radiohead a 29 ans." — or, if none today, the next ones this week ("Demain, …"). Round anniversaries (10, 20, 25, 30… years) come first and are underlined. Only full release dates count. × hides a banner until the next day.
 - **A year ago**, **the last 12 months** heat map, **listening history** (10 per page, "aujourd'hui" / "hier").
 - **Daily notes** in Markdown, Obsidian style: headings, bold / italic / underline / highlight, nested lists, tasks, `[[wiki links]]` to albums and artists (with play / queue buttons), `#tags`. Editor shortcuts (`Alt+1…6`, `Ctrl+B/I/U`, `Tab`, `Ctrl+E` preview, `I` to write), autosave, copy, search in notes, **today's note** button (`J`).
 - Notes are also written as **Markdown files**, one per day, in `datastorage/journal-entries/` — editable in Obsidian; a file changed by hand is picked up at the next start.
@@ -179,6 +183,8 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `Alt + I` · `Alt + J` · `Alt + U` · `Alt + A` | Insights · Journal · Next up · audio-files |
 | `Alt + G` | Collection |
 | `Alt + C` · `Alt + M` · `Alt + H` | Fiches à compléter · Manuals · Listening history (journal) |
+| `Alt + T` | Today's journal note (opened or created), from any page |
+| `Alt + S` | Search the journal notes (journal page) |
 | `L` | ★ the track playing (favourite track) |
 | `Shift + F` | ♥ favourite album (album page) |
 | `+` | Add the album to the queue (album page); starts playback if nothing plays |

@@ -410,6 +410,25 @@ const Disk = window.top !== window ? frameDisk() : (function () {
 
   // ---------- Connexion au dossier ----------
 
+  // Fichier d'une pochette locale (datastorage/covers/…), lu par le dossier autorisé
+  async function coverFile(path) {
+    if (state !== "ready" || !handle || !path) return null;
+    const m = String(path).split("?")[0].match(/datastorage\/covers\/([^/]+)$/);
+    if (!m) return null;
+    try {
+      const dir = await handle.getDirectoryHandle(COVERS_DIR);
+      return await (await dir.getFileHandle(decodeURIComponent(m[1]))).getFile();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Pochette locale en adresse « blob: » (le panneau multimédia de Windows ne lit pas les file://)
+  async function coverBlob(path) {
+    const file = await coverFile(path);
+    return file ? URL.createObjectURL(file) : "";
+  }
+
   async function connected() {
     state = "ready";
     writeError = "";
@@ -418,6 +437,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
     // Le fichier est plus ancien que le navigateur (ou absent) : on l'écrit
     if (dirty || !window.CONDUCTOR_DATA) await writeNow();
     await cacheCovers();
+    if (typeof CoverColors !== "undefined") CoverColors.run();
   }
 
   async function choose() {
@@ -521,7 +541,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
   return {
     init, changed, choose, allow, writeNow, cacheCovers, retryCovers,
     writeLyrics, lyricsPath, pendingLyricsFor, safeName,
-    readLyrics, readSynced, writeSynced,
+    readLyrics, readSynced, writeSynced, coverBlob, coverFile,
     state: () => state
   };
 })();
@@ -535,6 +555,7 @@ function frameDisk() {
   const safeName = id => String(id).replace(/[^a-z0-9_-]/gi, "_");
   return {
     init() {},
+    coverBlob: () => Promise.resolve(""),
     changed() {},                       // l'enveloppe voit la modification et l'écrit
     writeNow: () => Promise.resolve(),
     cacheCovers: () => Promise.resolve(),

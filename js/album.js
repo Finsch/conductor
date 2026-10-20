@@ -248,6 +248,12 @@
       img.onerror = () => img.remove();
       cover.appendChild(img);
     }
+    // Copier [[Artiste]] - [[Album]] : petit bouton en haut à gauche (au survol)
+    if (typeof coverCopyButton === "function") {
+      const wrap = cover.parentElement;
+      wrap.querySelectorAll(":scope > .cover-copy").forEach(b => b.remove());
+      wrap.appendChild(coverCopyButton(album));
+    }
 
     // Fiche : genre et styles cliquables (= chercher dans la collection)
     const links = list => {
@@ -770,8 +776,8 @@
 
   $("e-cover").addEventListener("input", e => setCoverPreview(e.target.value.trim()));
 
-  // Image (fichier ou blob) recadrée en carré, réduite à 600 px, enregistrée avec l'album
-  function useImage(blob) {
+  // Image (fichier ou blob) recadrée en carré, réduite à 600 px (JPEG en data URL)
+  function squareImage(blob) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -781,15 +787,70 @@
         canvas.width = canvas.height = size;
         canvas.getContext("2d").drawImage(img,
           (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
-        setCoverPreview(canvas.toDataURL("image/jpeg", 0.85));
-        $("e-cover").value = "";
         URL.revokeObjectURL(img.src);
-        resolve();
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
       };
       img.onerror = reject;
       img.src = URL.createObjectURL(blob);
     });
   }
+
+  // Dans la fenêtre « Modifier la fiche » : aperçu, enregistré avec « Enregistrer »
+  function useImage(blob) {
+    return squareImage(blob).then(url => {
+      setCoverPreview(url);
+      $("e-cover").value = "";
+    });
+  }
+
+  // ---------- Coller une pochette (fenêtre « Modifier la fiche » seulement) ----------
+  // Clic droit sur l'aperçu de la pochette → « Coller… », ou Ctrl + V dans la fenêtre :
+  // l'image va dans l'aperçu, enregistrée avec « Enregistrer ».
+  const coverStatus = text => { const st = $("e-cover-status"); st.hidden = !text; st.textContent = text || ""; };
+
+  async function pasteCoverFromClipboard() {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find(t => t.startsWith("image/"));
+        if (type) { await useImage(await item.getType(type)); coverStatus(""); return; }
+      }
+      coverStatus("Pas d'image dans le presse-papiers.");
+    } catch (e) {
+      coverStatus("Presse-papiers inaccessible : autorisez-le, ou utilisez Ctrl + V.");
+    }
+  }
+
+  // Petit menu au clic droit sur l'aperçu (placé dans la fenêtre, pour passer au-dessus)
+  let coverMenu = null;
+  function closeCoverMenu() { if (coverMenu) { coverMenu.remove(); coverMenu = null; } }
+  $("e-cover-preview").addEventListener("contextmenu", e => {
+    e.preventDefault();
+    closeCoverMenu();
+    coverMenu = el("div", "ctx-menu");
+    coverMenu.setAttribute("role", "menu");
+    const item = el("button", "ctx-item", "Coller la pochette depuis le presse-papiers");
+    item.type = "button";
+    item.setAttribute("role", "menuitem");
+    item.addEventListener("click", () => { closeCoverMenu(); pasteCoverFromClipboard(); });
+    coverMenu.append(item, el("p", "ctx-hint", "ou Ctrl + V dans cette fenêtre"));
+    dialog.appendChild(coverMenu);
+    const w = coverMenu.offsetWidth, h = coverMenu.offsetHeight;
+    coverMenu.style.left = Math.min(e.clientX, innerWidth - w - 8) + "px";
+    coverMenu.style.top = Math.min(e.clientY, innerHeight - h - 8) + "px";
+    item.focus();
+  });
+  dialog.addEventListener("pointerdown", e => { if (coverMenu && !coverMenu.contains(e.target)) closeCoverMenu(); });
+  dialog.addEventListener("keydown", e => { if (e.key === "Escape" && coverMenu) { e.preventDefault(); e.stopPropagation(); closeCoverMenu(); } });
+  dialog.addEventListener("close", closeCoverMenu);
+
+  // Ctrl + V dans la fenêtre : une image collée devient l'aperçu (le texte se colle normalement)
+  dialog.addEventListener("paste", e => {
+    const file = [...(e.clipboardData ? e.clipboardData.files : [])].find(f => f.type.startsWith("image/"));
+    if (!file) return;
+    e.preventDefault();
+    useImage(file).then(() => coverStatus(""));
+  });
 
   $("e-cover-file").addEventListener("change", e => {
     if (e.target.files[0]) useImage(e.target.files[0]);

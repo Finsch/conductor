@@ -111,3 +111,40 @@ const coverActions = (function () {
 
   return coverActions;
 })();
+
+// ---------- Copier [[Artiste]] - [[Album]] (petit bouton en haut à gauche, au survol) ----------
+// Collection (vue grille), page artiste, page album.
+function coverCopyButton(album) {
+  const COPY = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 4.5v-.7a1.8 1.8 0 0 0-1.8-1.8H5.3a1.8 1.8 0 0 0-1.8 1.8v6.4a1.8 1.8 0 0 0 1.8 1.8h.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const DONE = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "cover-copy";
+  b.innerHTML = COPY;
+  const text = () => "[[" + album.artist + "]] - [[" + album.title + "]]";
+  b.title = "Copier " + text();
+  b.setAttribute("aria-label", "Copier " + text());
+  let timer = 0;
+  const done = () => {
+    b.innerHTML = DONE;
+    b.classList.add("is-done");
+    clearTimeout(timer);
+    timer = setTimeout(() => { b.innerHTML = COPY; b.classList.remove("is-done"); }, 1500);
+    if (window.Shortcuts && Shortcuts.flash) Shortcuts.flash("Copié : " + text());
+  };
+  b.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fallback = () => {
+      const t = document.createElement("textarea");
+      t.value = text();
+      document.body.appendChild(t);
+      t.select();
+      try { document.execCommand("copy"); done(); } catch (err) { /* copie impossible */ }
+      t.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text()).then(done, fallback);
+    else fallback();
+  });
+  return b;
+}

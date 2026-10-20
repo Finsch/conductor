@@ -27,10 +27,14 @@
   <script src="js/navidrome.js"></script>
   <!-- Écriture dans datastorage (le choix du dossier n'est permis qu'ici) -->
   <script src="js/disk.js"></script>
+  <script src="js/colors.js"></script>
   <script src="js/sdcard.js"></script>
   <script src="js/karaoke.js"></script>
   <script src="js/playback.js"></script>
   <script>
+    // Ouverture de l'application : repère pour les messages affichés une fois par ouverture
+    try { sessionStorage.setItem("conductor01.appOpen", String(Date.now())); } catch (e) {}
+
     // Page à afficher : celle de l'adresse (#…), sinon la collection.
     // Seules les pages du site sont acceptées.
     (function () {

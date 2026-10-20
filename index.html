@@ -30,6 +30,8 @@
   <main class="page home">
 
     <div class="home-main">
+      <div class="goal-notice" id="goal-notice" hidden></div>
+
       <div class="toolbar">
         <p class="stats" id="stats"></p>
         <div class="toolbar-right">
@@ -101,6 +103,15 @@
       <section class="filter-group">
         <h2 class="filter-title">Décennies</h2>
         <div class="chip-list" id="decade-list"></div>
+      </section>
+
+      <section class="filter-group color-group" id="color-group">
+        <h2 class="filter-title">
+          <button type="button" class="filter-fold" id="color-head" aria-expanded="false" aria-controls="color-list">
+            <span class="fold-arrow" aria-hidden="true">›</span>Couleurs <span class="count" id="color-picked"></span>
+          </button>
+        </h2>
+        <div class="color-list" id="color-list" hidden></div>
       </section>
 
       <section class="filter-group" id="files-group" hidden>
@@ -202,6 +213,7 @@
   <script src="js/add-album.js"></script>
   <script src="js/cover-actions.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/goal-notice.js"></script>
   <script src="js/volume.js"></script>
   <script src="js/playback.js"></script>
   <script src="js/shortcuts.js"></script>

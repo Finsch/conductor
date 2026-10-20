@@ -1834,6 +1834,43 @@ div.in-col:hover .in-col-bar {
 
 .filters {
   font-size: 14px;
+  /* défile seule, à côté de la grille ; barre de défilement presque invisible */
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-right: -8px;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+/* Mini-lecteur affiché (240 px + 20 px du bas) : la colonne s'arrête au-dessus */
+body.has-mini-player .filters {
+  max-height: calc(100vh - 88px - 296px);
+}
+
+.filters:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.07) transparent;
+}
+
+.filters::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filters::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.filters:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .filter-group + .filter-group {
@@ -2170,7 +2207,12 @@ a.album-row:hover .row-title {
   }
 
   /* Sur petit écran, les filtres s'ouvrent sous la barre d'outils */
-  .filters {
+  .filters,
+  body.has-mini-player .filters {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    margin-right: 0;
     display: none;
     order: -1;
     margin-bottom: 24px;
@@ -3340,6 +3382,49 @@ body.has-mini-player {
 
 .mq-clear[hidden] {
   display: none;
+}
+
+.mq-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mq-copy {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.mq-copy:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.mq-copy[hidden] {
+  display: none;
+}
+
+.mq-copy svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mq-copy .icon-done,
+.mq-copy.is-done .icon-copy {
+  display: none;
+}
+
+.mq-copy.is-done .icon-done {
+  display: block;
+  color: #9ccc8a;
 }
 
 .mq-sum {
@@ -7317,4 +7402,429 @@ a.wr-rec:hover {
 /* Alt + H : l'historique du journal, sous l'en-tête fixe */
 #historique {
   scroll-margin-top: 84px;
+}
+
+/* ---------- Ce jour-là (journal) : une bannière par album, empilées ---------- */
+
+.today-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0 6px;
+}
+
+.today-stack[hidden] {
+  display: none;
+}
+
+.today-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid #e5c07b;
+  border-radius: 4px;
+  animation: today-in 0.25s ease-out;
+}
+
+@keyframes today-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.today-kicker {
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.today-item {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.today-item:hover em {
+  text-decoration: underline;
+}
+
+.today-item em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.today-cover {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  background: var(--cover-placeholder);
+  border-radius: 2px;
+}
+
+.today-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.today-close {
+  flex: none;
+}
+
+.today-round {
+  border-bottom: 2px solid #e5c07b;
+}
+
+/* Journal : courbe d'intensité */
+.jr-inten {
+  margin-top: 32px;
+}
+
+.jr-avgline {
+  stroke: #e5c07b;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.7;
+}
+
+.jr-ibar {
+  fill: #555;
+  transition: fill 0.12s;
+}
+
+.jr-ibar.is-hover {
+  fill: #8a8a8a;
+}
+
+.jr-ibar.is-today {
+  fill: var(--text);
+}
+
+/* ---------- Filtre « Couleurs » (pochettes) : section repliable ---------- */
+
+.filter-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.filter-fold:hover {
+  color: var(--text);
+}
+
+.fold-arrow {
+  display: inline-block;
+  width: 10px;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+
+.color-group.is-open .fold-arrow {
+  transform: rotate(90deg);
+}
+
+.filter-fold .count {
+  font-weight: 400;
+  color: var(--text);
+}
+
+.color-list {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px 6px;
+}
+
+.color-list[hidden] {
+  display: none;
+}
+
+.color-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-chip:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.color-chip:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.color-dot {
+  width: 20px;
+  height: 20px;
+  background: var(--swatch);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+}
+
+.color-chip.is-active .color-dot {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
+}
+
+.color-n {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.color-chip.is-active .color-n {
+  color: var(--text);
+}
+
+.color-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Menu au clic droit (pochette de la page album) */
+.ctx-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 240px;
+  padding: 4px;
+  background: #1b1b1b;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.ctx-item:hover,
+.ctx-item:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+
+.ctx-hint {
+  margin: 2px 10px 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- Journal : objectif de la semaine ---------- */
+
+.gl-card .block-title {
+  margin: 0;
+}
+
+.gl-list {
+  margin-top: 12px;
+}
+
+.gl-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gl-bar {
+  height: 6px;
+  margin: 8px 0 6px;
+  overflow: hidden;
+  background: #3a3a3a;
+  border-radius: 3px;
+}
+
+.gl-bar span {
+  display: block;
+  height: 100%;
+  background: #e07c6c;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.gl-item.is-done .gl-bar span {
+  background: #9ccc8a;
+}
+
+.gl-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gl-status b {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gl-ok {
+  color: #9ccc8a;
+}
+
+.gl-hist {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.gl-sq {
+  width: 10px;
+  height: 10px;
+  background: #3a3a3a;
+  border-radius: 2px;
+}
+
+.gl-sq.is-ok {
+  background: #9ccc8a;
+}
+
+.gl-sq.is-missed {
+  background: #e07c6c;
+}
+
+.gl-sq.is-current {
+  box-shadow: 0 0 0 1px var(--text-muted);
+}
+
+.gl-streak {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gl-found {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.gl-found a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.gl-found a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Collection : rappel de l'objectif (une fois par ouverture) ---------- */
+
+.goal-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 10px 10px 10px 14px;
+  font-size: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid #e07c6c;
+  border-radius: 4px;
+  animation: today-in 0.25s ease-out;
+}
+
+.goal-notice[hidden] {
+  display: none;
+}
+
+.goal-text {
+  flex: 1;
+}
+
+.goal-kicker {
+  margin-right: 6px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.goal-link {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Copier [[Artiste]] - [[Album]] : en haut à gauche de la pochette, au survol */
+.cover-copy {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.78);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.cover-copy svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cover-copy:hover {
+  background: rgba(20, 20, 20, 0.92);
+}
+
+.cover-copy.is-done {
+  color: #9ccc8a;
+}
+
+.album-card:hover .cover-copy,
+.album-art-wrap:hover .cover-copy,
+.cover-copy:focus-visible,
+.cover-copy.is-done {
+  visibility: visible;
+}
+
+.album-art-wrap .cover-copy {
+  top: 12px;
+  left: 12px;
+}
+
+@media (hover: none) {
+  .cover-copy {
+    visibility: visible;
+  }
 }

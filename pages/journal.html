@@ -44,6 +44,9 @@
         </div>
         <p class="album-facts">Vos écoutes et vos notes, jour après jour.</p>
 
+        <!-- Ce jour-là : anniversaires de sortie (js/today.js) -->
+        <div class="today-stack" id="today-stack" hidden></div>
+
         <div class="jr-month-head">
           <h2 class="jr-month" id="jr-month"></h2>
           <div class="jr-nav">
@@ -68,9 +71,29 @@
           <p class="hint jr-time-sum" id="jr-time-sum"></p>
           <div class="jr-chart" id="jr-chart" role="img"></div>
         </section>
+
+        <!-- Intensité moyenne par jour (mois du graphe ci-dessus) -->
+        <section class="jr-time jr-inten">
+          <div class="jr-time-head">
+            <h2 class="block-title" id="jr-inten-title">intensité</h2>
+            <div class="jr-nav">
+              <button type="button" class="jr-arrow" id="jr-inten-prev" aria-label="Mois précédent (intensité)" title="Mois précédent">‹</button>
+              <button type="button" class="jr-today-btn" id="jr-inten-today">aujourd'hui</button>
+              <button type="button" class="jr-arrow" id="jr-inten-next" aria-label="Mois suivant (intensité)" title="Mois suivant">›</button>
+            </div>
+          </div>
+          <p class="hint jr-time-sum" id="jr-inten-sum"></p>
+          <div class="jr-chart" id="jr-inten-chart" role="img"></div>
+        </section>
       </div>
 
       <aside class="jr-side">
+        <!-- Objectif de la semaine (js/goals.js) -->
+        <section class="jr-card gl-card" id="gl-card">
+          <h2 class="block-title">objectif</h2>
+          <div class="gl-list" id="gl-list"></div>
+        </section>
+
         <section class="jr-card" id="jr-ago-card" hidden>
           <h2 class="block-title">il y a un an, vous écoutiez…</h2>
           <div id="jr-ago"></div>
@@ -146,6 +169,8 @@
   <script src="../js/navidrome.js"></script>
   <script src="../js/disk.js"></script>
   <script src="../js/journal.js"></script>
+  <script src="../js/today.js"></script>
+  <script src="../js/goals.js"></script>
   <script src="../js/volume.js"></script>
   <script src="../js/playback.js"></script>
   <script src="../js/shortcuts.js"></script>

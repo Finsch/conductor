@@ -175,6 +175,82 @@
   function emit() {
     document.dispatchEvent(new CustomEvent("playback:change"));
     broadcast();
+    mediaSession();
+  }
+
+  // ---------- Touches multimédia du clavier, panneau de Windows (Media Session) ----------
+  // Lecture / pause, morceau suivant / précédent : marchent même navigateur en arrière-plan.
+  // Le panneau de son de Windows affiche titre, artiste, album et pochette.
+  const MS = "mediaSession" in navigator ? navigator.mediaSession : null;
+  let msKey = "";
+  const msCovers = new Map();   // albumId → adresse blob: de la pochette locale
+
+  function msArtwork(a) {
+    const out = [];
+    const add = src => { if (src && !out.some(x => x.src === src)) out.push({ src, sizes: "600x600", type: "image/jpeg" }); };
+    add(msCovers.get(a.id));
+    if (a.coverRemote && /^https?:/.test(a.coverRemote)) add(a.coverRemote);
+    if (/^https?:/.test(a.cover || "")) add(a.cover);
+    if (a.serverCover && typeof Server !== "undefined" && Server.isConfigured()) {
+      try { add(new URL(Server.coverUrl(a.serverCover, 600), location.href).href); } catch (e) {}
+    }
+    return out;
+  }
+
+  function msMetadata() {
+    const t = state.tracks[state.index] || {};
+    const a = Object.assign({ id: state.albumId, cover: state.cover, serverCover: state.serverCover }, Store.get(state.albumId) || {});
+    try {
+      MS.metadata = new MediaMetadata({
+        title: t.title || "",
+        artist: state.artist || a.artist || "",
+        album: a.title || state.title || "",
+        artwork: msArtwork(a)
+      });
+    } catch (e) { /* navigateur sans MediaMetadata */ }
+  }
+
+  function mediaSession() {
+    if (!MS) return;
+    if (!state) { MS.metadata = null; MS.playbackState = "none"; msKey = ""; return; }
+    MS.playbackState = audio.paused ? "paused" : "playing";
+    const key = state.albumId + "|" + state.index;
+    if (key === msKey) return;
+    msKey = key;
+    msMetadata();
+    // Pochette locale : lue dans datastorage, puis le panneau est mis à jour
+    const id = state.albumId;
+    if (!msCovers.has(id) && typeof Disk !== "undefined" && Disk.coverBlob) {
+      msCovers.set(id, "");
+      const a = Store.get(id);
+      Disk.coverBlob((a && a.cover) || state.cover).then(url => {
+        if (!url) { msCovers.delete(id); return; }
+        msCovers.set(id, url);
+        if (state && state.albumId === id) msMetadata();
+      });
+    }
+  }
+
+  if (MS) {
+    const on = (action, fn) => { try { MS.setActionHandler(action, fn); } catch (e) { /* action inconnue */ } };
+    on("play", () => { if (state && audio.paused) toggle(); });
+    on("pause", () => { if (state && !audio.paused) toggle(); });
+    on("previoustrack", () => prev());
+    on("nexttrack", () => next());
+    on("seekto", d => { if (d && isFinite(d.seekTime)) seek(d.seekTime); });
+    on("seekbackward", d => seek(audio.currentTime - ((d && d.seekOffset) || 10)));
+    on("seekforward", d => seek(audio.currentTime + ((d && d.seekOffset) || 10)));
+    on("stop", () => { if (state && !audio.paused) toggle(); });
+    ["play", "pause"].forEach(ev => audio.addEventListener(ev, () => { if (state) MS.playbackState = audio.paused ? "paused" : "playing"; }));
+    let lastPos = 0;
+    audio.addEventListener("timeupdate", () => {
+      const now = Date.now();
+      if (now - lastPos < 1000 || !MS.setPositionState) return;
+      lastPos = now;
+      const dur = duration();
+      if (!state || !dur || !isFinite(dur)) return;
+      try { MS.setPositionState({ duration: dur, position: Math.min(audio.currentTime, dur), playbackRate: 1 }); } catch (e) {}
+    });
   }
 
   // ---------- Échanges avec la page du cadre ----------
@@ -1272,9 +1348,13 @@
     panel.setAttribute("aria-label", "File d'attente");
     panel.innerHTML =
       '<div class="mq-head"><span class="mq-title">File d\'attente</span>' +
-      '<button type="button" class="mq-clear">Vider</button></div>' +
+      '<div class="mq-actions"><button type="button" class="mq-copy" title="Copier la file d\'attente (1. [[Artiste]] - [[Album]])" aria-label="Copier la file d\'attente">' +
+      '<svg class="icon-copy" viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 4.5v-.7a1.8 1.8 0 0 0-1.8-1.8H5.3a1.8 1.8 0 0 0-1.8 1.8v6.4a1.8 1.8 0 0 0 1.8 1.8h.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+      '<svg class="icon-done" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</button><button type="button" class="mq-clear">Vider</button></div></div>' +
       '<p class="mq-sum"></p><div class="mq-list"></div>';
     panel.querySelector(".mq-clear").addEventListener("click", clearQueue);
+    panel.querySelector(".mq-copy").addEventListener("click", copyQueue);
     document.body.appendChild(panel);
     document.addEventListener("pointerdown", e => {
       if (!panel.hidden && !panel.contains(e.target) && !mp.querySelector(".mp-queue").contains(e.target) &&
@@ -1316,6 +1396,21 @@
     return r;
   }
 
+  // Copier la file : l'album en cours puis la suite, au format du journal
+  function copyQueue() {
+    const ids = (state ? [state.albumId] : []).concat(queue);
+    const lines = ids.map(id => Store.get(id)).filter(Boolean)
+      .map((a, i) => (i + 1) + ". [[" + a.artist + "]] - [[" + a.title + "]]");
+    if (!lines.length) return;
+    const btn = panel.querySelector(".mq-copy");
+    const done = () => {
+      btn.classList.add("is-done");
+      setTimeout(() => btn.classList.remove("is-done"), 1500);
+      shellFlash("File d'attente copiée : " + lines.length + " album" + (lines.length > 1 ? "s" : ""));
+    };
+    navigator.clipboard.writeText(lines.join("\n")).then(done, () => shellFlash("Copie impossible"));
+  }
+
   let dragFrom = -1;
 
   function renderPanel() {
@@ -1349,6 +1444,7 @@
     list.replaceChildren(...items);
     panel.querySelector(".mq-sum").textContent = "Total " + hm(total) + " · restant " + hm(remaining);
     panel.querySelector(".mq-clear").hidden = !albums.length;
+    panel.querySelector(".mq-copy").hidden = !state && !albums.length;
 
     // Glisser-déposer pour réordonner
     list.querySelectorAll(".mq-item[draggable]").forEach(r => {
@@ -1384,7 +1480,8 @@
   }
   // Mêmes touches quand le focus est dans l'enveloppe (après un clic sur le mini-lecteur)
   const ALT_PAGES = { i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
-    c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html" };
+    c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html",
+    t: "pages/journal.html?note=today" };
   document.addEventListener("keydown", e => {
     const t = e.target;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
@@ -1393,7 +1490,7 @@
       e.preventDefault();
       const dest = ALT_PAGES[e.key.toLowerCase()];
       fsOpen(false);
-      if (!framePage.path.startsWith(dest.split("#")[0]) || dest.includes("#")) navigate(dest);
+      if (!framePage.path.startsWith(dest.split("#")[0]) || /[#?]/.test(dest)) navigate(dest);
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;

@@ -31,6 +31,8 @@
           genres: [...state.genres],
           openFamilies: [...state.openFamilies],
           decades: [...state.decades],
+          colors: [...state.colors],
+          colorsOpen: state.colorsOpen,
           filesOnly: state.filesOnly,
           intensities: [...state.intensities],
           tiers: [...state.tiers],
@@ -49,6 +51,8 @@
     genres: new Set(list(saved.genres)),              // clés "famille|genre" (voir genreKey)
     openFamilies: new Set(list(saved.openFamilies)),  // familles dépliées dans le filtre
     decades: new Set(list(saved.decades)),
+    colors: new Set(list(saved.colors).slice(0, 1)),   // couleur de pochette choisie (une seule)
+    colorsOpen: !!saved.colorsOpen,               // section « Couleurs » dépliée
     filesOnly: !!saved.filesOnly,
     favOnly: false,   // « Albums favoris » : jamais repris d'une visite à l'autre (touche F)
     intensities: new Set(list(saved.intensities)),
@@ -173,6 +177,7 @@
     if (skip !== "tier" && state.tiers.size && !state.tiers.has(a.tier)) return false;
     if (skip !== "genre" && state.genres.size && !state.genres.has(genreKey(a))) return false;
     if (skip !== "decade" && state.decades.size && !state.decades.has(decadeOf(a))) return false;
+    if (skip !== "color" && state.colors.size && !state.colors.has(a.coverColor)) return false;
     return true;
   }
 
@@ -196,6 +201,42 @@
   }
 
   const DECADES = ["1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"];
+
+  // Couleurs de pochette : section repliable ; pastilles cliquables (une à la fois)
+  function renderColors(base) {
+    const group = document.getElementById("color-group");
+    const head = document.getElementById("color-head");
+    const body = document.getElementById("color-list");
+    const known = base.filter(a => a.coverColor).length;
+    head.setAttribute("aria-expanded", String(state.colorsOpen));
+    group.classList.toggle("is-open", state.colorsOpen);
+    document.getElementById("color-picked").textContent = state.colors.size ? String(state.colors.size) : "";
+    body.hidden = !state.colorsOpen;
+    if (!state.colorsOpen) return;
+    if (!known) {
+      body.replaceChildren(el("p", "hint color-hint", "Les couleurs se calculent à partir des pochettes locales : autorisez le dossier datastorage (bandeau en bas à gauche)."));
+      return;
+    }
+    body.replaceChildren(...COVER_COLORS.map(([name, hex]) => {
+      const n = base.filter(a => matchesFilters(a, "color") && a.coverColor === name).length;
+      const on = state.colors.has(name);
+      const b = el("button", "color-chip" + (on ? " is-active" : ""));
+      b.type = "button";
+      b.style.setProperty("--swatch", hex);
+      b.title = name + " · " + n + " album" + (n > 1 ? "s" : "");
+      b.setAttribute("aria-label", b.title);
+      b.setAttribute("aria-pressed", String(on));
+      b.disabled = !n && !on;
+      b.append(el("span", "color-dot"), el("span", "color-n", String(n)));
+      b.addEventListener("click", () => {
+        // Une seule couleur à la fois ; recliquer la retire
+        state.colors.clear();
+        if (!on) state.colors.add(name);
+        refresh();
+      });
+      return b;
+    }));
+  }
 
   function renderFilters(all, q) {
     // Tri
@@ -370,7 +411,8 @@
       return b;
     }));
 
-    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.filesOnly && !state.favOnly &&
+    renderColors(base);
+    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.colors.size && !state.filesOnly && !state.favOnly &&
       !state.intensities.size && !state.tiers.size && !state.letter;
   }
 
@@ -387,6 +429,7 @@
   resetBtn.addEventListener("click", () => {
     state.genres.clear();
     state.decades.clear();
+    state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();
@@ -400,6 +443,12 @@
   filtersToggle.addEventListener("click", () => {
     const open = filtersPanel.classList.toggle("is-open");
     filtersToggle.setAttribute("aria-expanded", String(open));
+  });
+
+  document.getElementById("color-head").addEventListener("click", () => {
+    state.colorsOpen = !state.colorsOpen;
+    savePrefs();
+    render();
   });
 
   // ---------- Vue grille / liste ----------
@@ -421,6 +470,7 @@
       cover.appendChild(star);
     }
     cover.appendChild(coverActions(album));
+    if (cls === "album-cover") cover.appendChild(coverCopyButton(album));   // vue grille seulement
     // Pas de pochette en ligne : celle de vos fichiers
     const src = album.cover || (album.serverCover && Server.isConfigured() ? Server.coverUrl(album.serverCover, 600) : "");
     if (src) {
@@ -727,7 +777,7 @@
 
     // Export .txt : seulement après une recherche ou un filtre
     lastResults = albums;
-    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.filesOnly || state.favOnly ||
+    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.colors.size || state.filesOnly || state.favOnly ||
       state.intensities.size || state.letter) || !albums.length;
 
     viewBtns.forEach(b => {
@@ -777,6 +827,7 @@
   if (fam || genre || decade || intensity || params.get("reset") || params.get("accueil")) {
     state.genres.clear();
     state.decades.clear();
+    state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();
@@ -816,6 +867,7 @@
     state.sort = "added-desc";   // tri par défaut : ajouts récents
     state.genres.clear();
     state.decades.clear();
+    state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
     state.intensities.clear();

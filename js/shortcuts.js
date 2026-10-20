@@ -44,6 +44,7 @@
       ["Alt + I", "Insights"],
       ["Alt + J", "Journal"],
       ["Alt + H", "Historique des écoutes (journal)"],
+      ["Alt + T", "Note du jour (journal), depuis n'importe quelle page"],
       ["Alt + U", "Next up"],
       ["Alt + A", "audio-files (vos fichiers)"],
       ["Alt + C", "Fiches à compléter"],
@@ -82,7 +83,8 @@
       ["Maj + F", "♥ Album favori (page album)"],
       ["+", "Ajouter l'album à la file d'attente (page album)"],
       ["C", "Copier [[Artiste]] - [[Album]] de l'album en cours"],
-      ["J", "Note du jour (page journal)"]
+      ["J", "Note du jour (page journal)"],
+      ["Alt + S", "Rechercher dans les notes (page journal)"]
     ]],
     ["Aide", [
       ["?", "Afficher ces raccourcis"]
@@ -272,7 +274,23 @@
     }
     // Alt + I / J / U / A : insights, journal, next up, audio-files
     if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      const dest = ALT_PAGES[e.key.toLowerCase()];
+      const k = e.key.toLowerCase();
+      const onJournal = /\/pages\/journal\.html$/.test(location.pathname);
+      // Alt + T : la note du jour (ouverte ou créée), depuis n'importe quelle page
+      if (k === "t") {
+        e.preventDefault();
+        const b = onJournal && document.getElementById("today-note");
+        if (b) b.click();
+        else location.href = ROOT + "pages/journal.html?note=today";
+        return;
+      }
+      // Alt + S : recherche dans les notes (page journal)
+      if (k === "s" && onJournal) {
+        const b = document.getElementById("jr-search-btn");
+        if (b) { e.preventDefault(); b.click(); }
+        return;
+      }
+      const dest = ALT_PAGES[k];
       if (dest) {
         e.preventDefault();
         const [path, hash] = dest.split("#");
@@ -614,5 +632,5 @@
   }
   document.addEventListener("DOMContentLoaded", wrappedBack);
 
-  window.Shortcuts = { openHelp };
+  window.Shortcuts = { openHelp, flash };
 })();

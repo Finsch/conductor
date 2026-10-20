@@ -114,6 +114,8 @@
     renderCalendar(byDayOf(plays));
     cy = year; cm = month;   // le graphe suit le mois du calendrier
     renderTime();
+    iy = year; im = month;   // l'intensité aussi (elle a ses propres boutons)
+    renderIntensity();
     renderAgo(plays);
     renderHeat(plays);
     renderStats(inMonth, plays, isNow);
@@ -417,8 +419,135 @@
     chart.setAttribute("aria-label", "Temps d'écoute par jour, " + MONTHS[cm] + " " + cy + " : " + hm(monthTotal) + " au total.");
   }
 
+  // ---------- Intensité moyenne par jour (barres) ----------
+  // Moyenne de l'intensité (1 à 10) des albums écoutés ce jour-là ; elle se met à
+  // jour après chaque écoute comptée. Ses propres boutons ‹ aujourd'hui ›.
+
+  const fmt1 = v => (Math.round(v * 10) / 10).toString().replace(".", ",");
+  let iy = year, im = month;
+  function setIntenMonth(y, m) {
+    const d = new Date(y, m, 1);
+    iy = d.getFullYear();
+    im = d.getMonth();
+    renderIntensity();
+  }
+  $("jr-inten-prev").addEventListener("click", () => setIntenMonth(iy, im - 1));
+  $("jr-inten-next").addEventListener("click", () => setIntenMonth(iy, im + 1));
+  $("jr-inten-today").addEventListener("click", () => setIntenMonth(today.getFullYear(), today.getMonth()));
+
+  function renderIntensity() {
+    const isNow = iy === today.getFullYear() && im === today.getMonth();
+    $("jr-inten-today").disabled = isNow;
+    const SPAN = new Date(iy, im + 1, 0).getDate();
+    const byDay = new Map();
+    const played = new Set();   // jours avec au moins une écoute (même sans intensité)
+    allPlays().forEach(p => {
+      if (p.start.getFullYear() !== iy || p.start.getMonth() !== im) return;
+      played.add(p.start.getDate());
+      const v = Number(p.album.aggressivity);
+      if (!(v > 0)) return;
+      const k = p.start.getDate();
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(v);
+    });
+    const days = [];
+    for (let d = 1; d <= SPAN; d++) {
+      const list = byDay.get(d) || [];
+      days.push({ date: new Date(iy, im, d), n: list.length, v: list.length ? list.reduce((s, x) => s + x, 0) / list.length : null });
+    }
+    const all = [].concat(...[...byDay.values()]);
+    const monthAvg = all.length ? all.reduce((s, x) => s + x, 0) / all.length : null;
+    const todayD = isNow ? days[today.getDate() - 1] : null;
+
+    $("jr-inten-title").textContent = "intensité · " + MONTHS[im] + " " + iy;
+    const sum = monthAvg == null ? [el("span", null, "pas d'album écouté avec une intensité ce mois-ci")]
+      : [el("span", null, "moyenne du mois : "), el("b", null, fmt1(monthAvg) + " / 10")];
+    if (todayD && todayD.v != null) sum.push(el("span", null, " · aujourd'hui : "), el("b", null, fmt1(todayD.v)),
+      el("span", null, " (" + todayD.n + " album" + (todayD.n > 1 ? "s" : "") + ")"));
+    $("jr-inten-sum").replaceChildren(...sum);
+
+    const chart = $("jr-inten-chart");
+    const W = Math.max(300, chart.clientWidth || 700), H = 150;
+    const PAD_T = 18, PAD_B = 24, PAD_L = 6, PAD_R = 6;
+    const slot = (W - PAD_L - PAD_R) / SPAN;
+    const bw = Math.max(3, Math.min(16, slot * 0.62));
+    const cx = i => PAD_L + slot * (i + 0.5);
+    const y = v => PAD_T + (1 - v / 10) * (H - PAD_T - PAD_B);   // échelle fixe 0 → 10
+    const base = y(0);
+
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+    const mk = (tag, attrs, text) => {
+      const n = document.createElementNS(NS, tag);
+      Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+      if (text != null) n.textContent = text;
+      svg.appendChild(n);
+      return n;
+    };
+
+    [[10, "10 · intense"], [5, "5"]].forEach(([v, label]) => {
+      mk("line", { x1: PAD_L, x2: W - PAD_R, y1: y(v), y2: y(v), class: "jr-gridline" });
+      mk("text", { x: W - PAD_R, y: y(v) - 4, class: "jr-gridtext", "text-anchor": "end" }, label);
+    });
+    mk("line", { x1: PAD_L, x2: W - PAD_R, y1: base, y2: base, class: "jr-baseline" });
+    for (let i = 0; i < SPAN; i++) {
+      const d = i + 1;
+      if (!(d === 1 || d === SPAN || (d % 5 === 0 && SPAN - d >= 3))) continue;
+      mk("text", { x: cx(i), y: H - 6, class: "jr-axistext", "text-anchor": i === 0 ? "start" : i === SPAN - 1 ? "end" : "middle" },
+        d + (d === 1 ? " " + MONTHS_SHORT[im] : ""));
+    }
+
+    // Une barre par jour écouté ; aujourd'hui en clair, avec sa valeur
+    const bars = days.map((d, i) => {
+      if (d.v == null) return null;
+      const isToday = todayD && d === todayD;
+      return mk("rect", { x: cx(i) - bw / 2, y: y(d.v), width: bw, height: Math.max(1, base - y(d.v)), rx: 1.5,
+        class: "jr-ibar" + (isToday ? " is-today" : "") });
+    });
+    if (todayD && todayD.v != null) {
+      const i = today.getDate() - 1;
+      mk("text", { x: cx(i), y: y(todayD.v) - 6, class: "jr-valtext", "text-anchor": "middle" }, fmt1(todayD.v));
+    }
+    // Moyenne du mois : ligne pointillée, par-dessus les barres
+    if (monthAvg != null) mk("line", { x1: PAD_L, x2: W - PAD_R, y1: y(monthAvg), y2: y(monthAvg), class: "jr-avgline" });
+    svg.querySelectorAll(".jr-gridtext").forEach(t => svg.appendChild(t));
+
+    // Survol : le jour sous la souris
+    const hit = mk("rect", { x: 0, y: 0, width: W, height: H, fill: "transparent" });
+    const tipEl = el("div", "jr-tip");
+    tipEl.hidden = true;
+    let lit = null;
+    hit.addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect();
+      const px = (e.clientX - r.left) * (W / r.width);
+      const i = Math.max(0, Math.min(SPAN - 1, Math.floor((px - PAD_L) / slot)));
+      const d = days[i];
+      if (lit) lit.classList.remove("is-hover");
+      lit = bars[i];
+      if (lit) lit.classList.add("is-hover");
+      const future = isNow && i > today.getDate() - 1;
+      tipEl.textContent = DAYS_LONG[d.date.getDay()] + " " + d.date.getDate() + " " + MONTHS[d.date.getMonth()] + " · " +
+        (d.v != null ? "intensité " + fmt1(d.v) + " (" + d.n + " album" + (d.n > 1 ? "s" : "") + ")"
+          : future ? "à venir" : played.has(d.date.getDate()) ? "albums sans intensité renseignée" : "pas d'écoute");
+      tipEl.hidden = false;
+      const left = cx(i) * (r.width / W);
+      tipEl.style.left = Math.min(Math.max(left, 110), r.width - 110) + "px";
+    });
+    hit.addEventListener("pointerleave", () => {
+      if (lit) lit.classList.remove("is-hover");
+      lit = null;
+      tipEl.hidden = true;
+    });
+    chart.replaceChildren(svg, tipEl);
+    chart.setAttribute("aria-label", "Intensité moyenne par jour, " + MONTHS[im] + " " + iy +
+      (monthAvg != null ? " : " + fmt1(monthAvg) + " en moyenne." : "."));
+  }
+
   let resizeTimer = null;
-  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderTime, 150); });
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderTime(); renderIntensity(); }, 150); });
 
   // ---------- Il y a un an ----------
 
