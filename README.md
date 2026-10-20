@@ -16,7 +16,7 @@ The interface is in French.
 - [Features](#features)
   - [Collection](#collection) · [Album page](#album-page) · [Artist page](#artist-page) · [Next up](#next-up)
   - [Playback](#playback) · [Full screen and karaoke](#full-screen-and-karaoke) · [Lyrics](#lyrics)
-  - [Your audio files](#your-audio-files) · [Journal](#journal) · [Insights and fiches à compléter](#insights-and-fiches-à-compléter)
+  - [Your audio files](#your-audio-files) · [Journal](#journal) · [Insights and fiches à compléter](#insights-and-fiches-à-compléter) · [Wrapped](#wrapped)
   - [Data, backups and exports](#data-backups-and-exports)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Working offline](#working-offline)
@@ -41,6 +41,7 @@ The interface is in French.
 - **Play buttons on covers** (on hover): ▶ plays the album now (the queue is kept; pause/resume on the album playing), "3 lines +" adds it to the queue (green check for 2 s). With nothing playing, a single ▶ starts the album.
 - **Surprise me** (`R`): a random album.
 - **.txt export** of a search or filter result.
+- **No duplicates**: an album already in the collection (or in next up) is recognised when you add it again — same id, or a close name ("Remastered 2009", "[Deluxe]", "The Beatles" / "Beatles", "feat. …", "&" / "and") — and is not added twice; the add window offers to open its page instead.
 
 ### Album page
 
@@ -122,6 +123,18 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - **Insights**: the collection in numbers (albums, artists, total listening time, next up), families, most present artists, decades, intensity, albums to rediscover — every bar links to the filtered collection.
 - **N fiches à compléter →**: albums missing a cover, genre, release date, tracklist, intensity or mood, or whose **cover is online only** (its site refused the copy, so it would be blank offline). Filter by criterion, dismiss a criterion per album (×).
 - **exporter en CSV ↓**: download the whole collection as a spreadsheet.
+- **wrapped**: the year in music (see below).
+
+### Wrapped
+
+The year in music, computed from your listens (offline). `Shift + W`, or **wrapped** in insights.
+
+- **Release**: each year's wrapped comes out on a surprise day between 20 November and 15 December (fixed per year). A banner on the collection announces it; before that, the page shows "any day now". Past years stay available, one tab per year.
+- **Contents**: listening hours and full days (with the difference from the previous year), albums and artists listened to, new albums added; the album of the year and the top 10; top artists (hours), families and genres (clickable: filter or search the collection, with "retour au wrapped").
+- **Month by month**: hover a bar for hours and albums, click it for the month's wrap (top 5, families, top genres, average intensity); top 3 of each season below.
+- **Records**: busiest day, longest streak, favourite time of day, most played decade, fastest adopted album, most loyal album (most consecutive months); the least played albums of the collection; the year in one sentence (moods, intensity, genres by season).
+- **Demo**: when the previous year has no listens, a "démo" tab shows a full wrapped built from invented listens of your collection (nothing is saved).
+- An album counts as listened when the player counted a listen (see [Playback](#playback)); "albums écoutés" counts different albums, not launches.
 
 ### Data, backups and exports
 
@@ -161,6 +174,7 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `P` | Full screen |
 | `K` | Karaoke (full screen) |
 | `O` | Open the page of the album playing |
+| `Shift + W` | Wrapped: the year in music |
 | `?` | Help |
 
 Manual lyric sync: `Enter` line starts · `Backspace` undo · `Space` pause · `Esc` cancel.
@@ -175,7 +189,7 @@ Once albums are in the collection and your files are on a local drive (or the ph
 - collection, album and artist pages, covers (local copies), filters and search;
 - playback of local files and Navidrome over Wi-Fi / hotspot / USB (local network only);
 - full screen, karaoke and lyrics already loaded or synced;
-- journal, notes, insights, next up, exports and backups.
+- journal, notes, insights, wrapped, next up, exports and backups.
 
 Needs internet: adding an album through the search (Deezer, Discogs) and completing sheets (genres, styles, tracklists), Deezer previews, lyrics never loaded before, covers whose site refused the copy (see *fiches à compléter*), Genius / Wikipedia links. Adding an album from your local folders works offline.
 
@@ -188,7 +202,8 @@ conductor/
 ├── app/                    this repo (code)
 │   ├── conductor.html      single-page shell: player, mini player, queue, full screen, disk writes
 │   ├── index.html          collection
-│   ├── pages/              album, artist, journal, nextup, insights, complete, library (audio-files)
+│   ├── pages/              album, artist, journal, nextup, insights, wrapped, complete, library (audio-files),
+│   │                       manuals / manual (step-by-step guides), about
 │   ├── css/style.css
 │   ├── js/                 one file per page, plus shared modules:
 │   │                       data (store), disk (datastorage), playback (engine), sdcard (local folders),
@@ -230,7 +245,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 | `docs/tier-guide.md` | What S / A / B tiers mean |
 | `docs/toolkit.md` | Services used, costs |
 
-All guides are in French.
+All guides are in French. They are also built into the app as step-by-step pages (book icon at the bottom of every page), next to an **About** page that presents the project to newcomers.
 
 ---
 

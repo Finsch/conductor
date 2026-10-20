@@ -1343,9 +1343,17 @@
   }
   // Mêmes touches quand le focus est dans l'enveloppe (après un clic sur le mini-lecteur)
   document.addEventListener("keydown", e => {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+    // Maj + W : le bilan de l'année (wrapped)
+    if (e.shiftKey && e.key.toLowerCase() === "w" && !sync) {
+      e.preventDefault();
+      fsOpen(false);
+      if (!framePage.path.startsWith("pages/wrapped.html")) navigate("pages/wrapped.html");
+      return;
+    }
+    if (e.shiftKey) return;
     const k = e.key.toLowerCase();
     if (k === "t") { e.preventDefault(); togglePanel(); }
     else if (k === "q") { e.preventDefault(); closeMini(); }

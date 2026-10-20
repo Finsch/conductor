@@ -51,6 +51,7 @@
     ["Q", "Fermer le mini-lecteur"],
     ["P", "Plein écran (pendant la lecture)"],
     ["O", "Ouvrir la page de l'album en cours de lecture"],
+    ["Maj + W", "Wrapped : le bilan de l'année"],
     ["M", "Couper / rétablir le son"],
     ["0", "Volume à zéro"],
     ["1", "Volume au maximum"],
@@ -96,7 +97,12 @@
 
   // Échap : retour à la collection (lien « retour » de la page)
   function goBack() {
-    if (PAGE === "home") return false;
+    if (PAGE === "home") {
+      const w = document.getElementById("wrapped-back");
+      if (!w) return false;
+      location.href = w.href;
+      return true;
+    }
     const back = document.getElementById("back-link");
     location.href = back ? back.href : ROOT + "index.html";
     return true;
@@ -176,6 +182,13 @@
     // Maj + ← → : page précédente / suivante (collection, historique du journal)
     if (e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
       if (turnPage(e.key === "ArrowLeft" ? -1 : 1)) e.preventDefault();
+      return;
+    }
+
+    // Maj + W : le bilan de l'année (wrapped)
+    if (e.shiftKey && e.key.toLowerCase() === "w") {
+      e.preventDefault();
+      if (!/\/pages\/wrapped\.html$/.test(location.pathname)) location.href = ROOT + "pages/wrapped.html";
       return;
     }
 
@@ -391,8 +404,56 @@
     renderStats();
   }
 
+  // Bilan de l'année sorti (entre le 20 nov. et le 15 déc.) : annonce sur la collection
+  function wrappedBanner() {
+    if (/\/pages\//.test(location.pathname) || typeof wrappedReady !== "function" || typeof Store === "undefined") return;
+    const y = new Date().getFullYear();
+    if (!wrappedReady(y)) return;
+    let seen = "", gone = "";
+    try { seen = localStorage.getItem("conductor01.wrapped.seen") || ""; gone = localStorage.getItem("conductor01.wrapped.dismissed") || ""; } catch (e) {}
+    if (seen === String(y) || gone === String(y)) return;
+    const played = Store.raw().some(a => (a.plays || []).some(p => new Date(p.startedAt || p.at).getFullYear() === y));
+    const main = document.querySelector("main");
+    if (!played || !main) return;
+    const bar = document.createElement("div");
+    bar.className = "wr-banner";
+    bar.innerHTML = '<span>Votre <b>bilan ' + y + '</b> est arrivé : votre année en musique.</span>' +
+      '<a class="btn" href="' + ROOT + 'pages/wrapped.html">Le découvrir →</a>' +
+      '<button type="button" class="icon-btn" aria-label="Masquer">×</button>';
+    bar.querySelector("button").addEventListener("click", () => {
+      try { localStorage.setItem("conductor01.wrapped.dismissed", String(y)); } catch (e) {}
+      wrap.remove();
+    });
+    const wrap = document.createElement("div");
+    wrap.className = "page wr-banner-page";
+    wrap.appendChild(bar);
+    main.before(wrap);
+  }
+
   document.addEventListener("albums:changed", renderStats);
   document.addEventListener("DOMContentLoaded", buildFooter);
+  document.addEventListener("DOMContentLoaded", wrappedBanner);
+
+  // Collection ouverte depuis le bilan (famille, genre) : lien « retour au wrapped »
+  function wrappedBack() {
+    if (PAGE !== "home") return;
+    const y = new URLSearchParams(location.search).get("wrapped");
+    if (!y) return;
+    let url = "";
+    try { url = sessionStorage.getItem("conductor01.wrapped") || ""; } catch (e) {}
+    const main = document.querySelector("main");
+    if (!main) return;
+    const wrap = document.createElement("div");
+    wrap.className = "page wr-back-page";
+    const a = document.createElement("a");
+    a.className = "back-link";
+    a.id = "wrapped-back";
+    a.href = url || ROOT + "pages/wrapped.html?annee=" + encodeURIComponent(y);
+    a.textContent = "← retour au wrapped";
+    wrap.appendChild(a);
+    main.before(wrap);
+  }
+  document.addEventListener("DOMContentLoaded", wrappedBack);
 
   window.Shortcuts = { openHelp };
 })();

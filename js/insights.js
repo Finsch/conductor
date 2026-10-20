@@ -299,4 +299,15 @@
   };
   paint();
   document.addEventListener("albums:changed", paint);
+
+  // Bilan de l'année (« wrapped ») : toujours accessible ; avant sa sortie, « any day now »
+  (function wrappedLink() {
+    const link = document.getElementById("in-wrapped");
+    if (!link) return;
+    const y = new Date().getFullYear();
+    link.textContent = "wrapped";
+    link.title = wrappedReady(y) ? "Le bilan " + y + " : votre année en musique" : "Le bilan " + y + " arrive bientôt";
+    link.hidden = false;
+    document.querySelector(".in-wrapped-sep").hidden = false;
+  })();
 })();

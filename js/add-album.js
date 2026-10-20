@@ -189,6 +189,7 @@
       if (selected !== pending) return;
       selected = full;
       renderInfo();
+      applyStatus();
     });
 
     dateInput.value = new Date().toLocaleDateString("sv-SE"); // aujourd'hui, au format AAAA-MM-JJ
@@ -197,12 +198,55 @@
     setRating(0);
     errorBox.hidden = true;
 
-    // Déjà dans la collection : « Next up » n'a pas de sens
-    if (nextUpBtn) nextUpBtn.hidden = Store.statusOf(selected) === "collection";
-
     stepSearch.hidden = true;
     stepLog.hidden = false;
-    (NEXTUP_MODE ? stepLog.querySelector("button[type=submit]") : dateInput).focus();
+    applyStatus();
+    (NEXTUP_MODE || existing ? submitBtn : dateInput).focus();
+  }
+
+  // ---------- Album déjà enregistré : pas de doublon ----------
+
+  const submitBtn = stepLog.querySelector("button[type=submit]");
+  const submitLabel = submitBtn.textContent;
+  const notice = document.createElement("p");
+  notice.className = "dup-notice";
+  notice.hidden = true;
+  stepLog.querySelector(".selected").after(notice);
+  let existing = null;   // album déjà dans la collection (ou next up) : on l'ouvre au lieu de l'ajouter
+
+  function applyStatus() {
+    const same = selected && Store.same(selected);
+    // Bloquant : déjà dans la collection, ou déjà dans next up depuis la page next up
+    existing = same && (!same.nextUp || NEXTUP_MODE) ? same : null;
+    const inNextUp = same && same.nextUp && !NEXTUP_MODE;   // il passera dans la collection
+
+    stepLog.querySelectorAll(".form-row").forEach(r => { r.hidden = NEXTUP_MODE || !!existing; });
+    dateInput.required = !NEXTUP_MODE && !existing;
+    if (nextUpBtn) nextUpBtn.hidden = !!existing || !!inNextUp;
+
+    notice.hidden = !existing && !inNextUp;
+    notice.replaceChildren();
+    if (existing) {
+      const where = existing.nextUp ? "dans next up" : "dans votre collection";
+      const named = existing.title !== selected.title || existing.artist !== selected.artist
+        ? " sous le nom « " + existing.title + " » de " + existing.artist : "";
+      const added = !existing.nextUp && (existing.addedAt || (existing.logs && existing.logs[0] && (existing.logs[0].date || existing.logs[0].loggedAt)) || "");
+      notice.textContent = "Déjà " + where + named +
+        (added ? " (ajouté le " + new Date(added.slice(0, 10) + "T12:00").toLocaleDateString("fr-FR") + ")" : "") +
+        " : il ne sera pas ajouté une deuxième fois.";
+      submitBtn.textContent = existing.nextUp ? "Voir dans next up" : "Ouvrir la fiche";
+    } else {
+      if (inNextUp) notice.textContent = "Cet album est dans next up : l'enregistrer le fait passer dans la collection.";
+      submitBtn.textContent = submitLabel;
+    }
+  }
+
+  function openExisting() {
+    const a = existing;
+    close();
+    location.href = APP_ROOT + (a.nextUp
+      ? "pages/nextup.html?album=" + encodeURIComponent(a.id)
+      : "pages/album.html?id=" + encodeURIComponent(a.id));
   }
 
   function renderInfo() {
@@ -241,6 +285,7 @@
   // Enregistrer : ajout (collection) ; page Next up ou bouton « Next up » : à écouter
   function save(toNextUp) {
     if (!selected) return;
+    if (existing) { openExisting(); return; }
     const album = Object.assign({}, selected);
     delete album.thumb;
     try {

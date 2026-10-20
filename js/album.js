@@ -30,6 +30,7 @@
     if (back.href.includes("nextup.html")) back.textContent = "← retour à next up";
     else if (back.href.includes("artist.html")) back.textContent = "← retour à " + (new URL(back.href).searchParams.get("name") || "l'artiste");
     else if (back.href.includes("complete.html")) back.textContent = "← retour à « à compléter »";
+    else if (back.href.includes("wrapped.html")) back.textContent = "← retour au wrapped";
   } catch (e) {}
 
   // ---------- Formats ----------

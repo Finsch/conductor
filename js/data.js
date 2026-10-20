@@ -192,6 +192,22 @@ function familyOf(album) {
   return autoFamily(album && album.genre);
 }
 
+// ---------- Bilan de l'année ----------
+// Le bilan d'une année sort à une date tirée au hasard entre le 20 novembre et le
+// 15 décembre (toujours la même pour une année donnée). Les années passées sont
+// toujours disponibles.
+function wrappedDropDate(year) {
+  let h = 2166136261;
+  String("conductor-" + year).split("").forEach(c => { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); });
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  const offset = (h >>> 0) % 26;                       // 0 … 25 jours après le 20 novembre
+  return new Date(year, 10, 20 + offset);              // 20 nov. → 15 déc.
+}
+function wrappedReady(year, now) {
+  now = now || new Date();
+  return year < now.getFullYear() || (year === now.getFullYear() && now >= wrappedDropDate(year));
+}
+
 // ---------- Durées ----------
 // 2505 → "41 min 45 s" ; 3840 → "1 h 4 min"
 function formatLength(sec) {
@@ -334,6 +350,10 @@ const Store = (function () {
       delete a.rating; delete a.review; delete a.reviewAt;
       // Le code est passé dans app/ : les pochettes locales sont un dossier plus haut
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
+      // Album ajouté plusieurs fois : on garde le premier ajout (et les commentaires écrits)
+      if (Array.isArray(a.logs) && a.logs.length > 1) {
+        a.logs = a.logs.filter((log, i) => i === 0 || (log.review || "").trim());
+      }
     });
     return albums;
   }
@@ -385,6 +405,29 @@ const Store = (function () {
   function sameAlbum(a, b) {
     return a.id === b.id ||
       (simplify(a.artist) === simplify(b.artist) && simplify(a.title) === simplify(b.title));
+  }
+
+  // Comparaison large, pour repérer un album déjà là sous un autre nom :
+  // « The Beatles » = « Beatles », « A & B » = « A », « Revolver (Remastered 2009) »,
+  // « Abbey Road [Super Deluxe] » = « Abbey Road », « & » = « and »…
+  function plain(str) {
+    return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  }
+  function looseArtist(str) {
+    const main = plain(str).split(/\s*(?:,|&|\+|\/|;)\s*|\s+(?:feat\.?|ft\.?|featuring|with|and|et|x|vs\.?)\s+/)[0];
+    return main.replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+  }
+  function looseTitle(str) {
+    const t = plain(cleanAlbumTitle(str)).replace(/\s*[(\[][^()\[\]]*[)\]]/g, " ").replace(/&/g, " and ");
+    return t.trim().replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+  }
+  // L'album déjà enregistré qui correspond (même id, même nom, ou nom très proche)
+  function findSame(albums, album) {
+    const exact = albums.find(a => sameAlbum(a, album));
+    if (exact) return exact;
+    const t = looseTitle(album.title), r = looseArtist(album.artist);
+    if (!t || !r) return null;
+    return albums.find(a => looseTitle(a.title) === t && looseArtist(a.artist) === r) || null;
   }
 
   function lastLoggedAt(album) {
@@ -512,14 +555,14 @@ const Store = (function () {
 
     // "collection", "nextup" ou null
     statusOf(album) {
-      const found = load().find(a => sameAlbum(a, album));
+      const found = findSame(load(), album);
       return found ? (found.nextUp ? "nextup" : "collection") : null;
     },
 
     // Ajoute à Next up (sans écoute). Déjà présent : on ne touche à rien.
     addNextUp(album) {
       const albums = load();
-      const existing = albums.find(a => sameAlbum(a, album));
+      const existing = findSame(albums, album);
       if (existing) return existing;
       const entry = Object.assign({}, album, { logs: [], nextUp: true, nextUpAt: new Date().toISOString() });
       if (entry.genre) entry.genre = genreCase(entry.genre);
@@ -554,13 +597,19 @@ const Store = (function () {
     // Même album = même identifiant, ou même artiste + même titre
     // (évite les doublons quand un album vient de Deezer puis de Discogs)
     has(album) {
-      return load().some(a => !a.nextUp && sameAlbum(a, album));
+      const found = findSame(load(), album);
+      return !!(found && !found.nextUp);
+    },
+
+    // L'album déjà enregistré (collection ou next up) qui correspond, sinon null
+    same(album) {
+      return findSame(load(), album);
     },
 
     // Ajoute un album sans écoute (import depuis vos fichiers)
     addAlbum(album) {
       const albums = load();
-      const existing = albums.find(a => sameAlbum(a, album));
+      const existing = findSame(albums, album);
       if (existing) return existing;
       const entry = Object.assign({}, album, { logs: [], addedAt: new Date().toISOString() });
       if (entry.genre) entry.genre = genreCase(entry.genre);
@@ -572,7 +621,9 @@ const Store = (function () {
     // Ajoute une écoute ; crée l'album s'il n'est pas encore dans la collection
     logAlbum(album, log) {
       const albums = load();
-      let entry = albums.find(a => sameAlbum(a, album));
+      let entry = findSame(albums, album);
+      // Déjà dans la collection : pas de second ajout
+      if (entry && !entry.nextUp) return entry;
       if (!entry) {
         entry = Object.assign({}, album, { logs: [], addedAt: new Date().toISOString() });
         if (entry.genre) entry.genre = genreCase(entry.genre);

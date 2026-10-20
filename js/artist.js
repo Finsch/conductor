@@ -8,6 +8,21 @@
   const name = (new URLSearchParams(location.search).get("name") || "").trim();
   const norm = s => (s || "").trim().toLowerCase();
 
+  // Arrivé depuis le bilan (wrapped) : la flèche retour (et Échap) y ramènent
+  try {
+    const from = sessionStorage.getItem("conductor01.home") || "";
+    if (from.includes("wrapped.html")) sessionStorage.setItem("conductor01.artist-back", JSON.stringify({ name, url: from }));
+    const saved = JSON.parse(sessionStorage.getItem("conductor01.artist-back") || "null");
+    if (saved && saved.name === name) {
+      document.addEventListener("DOMContentLoaded", () => {
+        const back = $("back-link");
+        if (back) { back.href = saved.url; back.textContent = "← retour au wrapped"; }
+      });
+      const back = $("back-link");
+      if (back) { back.href = saved.url; back.textContent = "← retour au wrapped"; }
+    }
+  } catch (e) {}
+
   // Les albums ouverts d'ici reviennent ici (flèche retour)
   try { sessionStorage.setItem("conductor01.home", location.href.split("#")[0]); } catch (e) {}
 
