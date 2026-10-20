@@ -1,6 +1,6 @@
 # conductor.
 
-A personal, local-first music library, listening journal and audio player. Inspired by Bandcamp and Musicboard.
+A personal, local-first music library, listening journal and audio player. Inspired by Bandcamp,  Musicboard and Obsidian.
 
 - **Plain HTML, CSS and JavaScript** — no server, no build, no install. Open `index.html` in Chrome or Edge.
 - **Single page** — everything runs inside `conductor.html`, which never reloads: the music keeps playing while you browse.
@@ -13,17 +13,27 @@ The interface is in French.
 
 ## Contents
 
-- [Features](#features)
-  - [Collection](#collection) · [Album page](#album-page) · [Artist page](#artist-page) · [Next up](#next-up)
-  - [Playback](#playback) · [Full screen and karaoke](#full-screen-and-karaoke) · [Lyrics](#lyrics)
-  - [Your audio files](#your-audio-files) · [Journal](#journal) · [Insights and fiches à compléter](#insights-and-fiches-à-compléter) · [Wrapped](#wrapped)
-  - [Data, backups and exports](#data-backups-and-exports)
-- [Keyboard shortcuts](#keyboard-shortcuts)
-- [Working offline](#working-offline)
-- [Structure](#structure)
-- [Getting started](#getting-started)
-- [Documentation](#documentation)
-- [Browser support and limits](#browser-support-and-limits)
+- [conductor.](#conductor)
+  - [Contents](#contents)
+  - [Features](#features)
+    - [Collection](#collection)
+    - [Album page](#album-page)
+    - [Artist page](#artist-page)
+    - [Next up](#next-up)
+    - [Playback](#playback)
+    - [Full screen and karaoke](#full-screen-and-karaoke)
+    - [Lyrics](#lyrics)
+    - [Your audio files](#your-audio-files)
+    - [Journal](#journal)
+    - [Insights and fiches à compléter](#insights-and-fiches-à-compléter)
+    - [Wrapped](#wrapped)
+    - [Data, backups and exports](#data-backups-and-exports)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
+  - [Working offline](#working-offline)
+  - [Structure](#structure)
+  - [Getting started](#getting-started)
+  - [Documentation](#documentation)
+  - [Browser support and limits](#browser-support-and-limits)
 
 ---
 
