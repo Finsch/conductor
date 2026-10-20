@@ -206,7 +206,7 @@
   }
 
   const COMMANDS = {
-    playAlbum: (meta, tracks, index) => playAlbum(meta, tracks, index),
+    playAlbum: (meta, tracks, index, keepQueue) => playAlbum(meta, tracks, index, !!keepQueue),
     toggle: () => toggle(),
     next: () => next(),
     prev: () => prev(),
@@ -221,6 +221,7 @@
     "sd:remove": id => { if (typeof SD !== "undefined") SD.remove(id); },
     "sd:allow": () => { if (typeof SD !== "undefined") SD.allow(); },
     addToQueue: id => addToQueue(id),
+    star: () => starWithFlash(),
     removeFromQueue: id => removeFromQueue(id),
     moveInQueue: (a, b) => moveInQueue(a, b),
     clearQueue: () => clearQueue(),
@@ -319,6 +320,7 @@
   // tracks : [{ title, duration, src }]
   // fromQueue : album enchaîné depuis la file. Sinon (lancé à la main),
   // un nouvel album vide la file d'attente.
+  // keepQueue : vrai depuis la file d'attente, ou quand on remplace l'album en cours (page album)
   function playAlbum(meta, tracks, index, fromQueue) {
     const same = state && state.albumId === meta.albumId;
     if (!fromQueue && !same && queue.length) { queue = []; saveQueue(); }
@@ -756,6 +758,45 @@
     favs.has(k) ? favs.delete(k) : favs.add(k);
     Store.update(a.id, { favorites: [...favs] });
     render();
+  }
+
+  // Raccourcis L / C / Maj+F quand le clavier est dans l'enveloppe (plein écran…)
+  let shellFlashTimer = 0;
+  function shellFlash(text) {
+    let box = document.getElementById("kb-flash");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "kb-flash";
+      box.className = "kb-flash";
+      box.setAttribute("role", "status");
+      document.body.appendChild(box);
+    }
+    box.textContent = text;
+    box.classList.add("is-on");
+    clearTimeout(shellFlashTimer);
+    shellFlashTimer = setTimeout(() => box.classList.remove("is-on"), 1800);
+  }
+  function starWithFlash() {
+    if (!state) return;
+    toggleTrackStar();
+    const a = Store.get(state.albumId);
+    const t = state.tracks[state.index];
+    const on = !!(a && (a.favorites || []).includes(currentTrackKey()));
+    shellFlash((on ? "★ Morceau préféré : " : "★ retiré : ") + (t ? t.title : ""));
+  }
+  // Maj + F : l'album de la page album affichée
+  function shellAlbumFav() {
+    const a = Store.get(framePage.albumId);
+    if (!a) return;
+    const on = !a.favorite;
+    Store.update(a.id, { favorite: on || null, favoriteAt: on ? new Date().toISOString() : null });
+    shellFlash((on ? "♥ Album favori : " : "Retiré des favoris : ") + a.title);
+  }
+  function shellCopy() {
+    const a = Store.get(state.albumId) || { artist: state.artist, title: state.title };
+    const text = "[[" + a.artist + "]] - [[" + a.title + "]]";
+    const ok = () => shellFlash("Copié : " + text);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, () => shellFlash("Copie impossible"));
   }
 
   function visible() {
@@ -1342,10 +1383,20 @@
     close();
   }
   // Mêmes touches quand le focus est dans l'enveloppe (après un clic sur le mini-lecteur)
+  const ALT_PAGES = { i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
+    c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html" };
   document.addEventListener("keydown", e => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+    // Alt + I / J / U / A : insights, journal, next up, audio-files
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && ALT_PAGES[e.key.toLowerCase()] && !sync) {
+      e.preventDefault();
+      const dest = ALT_PAGES[e.key.toLowerCase()];
+      fsOpen(false);
+      if (!framePage.path.startsWith(dest.split("#")[0]) || dest.includes("#")) navigate(dest);
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     // Maj + W : le bilan de l'année (wrapped)
     if (e.shiftKey && e.key.toLowerCase() === "w" && !sync) {
       e.preventDefault();
@@ -1353,8 +1404,16 @@
       if (!framePage.path.startsWith("pages/wrapped.html")) navigate("pages/wrapped.html");
       return;
     }
+    if (e.shiftKey && e.key.toLowerCase() === "f" && framePage.albumId) { e.preventDefault(); shellAlbumFav(); return; }
+    if (e.shiftKey && e.key === "Delete") {
+      e.preventDefault();
+      if (queue.length) { clearQueue(); shellFlash("File d'attente vidée"); } else shellFlash("La file d'attente est déjà vide");
+      return;
+    }
     if (e.shiftKey) return;
     const k = e.key.toLowerCase();
+    if (k === "l" && state && !sync) { e.preventDefault(); starWithFlash(); return; }
+    if (k === "c" && state && !sync) { e.preventDefault(); shellCopy(); return; }
     if (k === "t") { e.preventDefault(); togglePanel(); }
     else if (k === "q") { e.preventDefault(); closeMini(); }
     else if (k === "p") { e.preventDefault(); fsOpen(!fsIsOpen()); }
@@ -1486,7 +1545,7 @@
 
     const api = {
       audio,
-      playAlbum: (meta, tracks, index) => cmd("playAlbum", meta, tracks, index),
+      playAlbum: (meta, tracks, index, keepQueue) => cmd("playAlbum", meta, tracks, index, !!keepQueue),
       toggle: () => cmd("toggle"),
       next: () => cmd("next"),
       prev: () => cmd("prev"),
@@ -1496,6 +1555,7 @@
       togglePanel: () => cmd("togglePanel"),
       closeMini: () => cmd("closeMini"),
       fullscreen: () => cmd("fullscreen"),
+      star: () => cmd("star"),
       addToQueue: id => { mirror.queue.push(id); cmd("addToQueue", id); },
       removeFromQueue: (id, index) => { mirror.queue = mirror.queue.filter(x => x !== id); cmd("removeFromQueue", id, index); },
       moveInQueue: (a, b) => cmd("moveInQueue", a, b),

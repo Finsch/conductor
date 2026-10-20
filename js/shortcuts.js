@@ -33,29 +33,60 @@
     : /\/pages\/insights\.html$/.test(location.pathname) ? "insights"
     : /\/pages\//.test(location.pathname) ? "page" : "home";   // artiste, journal, à compléter…
 
+  // Alt + lettre : pages principales
+  const ALT_PAGES = { i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
+    c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html" };
+
+  // Groupes affichés dans la fenêtre « Raccourcis clavier » (touche ?)
   const SHORTCUTS = [
-    ["N", "Ajouter un album"],
-    ["S", "Rechercher"],
-    ["R", "Surprise me : un album au hasard (collection)"],
-    ["Échap", "Quitter un champ · retour à la collection"],
-    ["Z", "Réinitialiser les filtres (collection)"],
-    ["H", "Accueil, tout réinitialisé"],
-    ["J", "Note du jour (page journal)"],
-    ["F", "Filtre « Albums favoris » (collection)"],
-    ["E", "Modifier la fiche (page album)"],
-    ["Maj + ← →", "Page précédente / suivante (collection, historique du journal)"],
-    ["Espace", "Lecture / pause (page album)"],
-    ["← →", "Titre précédent / suivant (pendant la lecture)"],
-    ["↑ ↓", "Volume + / − (sur 20, pendant la lecture)"],
-    ["T", "File d'attente : ouvrir / fermer (mini-lecteur)"],
-    ["Q", "Fermer le mini-lecteur"],
-    ["P", "Plein écran (pendant la lecture)"],
-    ["O", "Ouvrir la page de l'album en cours de lecture"],
-    ["Maj + W", "Wrapped : le bilan de l'année"],
-    ["M", "Couper / rétablir le son"],
-    ["0", "Volume à zéro"],
-    ["1", "Volume au maximum"],
-    ["?", "Afficher ces raccourcis"]
+    ["Navigation", [
+      ["Alt + G", "Collection"],
+      ["Alt + I", "Insights"],
+      ["Alt + J", "Journal"],
+      ["Alt + H", "Historique des écoutes (journal)"],
+      ["Alt + U", "Next up"],
+      ["Alt + A", "audio-files (vos fichiers)"],
+      ["Alt + C", "Fiches à compléter"],
+      ["Alt + M", "Manuels"],
+      ["Maj + W", "Wrapped : le bilan de l'année"],
+      ["O", "Ouvrir la page de l'album en cours de lecture"],
+      ["H", "Accueil, tout réinitialisé"],
+      ["Échap", "Quitter un champ · retour à la page précédente"]
+    ]],
+    ["Lecture", [
+      ["Espace", "Lecture / pause"],
+      ["← →", "Titre précédent / suivant"],
+      ["L", "★ Morceau préféré : le morceau en cours"],
+      ["P", "Plein écran (K : karaoké)"],
+      ["T", "File d'attente : ouvrir / fermer"],
+      ["Maj + Suppr", "Vider la file d'attente"],
+      ["Q", "Fermer le mini-lecteur"]
+    ]],
+    ["Volume", [
+      ["↑ ↓", "Volume + / − (sur 20)"],
+      ["M", "Couper / rétablir le son"],
+      ["0", "Volume à zéro"],
+      ["1", "Volume au maximum"]
+    ]],
+    ["Collection", [
+      ["N", "Ajouter un album"],
+      ["S", "Rechercher"],
+      ["R", "Surprise me : un album au hasard"],
+      ["F", "Filtre « Albums favoris »"],
+      ["Z", "Réinitialiser les filtres"],
+      ["V", "Grille / liste"],
+      ["Maj + ← →", "Page précédente / suivante (et historique du journal)"]
+    ]],
+    ["Album et journal", [
+      ["E", "Modifier la fiche (page album)"],
+      ["Maj + F", "♥ Album favori (page album)"],
+      ["+", "Ajouter l'album à la file d'attente (page album)"],
+      ["C", "Copier [[Artiste]] - [[Album]] de l'album en cours"],
+      ["J", "Note du jour (page journal)"]
+    ]],
+    ["Aide", [
+      ["?", "Afficher ces raccourcis"]
+    ]]
   ];
 
   // ---------- Contexte ----------
@@ -94,6 +125,79 @@
     input.focus();
     input.select();
   }
+
+  // ---------- Petits messages (raccourcis sans bouton visible) ----------
+  let flashTimer = 0;
+  function flash(text) {
+    let box = document.getElementById("kb-flash");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "kb-flash";
+      box.className = "kb-flash";
+      box.setAttribute("role", "status");
+      document.body.appendChild(box);
+    }
+    box.textContent = text;
+    box.classList.add("is-on");
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => box.classList.remove("is-on"), 1800);
+  }
+
+  // L'album « concerné » : celui en cours, sinon celui de la page album
+  function currentAlbum() {
+    const st = window.Playback && Playback.state();
+    const id = (st && st.albumId) || (PAGE === "album" ? new URLSearchParams(location.search).get("id") : null);
+    return id && typeof Store !== "undefined" ? Store.get(id) : null;
+  }
+
+  function toggleAlbumFav() {
+    const id = new URLSearchParams(location.search).get("id");
+    const a = id && Store.get(id);
+    if (!a) return;
+    const on = !a.favorite;
+    Store.update(a.id, { favorite: on || null, favoriteAt: on ? new Date().toISOString() : null });
+    flash((on ? "♥ Album favori : " : "Retiré des favoris : ") + a.title);
+  }
+
+  function copyRef() {
+    const a = currentAlbum();
+    if (!a) { flash("Rien en lecture"); return; }
+    const text = "[[" + a.artist + "]] - [[" + a.title + "]]";
+    const done = () => flash("Copié : " + text);
+    const fallback = () => {
+      const t = document.createElement("textarea");
+      t.value = text;
+      document.body.appendChild(t);
+      t.select();
+      try { document.execCommand("copy"); done(); } catch (err) { flash("Copie impossible"); }
+      t.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  }
+
+  // + : l'album de la page album dans la file d'attente (rien en lecture : il démarre)
+  function queuePageAlbum() {
+    if (!window.Playback) return;
+    const id = new URLSearchParams(location.search).get("id");
+    if (!id) return;
+    // Le bouton « + file d'attente » de la page (il affiche « ✓ ajouté »)
+    const btn = document.getElementById("queue-add");
+    if (btn && !btn.hidden) { btn.click(); flash("✓ Ajouté à la file d'attente"); return; }
+    if (!Playback.state()) { Playback.playId(id, true); flash("Lecture"); return; }
+    Playback.addToQueue(id);
+    flash("✓ Ajouté à la file d'attente");
+  }
+
+  function scrollToHash(hash) {
+    const el = document.getElementById(hash);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  // Arrivée avec #… (Alt + H) : la page se remplit d'abord, puis on y va
+  window.addEventListener("load", () => {
+    const h = location.hash.slice(1);
+    if (h && /\/journal\.html$/.test(location.pathname)) setTimeout(() => scrollToHash(h), 150);
+  });
 
   // Échap : retour à la collection (lien « retour » de la page)
   function goBack() {
@@ -166,8 +270,18 @@
       addAlbum();
       return;
     }
+    // Alt + I / J / U / A : insights, journal, next up, audio-files
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const dest = ALT_PAGES[e.key.toLowerCase()];
+      if (dest) {
+        e.preventDefault();
+        const [path, hash] = dest.split("#");
+        if (!location.pathname.endsWith("/" + path)) location.href = ROOT + dest;
+        else if (hash) scrollToHash(hash);
+        return;
+      }
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-
 
     if (e.key === "?") { e.preventDefault(); openHelp(); return; }
 
@@ -182,6 +296,26 @@
     // Maj + ← → : page précédente / suivante (collection, historique du journal)
     if (e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
       if (turnPage(e.key === "ArrowLeft" ? -1 : 1)) e.preventDefault();
+      return;
+    }
+
+    // Maj + Suppr : vider la file d'attente (l'album en cours continue)
+    if (e.shiftKey && e.key === "Delete") {
+      e.preventDefault();
+      if (window.Playback && Playback.queue().length) { Playback.clearQueue(); flash("File d'attente vidée"); }
+      else flash("La file d'attente est déjà vide");
+      return;
+    }
+    // + : l'album de la page album dans la file d'attente
+    if (e.key === "+" && PAGE === "album") {
+      e.preventDefault();
+      queuePageAlbum();
+      return;
+    }
+    // Maj + F : ♥ album favori (page album)
+    if (e.shiftKey && e.key.toLowerCase() === "f" && PAGE === "album") {
+      e.preventDefault();
+      toggleAlbumFav();
       return;
     }
 
@@ -224,6 +358,21 @@
       return;
     }
     if (e.code === "KeyR" && window.Surprise) { e.preventDefault(); window.Surprise.show(); return; }
+    // L : ★ le morceau en cours
+    if (e.key.toLowerCase() === "l") {
+      e.preventDefault();
+      if (window.Playback && Playback.state() && Playback.star) Playback.star();   // message affiché par l'enveloppe
+      else flash("Rien en lecture");
+      return;
+    }
+    // C : copier [[Artiste]] - [[Album]]
+    if (e.key.toLowerCase() === "c") { e.preventDefault(); copyRef(); return; }
+    // V : grille / liste
+    if (e.key.toLowerCase() === "v" && PAGE === "home") {
+      const other = document.querySelector(".view-btn:not(.is-active)");
+      if (other) { e.preventDefault(); other.click(); }
+      return;
+    }
 
     // Lecteur (page album)
     if (!player) return;
@@ -278,17 +427,27 @@
         '<div class="modal-step"><dl class="shortcut-list"></dl>' +
         '<p class="hint">Inactifs pendant une saisie dans un champ.</p></div>';
       const list = help.querySelector(".shortcut-list");
-      SHORTCUTS.forEach(([key, label]) => {
-        const dt = document.createElement("dt");
-        key.split(" + ").forEach((part, i) => {
-          if (i) dt.appendChild(document.createTextNode(" + "));
-          dt.appendChild(kbd(part));
+      SHORTCUTS.forEach(([title, keys]) => {
+        const group = document.createElement("div");
+        group.className = "shortcut-group";
+        const h = document.createElement("h3");
+        h.className = "shortcut-group-title";
+        h.textContent = title;
+        group.appendChild(h);
+        keys.forEach(([key, label]) => {
+          const dt = document.createElement("dt");
+          key.split(" + ").forEach((part, i) => {
+            if (i) dt.appendChild(document.createTextNode(" + "));
+            dt.appendChild(kbd(part));
+          });
+          const dd = document.createElement("dd");
+          dd.textContent = label;
+          const row = document.createElement("div");
+          row.className = "shortcut-row";
+          row.append(dt, dd);
+          group.appendChild(row);
         });
-        const dd = document.createElement("dd");
-        dd.textContent = label;
-        const row = document.createElement("div");
-        row.append(dt, dd);
-        list.appendChild(row);
+        list.appendChild(group);
       });
       help.querySelector(".icon-btn").addEventListener("click", () => help.close());
       help.addEventListener("click", e => { if (e.target === help) help.close(); });

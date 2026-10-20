@@ -2655,18 +2655,33 @@ a.lib-row:hover .row-title {
 }
 
 .modal.modal-shortcuts {
-  width: min(800px, calc(100% - 32px));
+  width: min(1080px, calc(100% - 32px));
 }
 
-/* deux colonnes, lues de haut en bas */
+/* trois colonnes, lues de haut en bas, séparées par un trait gris */
 .shortcut-list {
-  columns: 2;
-  column-gap: 32px;
+  columns: 3;
+  column-gap: 40px;
+  column-rule: 1px solid var(--border);
   margin: 0;
   font-size: 13px;
 }
 
-.shortcut-list > div {
+.shortcut-group {
+  break-inside: avoid;
+  margin-bottom: 18px;
+}
+
+.shortcut-group-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.shortcut-row {
   display: grid;
   grid-template-columns: 96px 1fr;
   gap: 12px;
@@ -2687,6 +2702,12 @@ a.lib-row:hover .row-title {
 
 .modal-shortcuts .hint {
   font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .shortcut-list {
+    columns: 2;
+  }
 }
 
 @media (max-width: 640px) {
@@ -7266,4 +7287,34 @@ a.wr-rec:hover {
   margin: 10px 0 0;
   font-size: 17px;
   color: var(--text-muted);
+}
+
+/* Petit message des raccourcis clavier (L, C, Maj + F, +) */
+.kb-flash {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 300;
+  transform: translate(-50%, 12px);
+  max-width: calc(100vw - 32px);
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--text);
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.kb-flash.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Alt + H : l'historique du journal, sous l'en-tête fixe */
+#historique {
+  scroll-margin-top: 84px;
 }

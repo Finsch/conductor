@@ -531,7 +531,8 @@
 
   function playTrack(i) {
     if (!playable(i)) return;
-    Playback.playAlbum(meta(), tracks.map(t => ({ title: t.title, duration: t.duration, src: t.preview })), i);
+    // Remplace l'album en cours : la file d'attente est gardée
+    Playback.playAlbum(meta(), tracks.map(t => ({ title: t.title, duration: t.duration, src: t.preview })), i, true);
   }
 
   function toggle() {
@@ -592,12 +593,14 @@
   $("p-prev").addEventListener("click", prev);
 
   // Pour les raccourcis clavier (js/shortcuts.js) : Espace, ← →
+  // Un autre album est en cours : les touches le pilotent (Espace ne lance pas cet album-ci)
+  const other = () => !own() && !!Playback.state();
   window.Player = {
-    toggle,
-    next,
-    prev,
-    active: () => own(),
-    hasAudio: () => tracks.some(t => t.preview)
+    toggle: () => (other() ? Playback.toggle() : toggle()),
+    next: () => (other() ? Playback.next() : next()),
+    prev: () => (other() ? Playback.prev() : prev()),
+    active: () => own() || other(),
+    hasAudio: () => other() || tracks.some(t => t.preview)
   };
   audio.addEventListener("timeupdate", () => { if (own()) updateTime(); });
   audio.addEventListener("loadedmetadata", () => { if (own()) updateTime(); });
@@ -700,6 +703,8 @@
   document.addEventListener("albums:changed", () => {
     album = Store.get(album.id) || album;
     renderPlays();
+    renderFavorite();   // ♥ et ★ changés par un raccourci (Maj + F, L)
+    renderTracks();
   });
 
   function renderPlays() {

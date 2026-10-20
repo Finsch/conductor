@@ -171,10 +171,19 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `M` · `0` · `1` | Mute · volume to zero · volume to max |
 | `T` | Queue panel (mini player open) |
 | `Q` | Close the mini player |
+| `Shift + Delete` | Empty the queue (the album playing goes on) |
 | `P` | Full screen |
 | `K` | Karaoke (full screen) |
 | `O` | Open the page of the album playing |
 | `Shift + W` | Wrapped: the year in music |
+| `Alt + I` · `Alt + J` · `Alt + U` · `Alt + A` | Insights · Journal · Next up · audio-files |
+| `Alt + G` | Collection |
+| `Alt + C` · `Alt + M` · `Alt + H` | Fiches à compléter · Manuals · Listening history (journal) |
+| `L` | ★ the track playing (favourite track) |
+| `Shift + F` | ♥ favourite album (album page) |
+| `+` | Add the album to the queue (album page); starts playback if nothing plays |
+| `C` | Copy `[[Artist]] - [[Album]]` of the album playing, ready to paste in a journal note |
+| `V` | Grid / list (collection) |
 | `?` | Help |
 
 Manual lyric sync: `Enter` line starts · `Backspace` undo · `Space` pause · `Esc` cancel.
