@@ -230,9 +230,9 @@ const Karaoke = (function () {
   }
 
   // Paroles calées à la main : enregistrées et utilisées tout de suite
-  function saveManual(info, lines) {
-    const lrc = toLrc(lines, { artist: info.artist, album: info.album, title: info.title, by: "calage manuel" });
-    cache.set(cacheKey(info), Promise.resolve({ lines, plain: null, source: "calées à la main" }));
+  function saveManual(info, lines, label) {
+    const lrc = toLrc(lines, { artist: info.artist, album: info.album, title: info.title, by: label || "calage manuel" });
+    cache.set(cacheKey(info), Promise.resolve({ lines, plain: null, source: label || "calées à la main" }));
     return hasDisk() ? Disk.writeSynced(info.albumId, info.title, lrc) : Promise.resolve(false);
   }
 

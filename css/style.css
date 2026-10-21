@@ -5143,6 +5143,26 @@ body.has-fs .mq {
   transform: translate(-50%, -50%);
 }
 
+.fs-bar {
+  touch-action: none;
+}
+
+.fs-bar:hover .fs-knob,
+.fs-bar:focus-visible .fs-knob,
+.fs-bar.is-dragging .fs-knob {
+  width: 16px;
+  height: 16px;
+}
+
+.fs-bar.is-dragging {
+  cursor: grabbing;
+}
+
+.fs-bar:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
 .fs-times {
   display: flex;
   justify-content: space-between;
@@ -5695,6 +5715,127 @@ body.has-fs .mq {
 
 .fs.is-syncing .fs-ly-src {
   color: #e5c07b;
+}
+
+/* ---------- Karaoké : modifier les paroles synchronisées ---------- */
+.fs-ly-scroll:has(.fs-ed) {
+  padding: 0 4px 0 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+.fs-ed-shift {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 10px;
+  font-size: 11px;
+  color: #6f757b;
+  background: linear-gradient(rgba(20, 22, 24, 0.92) 75%, transparent);
+}
+
+.fs-ed-shift span {
+  margin-right: 4px;
+}
+
+.fs-ed-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 6px;
+  border-left: 2px solid transparent;
+}
+
+.fs-ed-row:hover,
+.fs-ed-row:focus-within {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.fs-ed-row.is-now {
+  border-left-color: #e5c07b;
+}
+
+.fs-ed-btn {
+  flex: none;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+  color: #9aa0a6;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.fs-ed-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fs-ed-shift .fs-ed-btn {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.fs-ed-time {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color: #8b9096;
+}
+
+.fs-ed-row.is-now .fs-ed-time {
+  color: #e5c07b;
+}
+
+.fs-ed-btn.is-del:hover {
+  color: #ff8a80;
+}
+
+/* Boutons secondaires : visibles au survol de la ligne */
+.fs-ed-row > .fs-ed-btn:not(.fs-ed-time) {
+  opacity: 0;
+}
+
+.fs-ed-row:hover > .fs-ed-btn,
+.fs-ed-row:focus-within > .fs-ed-btn {
+  opacity: 1;
+}
+
+.fs-ed-text {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 15px;
+  color: #e8eaec;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  outline: none;
+}
+
+.fs-ed-text:focus {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.fs-ed-text::placeholder {
+  color: #5c6166;
+}
+
+.fs.is-editing .fs-ly-src {
+  color: #e5c07b;
+}
+
+/* Pendant la modification, l'aide du bas ne s'applique pas */
+.fs.is-editing .fs-hint {
+  visibility: hidden;
 }
 
 /* Pendant le calage, l'aide du bas (Échap = quitter) ne s'applique pas */

@@ -19,7 +19,7 @@ Vous n'avez donc à caler que les morceaux pour lesquels rien n'a été trouvé.
 
 | Ce que vous voyez | Ce que ça veut dire | Bouton proposé |
 |---|---|---|
-| `paroles : LRCLIB` (ou autre source) | déjà synchronisées, rien à faire | **recaler** (si elles sont décalées) |
+| `paroles : LRCLIB` (ou autre source) | déjà synchronisées, rien à faire | **modifier** (faute, ligne décalée), **recaler** (tout refaire) |
 | `paroles non synchronisées · …` | le texte existe, pas les temps | **caler les paroles** |
 | `Pas de paroles trouvées` | rien du tout | **coller des paroles** |
 
@@ -77,7 +77,8 @@ Boutons en bas du panneau : **terminer** (enregistre ce qui est déjà calé) et
 - **Une erreur ?** Appuyez sur ⌫ tout de suite : la lecture revient juste avant la ligne précédente, vous la refaites.
 - **Passage instrumental long** : rien de spécial à faire, attendez simplement la ligne suivante. Pour un *outro* sans paroles, cliquez **terminer** après la dernière ligne chantée.
 - **Débit rapide (rap)** : faites une pause (Espace) avant le couplet, ou coupez moins les lignes pour avoir moins de temps à marquer.
-- **Tout est décalé de la même façon ?** Recommencer est souvent plus rapide que corriger : bouton **recaler**.
+- **Quelques lignes ratées ?** Terminez le calage, puis corrigez-les avec **modifier** (partie 7) : inutile de tout refaire.
+- **Tout est décalé de la même façon ?** **modifier**, puis **tout décaler**.
 
 ---
 
@@ -91,11 +92,44 @@ Boutons en bas du panneau : **terminer** (enregistre ce qui est déjà calé) et
   ```
 
   et resservent ensuite **sans internet**, même si le fichier audio vient d'ailleurs (carte SD, Navidrome, extrait).
-- Pour refaire un calage : **recaler**.
+- Pour corriger une faute ou quelques lignes : **modifier** (partie 7).
+- Pour tout refaire : **recaler**.
 
 ---
 
-## 7. Retoucher un fichier .lrc à la main (facultatif)
+## 7. Corriger dans le karaoké : modifier
+
+Paroles synchronisées affichées (trouvées ou calées par vous), cliquez **modifier** en bas du panneau.
+Chaque ligne s'affiche avec son temps ; la ligne en cours de lecture reste surlignée.
+
+| Dans la liste | Effet |
+|---|---|
+| le texte | se corrige directement, **le temps ne bouge pas** |
+| `00:15.85` (le temps) | réécoute à partir de cette ligne |
+| **−** / **+** | la ligne commence 0,1 s plus tôt / plus tard (sans dépasser ses voisines) |
+| **⏱** | la ligne commence maintenant (position de lecture) |
+| **↵** | insère une ligne en dessous |
+| **×** | supprime la ligne |
+| **tout décaler** (en haut) | ±0,1 s ou ±0,5 s sur toutes les lignes |
+
+| Touche | Pendant la modification |
+|---|---|
+| **Entrée**, **↑** / **↓** | ligne suivante / précédente (dans le texte) |
+| **Espace** | lecture / pause (hors du texte) |
+| **Échap** | annule, rien n'est changé |
+
+Une ligne laissée vide devient une pause instrumentale (♪).
+
+**enregistrer** : le karaoké utilise tout de suite la nouvelle version (source « modifiées à la main »), gardée
+au même endroit que le calage. Les paroles simples de la page album suivent, sauf si vous les avez écrites vous-même.
+Changer de morceau pendant la modification enregistre ce qui a été changé.
+
+> **Astuce** : pour une ligne mal calée, cliquez son temps pour réécouter juste avant, puis **⏱** pile quand
+> elle commence.
+
+---
+
+## 8. Retoucher un fichier .lrc à la main (facultatif)
 
 Un `.lrc` est un simple fichier texte, modifiable avec le Bloc-notes. Chaque ligne commence par son temps,
 au format `[minutes:secondes.centièmes]` :
@@ -118,9 +152,9 @@ Enregistrez, puis rechargez le site (**F5**) : la nouvelle version est prise en 
 
 ---
 
-## 8. En résumé
+## 9. En résumé
 
 1. **P** puis **K** sur le morceau.
 2. **caler les paroles** (ou **coller des paroles**, puis **caler ces paroles**).
 3. **Entrée** à chaque début de ligne, **⌫** pour corriger.
-4. C'est enregistré, pour toujours.
+4. C'est enregistré, pour toujours. Une faute plus tard ? **modifier**.

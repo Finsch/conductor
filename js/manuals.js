@@ -194,7 +194,7 @@ const MANUALS = [
           },
           {
             title: "Lire le pied du panneau des paroles",
-            body: "<table class=\"mn-table\"><tr><th>Vous voyez</th><th>À faire</th></tr><tr><td><code>paroles : LRCLIB</code> (ou autre source)</td><td>Rien : déjà synchronisées (<b>recaler</b> si elles sont décalées).</td></tr><tr><td><code>paroles non synchronisées</code></td><td><b>caler les paroles</b>, puis l'étape 4.</td></tr><tr><td><code>Pas de paroles trouvées</code></td><td><b>coller des paroles</b>, étape 3.</td></tr></table>",
+            body: "<table class=\"mn-table\"><tr><th>Vous voyez</th><th>À faire</th></tr><tr><td><code>paroles : LRCLIB</code> (ou autre source)</td><td>Rien : déjà synchronisées. Une faute ou une ligne décalée : <b>modifier</b> (étape 7). Tout à refaire : <b>recaler</b>.</td></tr><tr><td><code>paroles non synchronisées</code></td><td><b>caler les paroles</b>, puis l'étape 4.</td></tr><tr><td><code>Pas de paroles trouvées</code></td><td><b>coller des paroles</b>, étape 3.</td></tr></table>",
             tip: "Pour que le calage soit enregistré, le dossier <code>datastorage</code> doit être autorisé (bandeau en bas à gauche)."
           },
           {
@@ -212,7 +212,7 @@ const MANUALS = [
           },
           {
             title: "Les bons réflexes",
-            body: "<ul><li><b>Appuyez sur la première syllabe</b>, pas avant : 0,15 s est déjà retiré pour votre temps de réaction.</li><li><b>Une erreur ?</b> <kbd>⌫</kbd> tout de suite, et refaites la ligne.</li><li><b>Passage instrumental</b> : attendez simplement la ligne suivante. Outro sans paroles : <b>terminer</b>.</li><li><b>Rap rapide</b> : <kbd>Espace</kbd> avant le couplet pour vous préparer.</li><li><b>Tout décalé ?</b> Recommencer (<b>recaler</b>) va souvent plus vite que corriger.</li></ul>"
+            body: "<ul><li><b>Appuyez sur la première syllabe</b>, pas avant : 0,15 s est déjà retiré pour votre temps de réaction.</li><li><b>Une erreur ?</b> <kbd>⌫</kbd> tout de suite, et refaites la ligne.</li><li><b>Passage instrumental</b> : attendez simplement la ligne suivante. Outro sans paroles : <b>terminer</b>.</li><li><b>Rap rapide</b> : <kbd>Espace</kbd> avant le couplet pour vous préparer.</li><li><b>Quelques lignes ratées ?</b> Finissez, puis corrigez-les avec <b>modifier</b> : inutile de tout refaire.</li></ul>"
           },
           {
             title: "Après le calage",
@@ -221,10 +221,15 @@ const MANUALS = [
         ]
       },
       {
-        title: "Retoucher à la main (facultatif)",
+        title: "Retoucher",
         steps: [
           {
-            title: "Modifier le fichier .lrc",
+            title: "Corriger dans le karaoké : modifier",
+            body: "<p>Paroles synchronisées affichées, cliquez <b>modifier</b> en bas du panneau. Chaque ligne apparaît avec son temps ; la ligne en cours de lecture reste surlignée.</p><table class=\"mn-table\"><tr><th>Dans la liste</th><th>Effet</th></tr><tr><td>le texte</td><td>se corrige directement, le temps ne bouge pas (<kbd>Entrée</kbd> ou <kbd>↑</kbd> <kbd>↓</kbd> : ligne suivante / précédente ; ligne vide = pause ♪)</td></tr><tr><td><code>00:15.85</code></td><td>réécouter à partir de cette ligne</td></tr><tr><td><b>−</b> / <b>+</b></td><td>la ligne commence 0,1 s plus tôt / plus tard</td></tr><tr><td><b>⏱</b></td><td>la ligne commence maintenant (position de lecture)</td></tr><tr><td><b>↵</b> / <b>×</b></td><td>insérer une ligne en dessous / supprimer la ligne</td></tr><tr><td><b>tout décaler</b></td><td>±0,1 s ou ±0,5 s sur toutes les lignes</td></tr></table><p><b>enregistrer</b> garde la nouvelle version (source « modifiées à la main ») ; <kbd>Espace</kbd> : lecture / pause ; <kbd>Échap</kbd> ou <b>annuler</b> : rien n'est changé.</p>",
+            tip: "Pour une ligne mal calée : cliquez son temps pour réécouter, puis <b>⏱</b> pile quand elle commence. Plus rapide que des dizaines de clics sur + / −."
+          },
+          {
+            title: "Ou modifier le fichier .lrc (facultatif)",
             body: "<p>Un <code>.lrc</code> est un simple texte (Bloc-notes). Chaque ligne commence par son temps <code>[minutes:secondes.centièmes]</code>. Pour avancer une ligne d'une demi-seconde, retirez <code>0.50</code> à son temps. Pour tout décaler, ajoutez <code>[offset:+300]</code> en haut (0,3 s plus tôt ; <code>-300</code> : plus tard).</p>",
             code: "[ti:Karma Police]\n[by:calage manuel]\n[00:12.40]Karma police\n[00:15.85]Arrest this man\n[00:18.10]He talks in maths",
             tip: "Enregistrez, puis rechargez le site (F5) : la nouvelle version est prise au prochain passage du karaoké sur ce morceau."
@@ -233,8 +238,9 @@ const MANUALS = [
       }
     ],
     trouble: [
+      ["Une faute dans les paroles", "<b>modifier</b>, corrigez le texte de la ligne, <b>enregistrer</b> : les temps restent en place."],
       ["Le calage n'est pas gardé", "Le dossier <code>datastorage</code> n'est pas autorisé : bandeau en bas à gauche du site."],
-      ["Les lignes s'allument trop tôt / trop tard", "Recalez, ou ajoutez <code>[offset:…]</code> dans le .lrc (étape 7)."]
+      ["Les lignes s'allument trop tôt / trop tard", "<b>modifier</b> puis <b>tout décaler</b> ; quelques lignes seulement : <b>−</b> / <b>+</b> ou <b>⏱</b> sur ces lignes."]
     ]
   },
 

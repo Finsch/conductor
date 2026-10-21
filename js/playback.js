@@ -1052,9 +1052,46 @@
     fs.querySelector(".fs-prev").addEventListener("click", prev);
     fs.querySelector(".fs-next").addEventListener("click", next);
     fs.querySelector(".fs-star").addEventListener("click", toggleTrackStar);
-    fs.querySelector(".fs-bar").addEventListener("click", e => {
-      const r = e.currentTarget.getBoundingClientRect();
-      seek(((e.clientX - r.left) / r.width) * duration());
+    // Barre de lecture : cliquer ou glisser pour avancer / reculer (le son suit au relâchement)
+    const bar = fs.querySelector(".fs-bar");
+    bar.tabIndex = 0;
+    const ratioAt = e => { const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
+    const showAt = ratio => {
+      const dur = duration();
+      const pct = ratio * 100 + "%";
+      fs.querySelector(".fs-fill").style.width = pct;
+      fs.querySelector(".fs-knob").style.left = pct;
+      fs.querySelector(".fs-cur").textContent = mmss(ratio * dur);
+      fs.querySelector(".fs-left").textContent = dur ? "−" + mmss(dur - ratio * dur) : "";
+    };
+    bar.addEventListener("pointerdown", e => {
+      if (e.button !== 0 || !state) return;
+      e.preventDefault();
+      fsDrag = ratioAt(e);
+      bar.setPointerCapture(e.pointerId);
+      bar.classList.add("is-dragging");
+      showAt(fsDrag);
+    });
+    bar.addEventListener("pointermove", e => {
+      if (fsDrag == null) return;
+      fsDrag = ratioAt(e);
+      showAt(fsDrag);
+    });
+    const endDrag = e => {
+      if (fsDrag == null) return;
+      const ratio = e && e.type === "pointerup" ? ratioAt(e) : fsDrag;
+      fsDrag = null;
+      bar.classList.remove("is-dragging");
+      if (e && e.type === "pointerup") seek(ratio * duration());
+      renderFsProgress();
+    };
+    bar.addEventListener("pointerup", endDrag);
+    bar.addEventListener("pointercancel", endDrag);
+    bar.addEventListener("keydown", e => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      e.stopPropagation();   // ← → sur la barre : avance de 5 s (et non titre suivant)
+      seek(Math.max(0, Math.min(duration(), (audio.currentTime || 0) + (e.key === "ArrowRight" ? 5 : -5))));
     });
     // Souris immobile 3 s : curseur et aides masqués
     fs.addEventListener("pointermove", wakeFs);
@@ -1185,6 +1222,7 @@
   let lyInfo = null;       // morceau affiché : { albumId, artist, album, title, duration, src }
   let lyPlain = null;      // paroles simples connues (pour le calage)
   let sync = null;         // calage en cours : { lines: [{ text, t }], next, pasted }
+  let lyEdit = null;       // modification en cours : { lines: [{ t, text }], source, dirty }
 
   function lyBox() { return fs.querySelector(".fs-ly-scroll"); }
 
@@ -1214,7 +1252,10 @@
       p.dataset.i = i;
       return p;
     }));
-    lyFooter("paroles : " + source, [["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))]]);
+    lyFooter("paroles : " + source, [
+      ["modifier", () => startEdit(lines, source)],
+      ["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))]
+    ]);
     lyBox().scrollTop = 0;
     startLyricsLoop();
   }
@@ -1238,9 +1279,11 @@
 
     const t = state.tracks[state.index] || {};
     const key = state.albumId + "|" + state.index + "|" + (t.title || "");
-    if (key === lyKey) { if (!sync) startLyricsLoop(); return; }
+    if (key === lyKey) { if (lyEdit) startEditLoop(); else if (!sync) startLyricsLoop(); return; }
     // Morceau fini pendant le calage : ce qui est calé est enregistré
     if (sync && sync.next > 0) { finishSync(); return; }
+    // Morceau fini pendant une modification : les changements sont enregistrés
+    if (lyEdit) { if (lyEdit.dirty) { saveEdit(); return; } endEdit(); }
     lyKey = key;
     lyLines = null;
     lyPlain = null;
@@ -1362,6 +1405,174 @@
     }, 300);
   }
 
+  // ---------- Modifier des paroles synchronisées ----------
+  // Une ligne par rangée : horodatage (clic = écouter), ±0,1 s, « maintenant »,
+  // texte modifiable, insérer / supprimer. Les horodatages restent en place.
+
+  const fmtStamp = t => {
+    const m = Math.floor(t / 60), sec = t - m * 60;
+    return String(m).padStart(2, "0") + ":" + sec.toFixed(2).padStart(5, "0");
+  };
+
+  function startEdit(lines, source) {
+    stopLyricsLoop();
+    lyLines = null;
+    lyEdit = { lines: lines.map(l => ({ t: l.t, text: l.text || "" })), source, dirty: false };
+    fs.classList.add("is-editing");
+    renderEdit();
+    startEditLoop();
+  }
+
+  function editIcon(label, title, fn, cls) {
+    const b = el("button", "fs-ed-btn" + (cls ? " " + cls : ""), label);
+    b.type = "button";
+    b.title = title;
+    b.addEventListener("click", e => { e.stopPropagation(); fn(); });
+    return b;
+  }
+
+  function editChanged() { lyEdit.dirty = true; editFooter(); }
+
+  function editFocus(i) {
+    const input = lyBox().querySelectorAll(".fs-ed-text")[i];
+    if (input) { input.focus(); input.scrollIntoView({ block: "nearest" }); }
+  }
+
+  function renderEdit(focusIndex) {
+    const box = lyBox();
+    const keep = box.scrollTop;
+    const list = el("div", "fs-ed");
+    const shift = el("div", "fs-ed-shift");
+    shift.append(el("span", null, "tout décaler"),
+      editIcon("−0,5 s", "Toutes les lignes 0,5 s plus tôt", () => shiftAll(-0.5)),
+      editIcon("−0,1 s", "Toutes les lignes 0,1 s plus tôt", () => shiftAll(-0.1)),
+      editIcon("+0,1 s", "Toutes les lignes 0,1 s plus tard", () => shiftAll(0.1)),
+      editIcon("+0,5 s", "Toutes les lignes 0,5 s plus tard", () => shiftAll(0.5)));
+    list.appendChild(shift);
+    lyEdit.lines.forEach((l, i) => {
+      const row = el("div", "fs-ed-row");
+      row.dataset.i = i;
+      const time = editIcon(fmtStamp(l.t), "Écouter à partir d'ici", () => { seek(l.t); if (audio.paused) toggle(); }, "fs-ed-time");
+      const input = el("input", "fs-ed-text");
+      input.type = "text";
+      input.value = l.text;
+      input.placeholder = "♪ (pause instrumentale)";
+      input.spellcheck = false;
+      input.addEventListener("input", () => { l.text = input.value; editChanged(); });
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); editFocus(i + 1); }
+        else if (e.key === "ArrowDown") { e.preventDefault(); editFocus(i + 1); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); editFocus(i - 1); }
+        else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelEdit(); }
+      });
+      row.append(time,
+        editIcon("−", "0,1 s plus tôt", () => nudge(i, -0.1)),
+        editIcon("+", "0,1 s plus tard", () => nudge(i, 0.1)),
+        editIcon("⏱", "Commence maintenant (position de lecture)", () => nudge(i, null)),
+        input,
+        editIcon("↵", "Insérer une ligne en dessous", () => insertAfter(i)),
+        editIcon("×", "Supprimer la ligne", () => removeLine(i), "is-del"));
+      list.appendChild(row);
+    });
+    box.replaceChildren(list);
+    box.scrollTop = keep;
+    lyNow = -2;
+    editFooter();
+    if (focusIndex != null) editFocus(focusIndex);
+  }
+
+  function editFooter() {
+    lyFooter("modifier les paroles" + (lyEdit.dirty ? " · modifiées" : ""), [
+      ["enregistrer", saveEdit, true],
+      ["annuler", cancelEdit]
+    ]);
+  }
+
+  // Une ligne garde sa place entre ses voisines
+  function nudge(i, delta) {
+    const L = lyEdit.lines;
+    const lo = i ? L[i - 1].t : 0;
+    const hi = i < L.length - 1 ? L[i + 1].t : Math.max(duration() || 0, L[i].t + 1);
+    const t = delta == null ? (audio.currentTime || 0) : L[i].t + delta;
+    L[i].t = Math.round(Math.max(lo, Math.min(hi, Math.max(0, t))) * 100) / 100;
+    lyEdit.dirty = true;
+    renderEdit();
+  }
+
+  function shiftAll(delta) {
+    lyEdit.lines.forEach(l => { l.t = Math.round(Math.max(0, l.t + delta) * 100) / 100; });
+    lyEdit.dirty = true;
+    renderEdit();
+  }
+
+  function insertAfter(i) {
+    const L = lyEdit.lines;
+    const next = L[i + 1];
+    const t = next ? (L[i].t + next.t) / 2 : L[i].t + 2;
+    L.splice(i + 1, 0, { t: Math.round(t * 100) / 100, text: "" });
+    lyEdit.dirty = true;
+    renderEdit(i + 1);
+  }
+
+  function removeLine(i) {
+    if (lyEdit.lines.length <= 1) return;
+    lyEdit.lines.splice(i, 1);
+    lyEdit.dirty = true;
+    renderEdit();
+  }
+
+  let edRaf = 0;
+  function startEditLoop() {
+    if (edRaf || !lyEdit) return;
+    const tick = () => {
+      edRaf = 0;
+      if (!lyEdit || !fsIsOpen() || !karaokeOn) return;
+      const i = Karaoke.lineAt(lyEdit.lines, (audio.currentTime || 0) + 0.2);
+      if (i !== lyNow) {
+        lyNow = i;
+        lyBox().querySelectorAll(".fs-ed-row").forEach((r, n) => r.classList.toggle("is-now", n === i));
+      }
+      edRaf = requestAnimationFrame(tick);
+    };
+    edRaf = requestAnimationFrame(tick);
+  }
+
+  function endEdit() {
+    cancelAnimationFrame(edRaf);
+    edRaf = 0;
+    lyEdit = null;
+    fs.classList.remove("is-editing");
+  }
+
+  function cancelEdit() {
+    endEdit();
+    lyKey = "";
+    renderKaraoke();
+  }
+
+  async function saveEdit() {
+    if (!lyEdit) return;
+    const lines = lyEdit.lines.map(l => ({ t: l.t, text: l.text.trim() })).sort((a, b) => a.t - b.t);
+    const info = lyInfo;
+    endEdit();
+    const saved = await Karaoke.saveManual(info, lines, "modifiées à la main").catch(() => false);
+    // Paroles simples de la page album trouvées en ligne : mises à jour aussi (pas celles écrites à la main)
+    if (saved && typeof Disk !== "undefined" && Disk.readLyrics && info.albumId) {
+      const data = Object.assign({}, (await Disk.readLyrics(info.albumId).catch(() => null)) || {});
+      const k = Karaoke.key(info.title);
+      if (data[k] && !data[k].edited) {
+        data[k] = { text: lines.map(l => l.text).filter(Boolean).join("\n"), source: data[k].source };
+        Disk.writeLyrics(info.albumId, data);
+      }
+    }
+    lyKey = "";
+    renderKaraoke();
+    if (!saved) setTimeout(() => {
+      const foot = fs.querySelector(".fs-ly-src span");
+      if (foot) foot.textContent += " · non enregistrées sur le disque (dossier datastorage non autorisé)";
+    }, 300);
+  }
+
   function startLyricsLoop() {
     if (lyRaf || !lyLines) return;
     const tick = () => {
@@ -1386,8 +1597,9 @@
     lyRaf = requestAnimationFrame(tick);
   }
 
+  var fsDrag = null;   // barre du plein écran en cours de glissement (0 → 1)
   function renderFsProgress() {
-    if (!fsIsOpen()) return;
+    if (!fsIsOpen() || fsDrag != null) return;
     const dur = duration();
     const cur = audio.currentTime || 0;
     const pct = (dur ? Math.min(100, cur / dur * 100) : 0) + "%";
@@ -1577,6 +1789,11 @@
       e.preventDefault();
       fsOpen(false);
       if (framePage.albumId !== state.albumId) navigate(albumUrl(state.albumId));
+    }
+    else if (fsIsOpen() && lyEdit && fs.classList.contains("is-karaoke")) {
+      // Modification des paroles : Échap = annuler, Espace = lecture / pause
+      if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+      else if (e.code === "Space") { if (/^(button|a)$/i.test(t.tagName)) return; e.preventDefault(); if (!e.repeat) toggle(); }
     }
     else if (fsIsOpen() && sync) {
       // Calage des paroles : Entrée = la ligne commence, ⌫ = annuler, Échap = abandonner
