@@ -9,6 +9,8 @@ A personal, local-first music library, listening journal and audio player. Inspi
 
 The interface is in French.
 
+![The collection: covers, filters, mini player](assets/about/collection.jpg)
+
 ---
 
 ## Contents
@@ -56,6 +58,8 @@ The interface is in French.
 
 ### Album page
 
+<p align="center"><img src="assets/about/album.jpg" alt="Album page: player and tracklist, cover and sheet"></p>
+
 - **Player**: your own files (local folders or Navidrome) or, without files, 30-second Deezer previews.
 - **Tracklist** with ★ favourite tracks and per-track **lyrics** (see [Lyrics](#lyrics)).
 - **Sheet**: release date, label, genre, styles, family, moods ("ressenti"), custom tags; edit with **Modifier la fiche** (`E`), including the cover (URL, image from the PC, or the cover of your files). In that window, an image copied elsewhere can be pasted as the cover: **right-click the cover preview → Coller la pochette depuis le presse-papiers**, or `Ctrl + V` (Chrome may ask once for clipboard access for the right-click).
@@ -70,11 +74,15 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 
 ### Next up
 
+<p align="center"><img src="assets/about/nextup.jpg" alt="Next up: top 5 and the list of albums to listen to" width="900"></p>
+
 - A to-listen list kept apart from the collection.
 - **Top 5** priority grid, then "on the phone" / "not on the phone" lists; drag and drop to reorder; one click moves an album to the collection.
 - **Sleeping albums**: in next up for more than 3 months and never played — listed at the top, marked "endormi" on covers and in yellow in the lists.
 
 ### Playback
+
+<p align="center"><img src="assets/about/queue.jpg" alt="The queue panel above the mini player" width="360"></p>
 
 - **One engine for the whole site**: the music continues across pages and resumes after a reload, at the same track and second.
 - **Mini player** (bottom right): cover, track, ★, previous / next, play / pause, progress, go to the album, queue, full screen, close.
@@ -85,6 +93,8 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 - **Media keys and Windows media panel**: the keyboard's play/pause, next and previous keys work even when the browser is in the background, and Windows' volume / media panel shows the track, artist, album and cover (the local cover once `datastorage` is authorised, otherwise the online one).
 
 ### Full screen and karaoke
+
+<p align="center"><img src="assets/about/fullscreen.jpg" alt="Full screen" width="49%"> <img src="assets/about/karaoke.jpg" alt="Karaoke: the line being sung is highlighted" width="49%"></p>
 
 - **Full screen** (`P` or the ⤢ button): large cover on a blurred background, track, artist, album, progress, controls, ★, *next track* and *next album*. The cursor and hints hide after 3 s without moving the mouse. `Esc` or `P` to leave.
 - **Karaoke** (`K` or the microphone button): synced lyrics next to the cover — the current line is highlighted and stays centered, click a line to jump there, scroll freely (auto-scroll resumes after 4 s).
@@ -106,6 +116,8 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 
 ### Your audio files
 
+<p align="center"><img src="assets/about/files.jpg" alt="The audio-files page: local folders and the phone" width="900"></p>
+
 **audio-files** page.
 
 **Local storage** — SD card, USB stick, external drive or any PC folder; add as many folders as you like.
@@ -123,6 +135,8 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 
 ### Journal
 
+<p align="center"><img src="assets/about/journal.jpg" alt="The journal: Ce jour-là, the month calendar with covers, the weekly goal and the month stats"></p>
+
 - **Calendar** of the month with the covers of each day's listens (today highlighted); per day: copy the list (`1. [[Artist]] - [[Album]]`) and open the day's note.
 - **Listening time chart** for the displayed month (with its own ‹ aujourd'hui › navigation), month total and today.
 - **This month**: most played album and artist, busiest day, top 3 genres (links to the search).
@@ -134,12 +148,16 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 
 ### Insights and fiches à compléter
 
+<p align="center"><img src="assets/about/insights.jpg" alt="Insights: the collection in numbers" width="900"></p>
+
 - **Insights**: the collection in numbers (albums, artists, total listening time, next up), families, most present artists, decades, intensity, albums to rediscover — every bar links to the filtered collection.
 - **N fiches à compléter →**: albums missing a cover, genre, release date, tracklist, intensity or mood, or whose **cover is online only** (its site refused the copy, so it would be blank offline). Filter by criterion, dismiss a criterion per album (×).
 - **exporter en CSV ↓**: download the whole collection as a spreadsheet.
 - **wrapped**: the year in music (see below).
 
 ### Wrapped
+
+<p align="center"><img src="assets/about/wrapped.jpg" alt="Wrapped: the year in music (demo year)" width="900"></p>
 
 The year in music, computed from your listens (offline). `Shift + W`, or **wrapped** in insights.
 
