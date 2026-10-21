@@ -5524,7 +5524,8 @@ body.has-fs .mq {
 .fs-ly-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 34vh 4px;
+  /* à droite : de la place pour la ligne en cours, agrandie de 3 % */
+  padding: 34vh 32px 34vh 4px;
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);

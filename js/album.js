@@ -720,8 +720,9 @@
       ? plural(plays.length, "écoute") + " · dernière le " + formatDate(last.at.slice(0, 10))
       : "Pas encore écouté ici"];
     $("a-plays").textContent = parts.join(" · ");
-    $("a-plays").title = "Une écoute = " + Math.round(ALBUM_SHARE * 100) +
-      " % des morceaux écoutés (chacun au moins à moitié) avec le lecteur.";
+    $("a-plays").title = "Une écoute = " + Math.round(ALBUM_SHARE * 100) + " % de la durée réellement écoutée et " +
+      Math.round(ALBUM_SHARE * 100) + " % des morceaux (chacun au moins à moitié), avec le lecteur. " +
+      "Dernier album avant de fermer l'application : 60 %.";
   }
 
   function renderLogs() {

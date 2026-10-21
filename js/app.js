@@ -127,8 +127,13 @@
     { id: "year-desc",    label: "Sortie récente",          fn: byNumber(yearOf, -1) },
     { id: "year-asc",     label: "Sortie ancienne",         fn: byNumber(yearOf, 1) },
     { id: "length-desc",  label: "Durée, longue → courte",  fn: byNumber(durationOf, -1) },
-    { id: "length-asc",   label: "Durée, courte → longue",  fn: byNumber(durationOf, 1) }
+    { id: "length-asc",   label: "Durée, courte → longue",  fn: byNumber(durationOf, 1) },
+    // Écoutes comptées par le lecteur ; à égalité : la plus récente d'abord / l'ajout le plus ancien d'abord
+    { id: "plays-desc",   label: "Le plus écouté",          fn: (a, b) => playCount(b) - playCount(a) || lastPlay(b).localeCompare(lastPlay(a)) },
+    { id: "plays-asc",    label: "Le moins écouté",         fn: (a, b) => playCount(a) - playCount(b) || addedAt(a).localeCompare(addedAt(b)) }
   ];
+  function playCount(a) { return (a.plays || []).length; }
+  function lastPlay(a) { const p = a.plays || []; return p.length ? p[p.length - 1].at || "" : ""; }
 
   if (!SORTS.some(s => s.id === state.sort)) state.sort = "added-desc";
 

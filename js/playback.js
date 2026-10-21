@@ -19,8 +19,11 @@
 //   en cours ;
 // - file d'attente d'albums : à la fin d'un album, le suivant démarre ;
 // - écoutes comptées ici, même en changeant de page → Store.addPlay :
-//   90 % des morceaux écoutés (chacun au moins à moitié) ou plus de 30 min
-//   d'écoute de l'album ;
+//   90 % de la durée de l'album réellement écoutée (pauses et sauts exclus) ET
+//   90 % des morceaux écoutés (chacun au moins à moitié). Le dernier album de la
+//   session (application fermée) compte dès 60 % / 60 %, pour laisser une trace ;
+// - la progression d'un album vit le temps de la session : gardée si la page est
+//   actualisée, remise à zéro quand l'application est fermée ;
 // - temps d'écoute par jour (journal) → Store.addListening, enregistré après
 //   chaque écoute d'album, à la pause, en changeant d'album ou en fermant.
 
@@ -33,8 +36,15 @@
   const STATE_KEY = "conductor01.playback";
   const QUEUE_KEY = "conductor01.queue";
   const RESUME_WITHIN = 12 * 3600 * 1000;    // au-delà de 12 h, on ne relance pas le son tout seul
-  const TRACK_SHARE = 0.5, TRACK_MAX = 240, ALBUM_SHARE = 0.9;
-  const ALBUM_TIME = 30 * 60;   // ou 30 min d'écoute de l'album : écoute comptée
+  const TRACK_SHARE = 0.5, TRACK_MAX = 240;
+  const ALBUM_SHARE = 0.9;      // 90 % de la durée ET 90 % des morceaux
+  const LAST_SHARE = 0.6;       // dernier album de la session : 60 % / 60 %
+  // Progression de l'album en cours (heard, done, startedAt) :
+  // - PROGRESS_KEY (sessionStorage) : survit à l'actualisation, pas à la fermeture ;
+  // - LAST_KEY (localStorage) : dernier état connu, lu à l'ouverture suivante pour
+  //   compter le dernier album de la session précédente (règle des 60 %).
+  const PROGRESS_KEY = "conductor01.progress";
+  const LAST_KEY = "conductor01.lastAlbum";
 
   const ROOT = typeof APP_ROOT !== "undefined" ? APP_ROOT : "";
   // Page affichée dans le cadre (envoyée par la page elle-même)
@@ -166,6 +176,37 @@
       state.savedAt = Date.now();
     }
     write(STATE_KEY, state);
+    saveProgress();
+  }
+
+  // ---------- Progression de l'album (session) ----------
+
+  const stateLength = st => st.tracks.reduce((s, t) => s + (t.duration || 0), 0);
+  const heardTotal = st => Object.values(st.heard || {}).reduce((s, x) => s + x, 0);
+
+  // Assez écouté ? share = 0,9 (règle normale) ou 0,6 (dernier album de la session)
+  function enough(p, share) {
+    const n = p.n || 0;
+    if (!n) return false;
+    const tracksOk = (p.done || []).length >= Math.ceil(n * share);
+    const timeOk = !p.total || p.heard >= p.total * share;   // durée inconnue : les morceaux suffisent
+    return tracksOk && timeOk;
+  }
+
+  function progressOf(st) {
+    return { albumId: st.albumId, heard: heardTotal(st), done: st.done || [], n: st.tracks.length,
+      total: stateLength(st), source: st.source || "", startedAt: st.startedAt || null };
+  }
+
+  function saveProgress() {
+    try {
+      if (state) {
+        sessionStorage.setItem(PROGRESS_KEY, JSON.stringify({ albumId: state.albumId, heard: state.heard, done: state.done, startedAt: state.startedAt }));
+        if (heardTotal(state) > 0) write(LAST_KEY, Object.assign(progressOf(state), { savedAt: Date.now() }));
+      } else {
+        sessionStorage.setItem(PROGRESS_KEY, JSON.stringify(null));
+      }
+    } catch (e) {}
   }
 
   function saveQueue() {
@@ -618,15 +659,16 @@
     const dur = (state.tracks[i] && state.tracks[i].duration) || duration();
     const need = dur ? Math.min(TRACK_MAX, dur * TRACK_SHARE) : Infinity;
     if (!state.done.includes(i) && (state.heard[i] || 0) >= need) state.done.push(i);
-    const n = state.tracks.length;
-    const heardTotal = Object.values(state.heard).reduce((s, x) => s + x, 0);
-    if (n && (state.done.length >= Math.ceil(n * ALBUM_SHARE) || heardTotal >= ALBUM_TIME)) {
-      Store.addPlay(state.albumId, { tracks: state.done.length, of: n, source: state.source || "",
-        startedAt: state.startedAt || null, seconds: Math.round(heardTotal) });
+    const p = progressOf(state);
+    if (enough(p, ALBUM_SHARE)) {
+      Store.addPlay(state.albumId, { tracks: p.done.length, of: p.n, source: p.source,
+        startedAt: p.startedAt, seconds: Math.round(p.heard) });
       state.heard = {};
       state.done = [];
       state.startedAt = null;
+      write(LAST_KEY, null);   // compté : plus rien à rattraper à la fermeture
       flushTime();
+      saveProgress();
     }
   }
 
@@ -670,9 +712,25 @@
   state = read(STATE_KEY, null);
   queue = read(QUEUE_KEY, []).filter(id => typeof id === "string");
   if (state && (!state.tracks || !state.tracks.length)) state = null;
+
+  // Actualisation (même session) ou nouvelle ouverture ?
+  let session = undefined;
+  try { const raw = sessionStorage.getItem(PROGRESS_KEY); session = raw == null ? undefined : JSON.parse(raw); } catch (e) {}
+  if (session === undefined) {
+    // Nouvelle session : le dernier album de la précédente compte dès 60 %
+    const last = read(LAST_KEY, null);
+    if (last && last.albumId && enough(last, LAST_SHARE)) {
+      Store.addPlay(last.albumId, { tracks: (last.done || []).length, of: last.n, source: last.source || "",
+        startedAt: last.startedAt || null, seconds: Math.round(last.heard || 0), at: new Date(last.savedAt || Date.now()).toISOString(), endOfSession: true });
+    }
+    write(LAST_KEY, null);
+  }
   if (state) {
-    state.heard = state.heard || {};
-    state.done = state.done || [];
+    // Progression : reprise si la page a été actualisée, sinon remise à zéro
+    const keep = session && session.albumId === state.albumId;
+    state.heard = keep ? session.heard || {} : {};
+    state.done = keep ? session.done || [] : [];
+    state.startedAt = keep ? session.startedAt || null : null;
     const fresh = Date.now() - (state.savedAt || 0) < RESUME_WITHIN;
     if (playable(state.index) && isSd(state.tracks[state.index].src)) {
       // Stockage local : ouvert au premier ▶ (l'accès demande souvent un clic)

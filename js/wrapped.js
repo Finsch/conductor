@@ -2,7 +2,7 @@
 //
 // Tout vient des écoutes comptées par le lecteur (album.plays), du temps d'écoute
 // par jour (Store.listening). Rien n'est envoyé nulle part.
-// Une écoute = un album écouté (90 % des morceaux, ou 30 min) : « albums écoutés »
+// Une écoute = un album écouté (90 % de la durée et 90 % des morceaux ; 60 % pour le dernier de la session) : « albums écoutés »
 // compte des albums différents, pas des lancements.
 
 (function () {
