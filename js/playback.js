@@ -1256,7 +1256,7 @@
       ["modifier", () => startEdit(lines, source)],
       ["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))],
       ["coller", () => startPaste(true)],
-      ["importer .lrc", pickLrc]
+      ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]
     ]);
     lyBox().scrollTop = 0;
     startLyricsLoop();
@@ -1268,7 +1268,7 @@
     lyFooter("paroles non synchronisées · " + source, [
       ["caler les paroles", () => startSync(text), true],
       ["coller", () => startPaste(true)],
-      ["importer .lrc", pickLrc]
+      ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]
     ]);
     lyBox().scrollTop = 0;
   }
@@ -1309,10 +1309,10 @@
       lyPlain = res && res.plain || null;
       if (res && res.lines && res.lines.length) showSynced(res.lines, res.source);
       else if (res && res.plain) showPlain(res.plain, res.source);
-      else if (res && res.instrumental) lyricsMessage("Instrumental ♪", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]);
-      else lyricsMessage("Pas de paroles trouvées pour ce morceau.", [["coller des paroles", startPaste, true], ["importer .lrc", pickLrc]]);
+      else if (res && res.instrumental) lyricsMessage("Instrumental ♪", [["coller des paroles", startPaste], ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]]);
+      else lyricsMessage("Pas de paroles trouvées pour ce morceau.", [["coller des paroles", startPaste, true], ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]]);
     }).catch(() => {
-      if (key === lyKey) lyricsMessage("Paroles indisponibles (hors ligne ?).", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]);
+      if (key === lyKey) lyricsMessage("Paroles indisponibles (hors ligne ?).", [["coller des paroles", startPaste], ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]]);
     });
   }
 
@@ -1354,7 +1354,7 @@
 
   async function importSynced(text) {
     const lines = Karaoke.parseLrc(text);
-    if (!lines || !lines.some(l => l.text)) { lyricsMessage("Aucun horodatage reconnu dans ce fichier.", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]); return; }
+    if (!lines || !lines.some(l => l.text)) { lyricsMessage("Aucun horodatage reconnu dans ce fichier.", [["coller des paroles", startPaste], ["importer .lrc", pickLrc], ["Lyricsify ↗", openLyricsify]]); return; }
     const info = lyInfo;
     stopLyricsLoop();
     const saved = await Karaoke.saveManual(info, lines, "fichier .lrc importé").catch(() => false);
@@ -1373,6 +1373,14 @@
       const foot = fs.querySelector(".fs-ly-src span");
       if (foot) foot.textContent += " · non enregistrées sur le disque (dossier datastorage non autorisé)";
     }, 300);
+  }
+
+  // Lyricsify : pas d'API (et sa recherche est protégée) → recherche web limitée au site,
+  // dans un nouvel onglet ; le .lrc téléchargé s'importe ensuite avec « importer .lrc »
+  function openLyricsify() {
+    if (!lyInfo) return;
+    const q = "site:lyricsify.com " + Karaoke.mainArtist(lyInfo.artist) + " " + Karaoke.cleanTitle(lyInfo.title);
+    window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q), "_blank", "noopener");
   }
 
   function pickLrc() {

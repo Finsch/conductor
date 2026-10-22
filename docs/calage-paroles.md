@@ -61,6 +61,9 @@ Un `.lrc` contient déjà les temps (`[00:12.40]Karma police`) : pas besoin de c
 - Ou ouvrez le `.lrc` dans le Bloc-notes, copiez tout, cliquez **coller** (ou **coller des paroles**) et collez :
   conductor. reconnaît les temps, le bouton devient **utiliser ces paroles**.
 
+Pas de `.lrc` ? Bouton **Lyricsify ↗** : une recherche de l'artiste et du titre sur lyricsify.com s'ouvre dans
+un nouvel onglet ; téléchargez le `.lrc`, puis **importer .lrc**.
+
 La version importée **remplace** celle d'avant (LRCLIB, calage…), avec la source « fichier .lrc importé ».
 Elle est enregistrée comme un calage. Un décalage ? **modifier** → **tout décaler** (partie 7).
 Un fichier sans temps est traité comme des paroles simples, à caler.

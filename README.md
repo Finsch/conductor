@@ -99,7 +99,7 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 - **Full screen** (`P` or the ⤢ button): large cover on a blurred background, track, artist, album, progress, controls, ★, *next track* and *next album*. The cursor and hints hide after 3 s without moving the mouse. `Esc` or `P` to leave.
 - **Karaoke** (`K` or the microphone button): synced lyrics next to the cover — the current line is highlighted and stays centered, click a line to jump there, scroll freely (auto-scroll resumes after 4 s).
 - **Manual sync** ("caler"): when only plain lyrics exist, or none (paste them), sync them by pressing `Enter` at the start of each line while listening; `Backspace` undoes the last line, `Space` pauses, `Esc` cancels. The result is saved and used forever — see `docs/calage-paroles.md`.
-- **Import a `.lrc`** ("importer .lrc", or paste its content in "coller"): timestamps are used as-is, no manual sync; replaces any previous version.
+- **Import a `.lrc`** ("importer .lrc", or paste its content in "coller"): timestamps are used as-is, no manual sync; replaces any previous version. A "Lyricsify ↗" button opens a web search for the current track on lyricsify.com.
 - **Edit synced lyrics** ("modifier"): fix the text of any line without losing its timing, nudge a line ±0.1 s or set it to the current position, insert / delete lines, or shift the whole song. Saved like a manual sync.
 
 ### Lyrics
