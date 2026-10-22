@@ -120,8 +120,17 @@ La page de connexion Navidrome s'affiche → passez à l'étape 4.
 
 ### Raccourcis (une seule fois, facultatif)
 
-**PC : raccourci « câble USB »** — `app\tools\conductor-usb.bat` : clic droit → **Envoyer vers** →
-**Bureau (créer un raccourci)**. À chaque session (câble + Modem USB), double-clic :
+**PC : raccourci « câble USB »** — `app\tools\conductor-usb.bat`.
+- **Sur le bureau** : clic droit → (**Afficher plus d'options**) → **Envoyer vers** → **Bureau (créer un raccourci)**.
+- **Dans le menu Démarrer** (Windows n'épingle pas toujours un `.bat` directement) :
+  1. clic droit sur le `.bat` → (**Afficher plus d'options**) → **Créer un raccourci** ;
+  2. `Win` + `R`, tapez `shell:programs`, Entrée : le dossier des programmes du menu Démarrer s'ouvre ;
+  3. copiez ou déplacez le raccourci dans ce dossier.
+
+  Il apparaît dans la liste des applications (tapez son nom pour le trouver). Pour l'épingler comme
+  une application : clic droit → **Épingler au menu Démarrer** (ou à la barre des tâches).
+
+À chaque session (câble + Modem USB), double-clic :
 - trouve l'adresse du A12 sur le câble (carte « Remote NDIS ») ; option E : lance les
   `adb forward` (4533 et 8022) et prend `localhost` ;
 - copie l'adresse (à coller dans WinSCP) ;
@@ -213,6 +222,25 @@ Vos albums s'affichent ? Le dossier est `~/storage/shared/Music`.
 - Ailleurs dans le téléphone : explorez avec `ls ~/storage/shared`.
 - Sur la **carte SD** : `ls /storage` → la carte apparaît sous un nom comme `1A2B-3C4D`,
   le dossier sera `/storage/1A2B-3C4D/Music`.
+
+**Téléphone et carte SD à la fois** (aussi pour ajouter une carte plus tard) : Navidrome ne lit
+qu'un dossier, on en crée un qui contient des **liens** vers les deux (Navidrome les suit).
+
+```sh
+ls /storage                      # nom de la carte, ex. 1A2B-3C4D
+ls /storage/1A2B-3C4D            # dossier de musique sur la carte, ex. Music
+mkdir -p ~/musique
+ln -s ~/storage/shared/Music ~/musique/telephone        # dossier du téléphone (ex. dawn-fm)
+ln -s /storage/1A2B-3C4D/Music ~/musique/carte-sd
+ls ~/musique/carte-sd            # vos albums de la carte doivent s'afficher
+sed -i 's#^export ND_MUSICFOLDER=.*#export ND_MUSICFOLDER="$HOME/musique"#' ~/navidrome.sh
+```
+
+Relancez Navidrome (il réanalyse tout, quelques minutes), puis conductor. → audio-files → **Actualiser**.
+- « Permission denied » sur la carte : `termux-setup-storage` ; toujours bloqué → musique dans
+  `~/storage/external-1` (dossier réservé à Termux sur la carte) et ce chemin dans le lien.
+- Carte retirée : ses albums disparaissent, puis reviennent quand elle est remise.
+- WinSCP ne peut écrire sur la carte que dans `~/storage/external-1` : envoyez plutôt dans le dossier du téléphone.
 
 ## 5. Créer le script de démarrage
 

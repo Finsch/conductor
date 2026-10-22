@@ -18,6 +18,8 @@
     daily: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/><path d="M10.5 8.5v5l4-2.5z" fill="currentColor"/>',
     karaoke: '<g transform="translate(15.8 6.4) rotate(40)"><circle r="4.6" fill="currentColor" stroke="none"/><path d="M-3 4.7A5.6 5.6 0 0 0 3 4.7L1.2 12.2a1.2 1.2 0 0 1-2.4 0z" fill="currentColor" stroke="none"/></g><path d="M7 16.6c-1.7.8-2.8 1.9-2 2.9.8 1 2.7.3 3.4 1.2.6.8-.1 1.8-.8 2.4"/>',
     upload: '<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><rect x="4" y="15" width="16" height="5" rx="1.5"/><path d="M8 17.5h.01"/>',
+    route: '<circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M7.2 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h7.8"/>',
+    linux: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M7 9l3 2.5L7 14M12 14h4"/><path d="M9 20h6"/>',
     tier: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>'
   };
   const icon = name => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + "</svg>";

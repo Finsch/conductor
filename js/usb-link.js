@@ -1,4 +1,4 @@
-// conductor. — téléphone relié par câble USB : adresse donnée par tools/conductor-usb.bat
+// conductor. — téléphone relié par câble USB : adresse donnée par tools/conductor-usb.bat (Linux : .sh)
 //
 // Le raccourci du bureau trouve l'adresse du téléphone sur le câble (carte « Remote NDIS »,
 // ou ADB → localhost) et ouvre conductor.html?usb=<adresse>. Ici, dans l'enveloppe :

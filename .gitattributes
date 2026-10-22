@@ -1,0 +1,2 @@
+# Scripts Linux : toujours en fins de ligne LF (même sur une copie Windows)
+*.sh text eol=lf

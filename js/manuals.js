@@ -45,7 +45,8 @@ const MANUALS = [
             code: "ls ~/storage/shared/Music",
             choices: [
               { label: "Ailleurs dans le téléphone", body: "<p>Explorez avec <code>ls ~/storage/shared</code>, puis descendez dans les dossiers.</p>" },
-              { label: "Sur la carte SD", body: "<p><code>ls /storage</code> : la carte apparaît sous un nom comme <code>1A2B-3C4D</code>. Le dossier sera <code>/storage/1A2B-3C4D/Music</code>.</p>" }
+              { label: "Sur la carte SD", body: "<p><code>ls /storage</code> : la carte apparaît sous un nom comme <code>1A2B-3C4D</code>. Le dossier sera <code>/storage/1A2B-3C4D/Music</code>.</p>" },
+              { label: "Téléphone et carte SD", body: "<p>Les deux à la fois : suivez la partie « Ajouter une carte SD » à la fin de ce guide, puis utilisez <code>$HOME/musique</code> comme <code>ND_MUSICFOLDER</code>.</p>" }
             ]
           },
           {
@@ -94,11 +95,39 @@ const MANUALS = [
         steps: [
           {
             title: "Les mêmes tags pour toutes les pistes d'un album",
-            body: "<p>Navidrome regroupe les pistes d'un album seulement si <b>toutes</b> ont le même <b>Album</b>, le même <b>Album Artist</b> (sans « feat. ») et la même <b>année</b>. Une seule piste différente coupe l'album en deux.</p><p>conductor. réunit ces morceaux (« réuni (18 + 1) » dans audio-files), mais corriger les tags rend tout propre partout.</p>"
+            body: "<p>Navidrome regroupe les pistes d'un album seulement si <b>toutes</b> ont le même <b>Album</b>, le même <b>Album Artist</b> (sans « feat. ») et la même <b>année</b>. Une seule piste différente coupe l'album en deux.</p><p>conductor. réunit ces morceaux (« réuni (18 + 1) » dans audio-files), mais corriger les tags rend tout propre partout.</p>",
+            tip: "Sur le PC, <b>TagScanner</b> (gratuit, <code>xdlab.ru</code>) corrige les tags de toutes les pistes d'un album d'un coup : voir le guide « De YouTube à conductor. »."
           },
           {
             title: "Ce que conductor. lit aussi dans vos fichiers",
             body: "<ul><li><b>numéros de piste et de disque</b> : ordre et numérotation ;</li><li><b>pochette intégrée</b> ;</li><li><b>paroles intégrées</b> (USLT / LYRICS), simples ou synchronisées.</li></ul>"
+          }
+        ]
+      },
+      {
+        title: "Ajouter une carte SD (téléphone + carte)",
+        steps: [
+          {
+            title: "Trouver la carte et sa musique",
+            body: "<p>Carte insérée, dans Termux : la carte apparaît sous un nom comme <code>1A2B-3C4D</code> (ignorez <code>emulated</code> et <code>self</code>). Puis <code>ls /storage/1A2B-3C4D</code> pour repérer le dossier de musique, par exemple <code>Music</code>.</p>",
+            code: "ls /storage",
+            tip: "« Permission denied » ? Refaites <code>termux-setup-storage</code> et acceptez. Toujours bloqué : Android limite Termux sur cette carte ; mettez la musique dans le dossier réservé à Termux, <code>~/storage/external-1</code>, et utilisez ce chemin à l'étape suivante."
+          },
+          {
+            title: "Regrouper téléphone et carte dans un seul dossier",
+            body: "<p>Navidrome ne lit qu'un dossier : on en crée un qui contient des <b>liens</b> vers les deux (Navidrome les suit). Remplacez <code>Music</code> (dossier du téléphone, ex. <code>dawn-fm</code>) et <code>1A2B-3C4D/Music</code> par les vôtres.</p>",
+            code: "mkdir -p ~/musique\nln -s ~/storage/shared/Music ~/musique/telephone\nln -s /storage/1A2B-3C4D/Music ~/musique/carte-sd",
+            tip: "Vérifiez : <code>ls ~/musique/carte-sd</code> doit afficher vos albums de la carte."
+          },
+          {
+            title: "Dire à Navidrome de lire ce dossier",
+            body: "<p>Changez la ligne <code>ND_MUSICFOLDER</code> de <code>~/navidrome.sh</code> :</p>",
+            code: "sed -i 's#^export ND_MUSICFOLDER=.*#export ND_MUSICFOLDER=\"$HOME/musique\"#' ~/navidrome.sh"
+          },
+          {
+            title: "Relancer et actualiser",
+            body: "<p>Arrêtez Navidrome (<b>Ctrl</b> + <b>C</b> ou widget <b>conductor-stop</b>), relancez-le : il réanalyse toute la musique (quelques minutes). Puis conductor. → <b>audio-files</b> → <b>Actualiser</b>.</p>",
+            tip: "Carte retirée : ses albums disparaissent de Navidrome, et reviennent quand elle est remise. L'envoi par WinSCP sur la carte n'est permis que dans <code>~/storage/external-1</code> : continuez plutôt à envoyer dans le dossier du téléphone."
           }
         ]
       }
@@ -166,8 +195,12 @@ const MANUALS = [
         steps: [
           {
             title: "PC : le raccourci « câble USB »",
-            body: "<p>Le dossier <code>app\\tools</code> contient <code>conductor-usb.bat</code>. Clic droit dessus → <b>Envoyer vers</b> → <b>Bureau (créer un raccourci)</b>.</p><p>Ensuite, à chaque session : câble branché, <b>Modem USB</b> activé, double-clic sur le raccourci. Il :</p><ul><li>trouve l'adresse du téléphone sur le câble (carte « Remote NDIS ») — ou, avec l'option E, lance les <code>adb forward</code> (ports 4533 et 8022) et prend <code>localhost</code> ;</li><li>copie l'adresse (à coller dans WinSCP) ;</li><li>ouvre conductor. avec cette adresse : testée, utilisée, et les anciennes adresses du câble sont retirées.</li></ul><p>Plus besoin d'<code>ipconfig</code>.</p>",
-            tip: "Il ouvre Chrome (sinon Edge). Pour forcer Edge : ouvrez <code>conductor-usb.ps1</code> dans le Bloc-notes et mettez <code>$Browser = \"msedge\"</code>. Une fenêtre bleue s'affiche quelques secondes : c'est normal."
+            body: "<p>Le dossier <code>app\\tools</code> contient <code>conductor-usb.bat</code>. Mettez-le où vous voulez le lancer (bureau ou menu Démarrer, ci-dessous).</p><p>Ensuite, à chaque session : câble branché, <b>Modem USB</b> activé, double-clic sur le raccourci. Il :</p><ul><li>trouve l'adresse du téléphone sur le câble (carte « Remote NDIS ») — ou, avec l'option E, lance les <code>adb forward</code> (ports 4533 et 8022) et prend <code>localhost</code> ;</li><li>copie l'adresse (à coller dans WinSCP) ;</li><li>ouvre conductor. avec cette adresse : testée, utilisée, et les anciennes adresses du câble sont retirées.</li></ul><p>Plus besoin d'<code>ipconfig</code>.</p>",
+            choices: [
+              { label: "Sur le bureau", body: "<p>Clic droit sur <code>conductor-usb.bat</code> → <b>Afficher plus d'options</b> si besoin → <b>Envoyer vers</b> → <b>Bureau (créer un raccourci)</b>.</p>" },
+              { label: "Dans le menu Démarrer", body: "<p>Windows ne permet pas toujours d'épingler directement un <code>.bat</code> : on passe par un raccourci.</p><ol><li>Clic droit sur <code>conductor-usb.bat</code> → <b>Afficher plus d'options</b> si besoin → <b>Créer un raccourci</b>.</li><li><kbd>Win</kbd> + <kbd>R</kbd>, tapez <code>shell:programs</code>, <kbd>Entrée</kbd> : le dossier des programmes du menu Démarrer s'ouvre.</li><li>Copiez ou déplacez le raccourci dans ce dossier (renommez-le <code>conductor USB</code> si vous voulez).</li></ol><p>Il apparaît dans la liste des applications du menu Démarrer : tapez son nom pour le trouver.</p><p><b>L'épingler comme une application :</b> menu Démarrer → tapez son nom → clic droit → <b>Épingler au menu Démarrer</b> (ou <b>Épingler à la barre des tâches</b>).</p>" }
+            ],
+            tip: "Linux : <code>tools/conductor-usb.sh</code>, ajouté au menu des applications par <code>install-linux.sh</code> (guide « conductor. sous Linux »). Il ouvre Chrome (sinon Edge). Pour forcer Edge : ouvrez <code>conductor-usb.ps1</code> dans le Bloc-notes et mettez <code>$Browser = \"msedge\"</code>. Une fenêtre bleue s'affiche quelques secondes : c'est normal."
           },
           {
             title: "Téléphone : un widget pour tout lancer",
@@ -202,7 +235,7 @@ const MANUALS = [
     short: "Copier des dossiers d'albums du PC vers le téléphone avec WinSCP, par le câble USB, sans couper l'écoute.",
     icon: "upload",
     time: "10 min la première fois, puis 1 min",
-    intro: "Navidrome ne sait pas recevoir de fichiers : on passe par un petit serveur SFTP dans Termux et le logiciel WinSCP sur le PC. Les dossiers entiers glissent comme dans l'Explorateur, par le câble USB (ou le wifi), pendant que Navidrome tourne.",
+    intro: "Navidrome ne sait pas recevoir de fichiers : on passe par un petit serveur SFTP dans Termux et le logiciel WinSCP sur le PC (sous Linux, le gestionnaire de fichiers suffit : guide « conductor. sous Linux »). Les dossiers entiers glissent comme dans l'Explorateur, par le câble USB (ou le wifi), pendant que Navidrome tourne.",
     parts: [
       {
         title: "Une seule fois",
@@ -278,6 +311,172 @@ const MANUALS = [
       ["« Accès refusé » au mot de passe", "Mauvais utilisateur (<code>whoami</code>) ou mot de passe : refaites <code>passwd</code>."],
       ["« Permission refusée » dans le dossier", "Refaites <code>termux-setup-storage</code> et acceptez l'autorisation sur le téléphone."],
       ["Sans WinSCP, sans rien installer", "Désactivez <b>Modem USB</b> : le téléphone revient dans l'Explorateur Windows, copiez-y vos dossiers, puis réactivez <b>Modem USB</b> (nouvelle adresse à relever)."]
+    ]
+  },
+
+  {
+    id: "youtube-conductor",
+    title: "De YouTube à conductor. : le parcours complet",
+    short: "Télécharger un album (yt-dlp), corriger ses tags (TagScanner), l'envoyer sur le téléphone (WinSCP), l'écouter par le câble USB.",
+    icon: "route",
+    time: "20 min la première fois, puis 5 min par lot d'albums",
+    intro: "YouTube → yt-dlp (script de téléchargement) → TagScanner (tags) → WinSCP (envoi) → Navidrome (serveur sur le téléphone) → câble USB → conductor. Chaque maillon a son guide ; celui-ci les met bout à bout. Sous Linux : telecharger_albums.sh, Kid3 et sftp:// (guide « conductor. sous Linux »). En pratique, on lance Navidrome et on branche le câble juste avant l'envoi : WinSCP passe par le même câble.",
+    parts: [
+      {
+        title: "Une seule fois (PC)",
+        steps: [
+          {
+            title: "Installer yt-dlp et ffmpeg",
+            body: "<p>Dans PowerShell (ou l'Invite de commandes), puis <b>fermez et rouvrez</b> la fenêtre pour qu'ils soient trouvés :</p>",
+            code: "winget install yt-dlp.yt-dlp\nwinget install Gyan.FFmpeg",
+            tip: "Vérifiez avec <code>yt-dlp --version</code> et <code>ffmpeg -version</code>. yt-dlp se met à jour avec <code>yt-dlp -U</code> (ou <code>winget upgrade yt-dlp.yt-dlp</code>) : à faire si YouTube refuse un jour les téléchargements."
+          },
+          {
+            title: "Installer TagScanner",
+            body: "<p>Gratuit, sur <code>xdlab.ru</code>. Il corrige les tags de plusieurs fichiers d'un coup (artiste, album, année, numéros, pochette) : indispensable après YouTube, dont les tags sont approximatifs.</p>"
+          },
+          {
+            title: "WinSCP, Navidrome, raccourcis",
+            body: "<p>Déjà faits si vous avez suivi les guides <b>Envoyer de la musique vers le téléphone</b> et <b>Écouter les fichiers du téléphone</b> (raccourci <code>conductor-usb</code>, widget Termux).</p>"
+          }
+        ]
+      },
+      {
+        title: "Pour chaque lot d'albums",
+        steps: [
+          {
+            title: "YouTube : trouver l'album",
+            body: "<p>Cherchez la <b>playlist de l'album</b>, idéalement celle d'une chaîne « <i>Artiste</i> - Topic » ou de YouTube Music (pistes officielles, dans l'ordre, sans clip ni intro). Copiez son adresse (<code>…playlist?list=…</code>).</p>"
+          },
+          {
+            title: "Ajouter l'album au script",
+            body: "<p>Ouvrez <code>app\\tools\\telecharger_albums.ps1</code> dans le Bloc-notes. Dans <code>$Albums</code>, une ligne par album :</p>",
+            code: "@{ Nom = \"Artiste - Album (1971)\"; Url = \"https://youtube.com/playlist?list=…\" }",
+            tip: "<b>Nom</b> = le dossier créé : « Artiste - Album (Année) », sans <code>? / \\ : * \" &lt; &gt; |</code> (remplacez-les ou retirez-les). Enregistrez en gardant l'encodage (UTF-8)."
+          },
+          {
+            title: "yt-dlp : télécharger",
+            body: "<p>Dans PowerShell, depuis le dossier <code>tools</code>. <code>-Destination</code> est facultatif (par défaut : <code>tools\\Albums</code>).</p>",
+            code: "cd D:\\GOLF\\conductor\\app\\tools\npowershell -ExecutionPolicy Bypass -File .\\telecharger_albums.ps1 -Destination \"D:\\Musique\\Albums\"",
+            tip: "MP3 meilleure qualité, pochette et tags intégrés, une piste par fichier <code>001 - Titre.mp3</code>. Coupure ou erreur ? Relancez : les pistes déjà téléchargées sont sautées."
+          },
+          {
+            title: "TagScanner : corriger les tags",
+            body: "<p>Les tags venus de YouTube sont à reprendre (artiste = nom de la chaîne, album = nom de la playlist, pas d'année). Dans TagScanner, ouvrez le dossier de l'album, onglet <b>Tag Editor</b> (Éditeur de tags) :</p><ol><li>Sélectionnez <b>toutes</b> les pistes de l'album.</li><li>Remplissez pour toutes à la fois : <b>Artist</b>, <b>Album Artist</b> (sans « feat. »), <b>Album</b>, <b>Year</b>, <b>Genre</b> si vous voulez.</li><li><b>Track #</b> : déjà rempli par le script ; sinon onglet <b>Tag Processor</b> → <i>Filename → Tag</i> avec le modèle <code>%track% - %title%</code>.</li><li>Titres : retirez ce qui traîne (« (Official Audio) », « - Remastered »…).</li><li><b>Cover</b> : la pochette intégrée vient de YouTube (souvent la miniature) ; remplacez-la par une vraie pochette carrée si besoin.</li><li><b>Save</b>.</li></ol>",
+            tip: "Navidrome ne regroupe un album que si <b>toutes</b> ses pistes ont le même <b>Album</b>, le même <b>Album Artist</b> et la même <b>année</b> (guide « Installer Navidrome », Bien taguer vos fichiers)."
+          },
+          {
+            title: "Navidrome : le serveur",
+            body: "<p>Sur le téléphone : widget <b>conductor</b> (ou <code>~/navidrome.sh</code> dans Termux). Il lance aussi le serveur d'envoi pour WinSCP. Navidrome voit les nouveaux albums en quelques minutes.</p>"
+          },
+          {
+            title: "Réseau USB",
+            body: "<p>Câble branché, <b>Modem USB</b> activé, double-clic sur le raccourci <b>conductor-usb</b> : il trouve l'adresse du téléphone, la <b>copie</b> (pour WinSCP) et ouvre conductor. avec.</p>"
+          },
+          {
+            title: "WinSCP : envoyer sur le téléphone",
+            body: "<p>Connexion SFTP (collez l'adresse copiée, port 8022), puis glissez les dossiers d'albums vers le dossier musique du téléphone (guide <b>Envoyer de la musique vers le téléphone</b>). Un <code>.lrc</code> de même nom qu'une piste lui donne ses paroles synchronisées.</p>"
+          },
+          {
+            title: "conductor. : ajouter et écouter",
+            body: "<p><b>audio-files</b> → <b>Actualiser</b> → section « sur le téléphone, pas encore dans la collection » : ajoutez les nouveaux albums (collection ou next up). Leur page joue directement les fichiers du téléphone.</p>"
+          }
+        ]
+      }
+    ],
+    trouble: [
+      ["« 'yt-dlp' n'est pas installé ou introuvable »", "Installez-le (étape 1), puis fermez et rouvrez PowerShell. Même chose pour ffmpeg."],
+      ["« l'exécution de scripts est désactivée »", "Lancez-le avec <code>powershell -ExecutionPolicy Bypass -File .\\telecharger_albums.ps1</code>."],
+      ["yt-dlp : erreur « Sign in » ou « HTTP Error 403 »", "Mettez yt-dlp à jour : <code>yt-dlp -U</code>, puis relancez (les pistes déjà là sont sautées)."],
+      ["Accents bizarres dans les noms", "Le script doit rester enregistré en UTF-8 : dans le Bloc-notes, <b>Enregistrer sous</b> → Encodage <b>UTF-8 avec BOM</b>."],
+      ["L'album est coupé en plusieurs dans Navidrome", "Une piste a un Album, un Album Artist ou une année différente : corrigez-la dans TagScanner, renvoyez-la (WinSCP remplace le fichier)."]
+    ]
+  },
+
+  {
+    id: "linux",
+    title: "conductor. sous Linux",
+    short: "Chrome ou Chromium, raccourcis du menu des applications, câble USB, envoi en sftp://, yt-dlp et Kid3 : les équivalents Linux.",
+    icon: "linux",
+    time: "10 min, une seule fois",
+    intro: "Le site marche pareil sous Linux : c'est une page ouverte dans le navigateur. Seuls les outils autour changent : scripts .sh au lieu de .bat / .ps1, ip route au lieu d'ipconfig, gestionnaire de fichiers au lieu de WinSCP. Commandes pour Ubuntu / Debian (apt), Fedora (dnf), Arch (pacman).",
+    parts: [
+      {
+        title: "Installer",
+        steps: [
+          {
+            title: "Chrome, Chromium ou Edge",
+            body: "<p>Firefox ne sait pas écrire dans <code>datastorage</code> : prenez <b>Google Chrome</b>, <b>Chromium</b> ou <b>Edge</b>.</p>",
+            tip: "Chromium en <b>snap</b> (Ubuntu) ou <b>Flatpak</b> : gardez <code>conductor/</code> dans votre dossier personnel. Sur un disque externe avec le snap : <code>sudo snap connect chromium:removable-media</code>."
+          },
+          {
+            title: "Raccourcis du menu des applications",
+            body: "<p>Une seule fois, dans un terminal. Rend les scripts exécutables et ajoute <b>conductor.</b> et <b>conductor USB</b> au menu des applications (et <b>conductor USB</b> sur le bureau).</p>",
+            code: "bash ~/conductor/app/tools/install-linux.sh",
+            tip: "Adaptez le chemin si <code>conductor/</code> est ailleurs. GNOME : si le raccourci du bureau ne se lance pas, clic droit → <b>Autoriser le lancement</b>."
+          },
+          {
+            title: "Ouvrir et autoriser datastorage",
+            body: "<p>Menu des applications → <b>conductor.</b>, puis en bas à gauche : <b>Choisir le dossier datastorage</b> → <code>conductor/datastorage</code>. Touches multimédia et commandes de lecture du bureau marchent comme sous Windows.</p>"
+          }
+        ]
+      },
+      {
+        title: "Téléphone par câble USB",
+        steps: [
+          {
+            title: "Le raccourci conductor USB",
+            body: "<p>Câble branché, <b>Modem USB</b> activé, widget <b>conductor</b> touché : lancez <b>conductor USB</b>. Il trouve l'adresse du téléphone, la copie (si <code>wl-copy</code>, <code>xclip</code> ou <code>xsel</code> est installé) et ouvre conductor. avec. NetworkManager connecte le câble tout seul.</p>"
+          },
+          {
+            title: "Ou trouver l'adresse à la main",
+            body: "<p>La passerelle de l'interface USB (<code>usb0</code> ou <code>enx…</code>) est l'adresse du téléphone : <code>default via 192.168.36.250 dev enx…</code> → <code>192.168.36.250:4533</code>.</p>",
+            code: "ip -4 route | grep -E 'dev (usb|enx|rndis)'"
+          },
+          {
+            title: "Option E (ADB), sans Modem USB",
+            body: "<p>Installez adb (Fedora : <code>sudo dnf install android-tools</code> ; Arch : <code>sudo pacman -S android-tools</code>), branchez, <code>adb devices</code> et acceptez sur le téléphone. Le raccourci <b>conductor USB</b> fait ensuite les <code>adb forward</code> (4533 et 8022) et prend <code>localhost</code>.</p>",
+            code: "sudo apt install adb",
+            tip: "<code>no permissions</code> : <code>sudo apt install android-sdk-platform-tools-common</code>, débranchez, rebranchez."
+          }
+        ]
+      },
+      {
+        title: "Envoyer de la musique",
+        steps: [
+          {
+            title: "Gestionnaire de fichiers en sftp://",
+            body: "<p>Le téléphone fait tourner <code>sshd</code> (widget <b>conductor</b>). Pas besoin de WinSCP : Fichiers / Nautilus → <b>Autres emplacements</b> → <b>Connexion à un serveur</b> (Dolphin : barre d'adresse), avec l'adresse du jour et l'utilisateur de <code>whoami</code>. Glissez vos dossiers d'albums.</p>",
+            code: "sftp://u0_a123@192.168.36.250:8022/storage/emulated/0/Music",
+            tip: "Aussi : FileZilla (hôte <code>sftp://adresse</code>, port 8022), ou en terminal <code>scp -P 8022 -r \"Albums/Artiste - Album (1971)\" u0_a123@adresse:/storage/emulated/0/Music/</code>."
+          }
+        ]
+      },
+      {
+        title: "De YouTube à conductor.",
+        steps: [
+          {
+            title: "yt-dlp et ffmpeg",
+            body: "<p>yt-dlp par <code>pipx</code> (les paquets des distributions sont souvent trop vieux ; mise à jour : <code>pipx upgrade yt-dlp</code>), ffmpeg par le gestionnaire de paquets.</p>",
+            code: "sudo apt install pipx ffmpeg\npipx install yt-dlp"
+          },
+          {
+            title: "Le script de téléchargement",
+            body: "<p><code>tools/telecharger_albums.sh</code> fait comme la version Windows. Les albums sont dans le tableau <code>ALBUMS</code>, une ligne <code>\"Nom|adresse de la playlist\"</code> par album.</p>",
+            code: "cd ~/conductor/app/tools\n./telecharger_albums.sh ~/Musique/Albums"
+          },
+          {
+            title: "Les tags : Kid3",
+            body: "<p>TagScanner n'existe que pour Windows (il marche sous Wine). Équivalent natif : <b>Kid3</b> (<code>sudo apt install kid3-qt</code>, ou Flatpak), ou MusicBrainz Picard. Dans Kid3 : sélectionnez toutes les pistes, remplissez Artist, Album Artist, Album, Date ; numéros depuis le nom de fichier : bouton <b>From Filename</b>, format <code>%{track} - %{title}</code> ; enregistrez.</p>"
+          }
+        ]
+      }
+    ],
+    trouble: [
+      ["<code>Permission non accordée</code> en lançant un .sh", "<code>bash tools/install-linux.sh</code> (ou <code>chmod +x tools/*.sh</code>)."],
+      ["<code>bad interpreter: /bin/bash^M</code>", "Fichier passé par Windows en fins de ligne CRLF : <code>sed -i 's/\\r$//' tools/*.sh</code>."],
+      ["datastorage refusé sur un disque externe", "Chromium snap : <code>sudo snap connect chromium:removable-media</code>, ou déplacez <code>conductor/</code> dans votre dossier personnel."],
+      ["Aucun téléphone sur le câble", "Modem USB activé ? <code>ip -4 route</code> montre-t-il une ligne <code>usb…</code> / <code>enx…</code> ? Câble de données ?"]
     ]
   },
 

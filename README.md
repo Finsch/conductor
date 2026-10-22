@@ -135,6 +135,16 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - Albums split by Navidrome (one track with different tags) are merged back; album covers, embedded lyrics and exact durations come from the phone.
 - Albums on the phone but not in the collection are listed, ready to add.
 
+**From YouTube to conductor.** — a typical path for a new album:
+
+```
+YouTube → yt-dlp (tools/telecharger_albums.ps1) → TagScanner → WinSCP → Navidrome (navidrome.sh) → USB cable → conductor.
+```
+
+- `tools/telecharger_albums.ps1` (Linux: `telecharger_albums.sh`) downloads each album playlist into its own `Artist - Album (Year)` folder (MP3, cover and tags embedded, resumable). Needs `yt-dlp` and `ffmpeg` (`winget install yt-dlp.yt-dlp`, `winget install Gyan.FFmpeg`).
+- **[TagScanner](https://www.xdlab.ru/en/)** (free) is very useful to fix the tags of a whole album at once — artist, album artist, album, year, track numbers, cover — so that Navidrome groups the tracks correctly. On Linux: **Kid3** (or TagScanner under Wine).
+- Step by step: `docs/youtube-a-conductor.md`, or the built-in guide « De YouTube à conductor. ».
+
 ### Journal
 
 <p align="center"><img src="assets/about/journal.jpg" alt="The journal: Ce jour-là, the month calendar with covers, the weekly goal and the month stats"></p>
@@ -254,8 +264,10 @@ conductor/
 │   │                       data (store), disk (datastorage), playback (engine), sdcard (local folders),
 │   │                       navidrome (phone), lyrics / karaoke, cover-actions, shortcuts, volume…
 │   ├── assets/
-│   ├── tools/              conductor-usb.bat / .ps1 (phone over USB cable: finds its address, opens conductor.)
-│   └── docs/               navidrome-man.md, calage-paroles.md, tier-guide.md, toolkit.md
+│   ├── tools/              conductor-usb.bat / .ps1 (phone over USB cable: finds its address, opens conductor.),
+│   │                       telecharger_albums.ps1 (downloads album playlists with yt-dlp, one folder per album),
+│   │                       Linux: conductor-usb.sh, telecharger_albums.sh, install-linux.sh (app menu entries)
+│   └── docs/               navidrome-man.md, daily-tel-usb.md, linux.md, youtube-a-conductor.md, calage-paroles.md, tier-guide.md, toolkit.md
 └── datastorage/            your data, outside the repo
     ├── collection.js       collection, notes, listening time
     ├── collection.prev.js  previous version (safety net)
@@ -273,7 +285,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 
 ## Getting started
 
-1. Open `app/index.html` in **Chrome or Edge** (it opens the single-page shell).
+1. Open `app/index.html` in **Chrome or Edge** (it opens the single-page shell). On Linux, run `bash app/tools/install-linux.sh` once: it adds **conductor.** and **conductor USB** to the applications menu.
 2. Bottom left: **Choisir le dossier datastorage** → `conductor/datastorage`. Afterwards, one "Autoriser" click per session.
 3. Optional: copy `js/config.example.js` to `js/config.js` and add a Discogs token (more search results).
 4. Optional, **audio-files** page:
@@ -287,6 +299,9 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 | File | Content |
 |---|---|
 | `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), sending music folders to the phone with WinSCP (SFTP over the USB cable), troubleshooting, tagging tips; one-click USB shortcut (`tools/conductor-usb.bat`) and Termux:Widget launcher |
+| `docs/daily-tel-usb.md` | Daily routine over the USB cable, in 5 steps: start (cable, USB tethering, Termux widget, `conductor-usb`) and stop |
+| `docs/linux.md` | Running conductor. on Linux: browser (snap / Flatpak notes), `tools/install-linux.sh` (app menu entries), USB cable (`conductor-usb.sh`, `ip route`, ADB), sending files over `sftp://`, yt-dlp + Kid3 |
+| `docs/youtube-a-conductor.md` | The full path for a new album: YouTube → yt-dlp (`tools/telecharger_albums.ps1`) → **TagScanner** (fix tags) → WinSCP → Navidrome → USB cable → conductor. |
 | `docs/calage-paroles.md` | Syncing lyrics by hand for the karaoke, step by step |
 | `docs/tier-guide.md` | What S / A / B tiers mean |
 | `docs/toolkit.md` | Services used, costs |
@@ -297,7 +312,7 @@ All guides are in French. They are also built into the app as step-by-step pages
 
 ## Browser support and limits
 
-- **Chrome or Edge** on a PC. Writing to `datastorage/` and opening local folders use the File System Access API, not available in Firefox or Safari (untested there; disk writes and local folders cannot work).
+- **Chrome or Edge** on a PC — Windows or **Linux** (Chrome, Chromium or Edge; see `docs/linux.md`). Writing to `datastorage/` and opening local folders use the File System Access API, not available in Firefox or Safari (untested there; disk writes and local folders cannot work).
 - An Android phone plugged in over USB is not seen as a drive by the browser: use its SD card in a card reader (local storage) or Navidrome over USB (tethering or ADB).
 - MP3 durations from local files are computed from the file header (exact for most files, within a second or two for some).
 - True sample-accurate gapless needs decoding the audio; MP3 encoder padding can leave a few milliseconds of silence. FLAC is seamless.
