@@ -42,18 +42,32 @@ Laissez Termux ouvert.
    La musique ne consomme pas de données ; internet sur le PC passe par les données du A12.
 
 **D. Câble USB — 100 % hors ligne** (ni wifi, ni internet, ni données mobiles)
-1. Branchez le A12 au PC avec un câble USB **de données** (pas un câble de charge seule).
-2. A12 : Paramètres → Connexions → **Point d'accès mobile et modem** → activez **Modem USB**.
+1. Branchez le A12 au PC avec un câble USB **de données** (pas un câble de charge seule) :
+   le téléphone doit apparaître dans l'Explorateur Windows.
+2. A12 : Paramètres → Connexions → **Point d'accès mobile et modem** → activez **Modem USB**
+   (*USB tethering* en anglais). Le téléphone disparaît alors de l'Explorateur : normal, le câble
+   sert maintenant au réseau.
    (Grisé ? Le câble ne transporte pas de données, ou le PC ne voit pas encore le téléphone :
    rebranchez, et choisissez « Transfert de fichiers » si Android le demande.)
 3. Pour être vraiment hors ligne : A12 → coupez les **Données mobiles** (le câble continue de marcher).
    Windows affichera « Pas d'accès Internet » sur cette connexion : c'est normal.
 4. Trouvez l'adresse du A12 sur ce câble, au choix :
-   - PC : Invite de commandes → `ipconfig` → la carte réseau nommée **« Remote NDIS… »**
-     (ou « Ethernet 2/3… ») → **Passerelle par défaut**, ex. `192.168.42.129` ;
+   - PC : Invite de commandes → `ipconfig /all` → la carte dont la **Description** est
+     **« Remote NDIS based Internet Sharing Device »** (souvent « Ethernet 3 ») →
+     **Passerelle par défaut**, ex. `192.168.36.250` ;
    - ou Termux → `ifconfig` → interface **`rndis0`** (ou `ncm0`, `usb0`) → ligne `inet`.
-5. Adresse à utiliser : `192.168.42.129:4533` (avec la vôtre).
-   Elle peut changer d'un branchement à l'autre : refaites l'étape 4 si le site ne la trouve plus.
+5. Adresse à utiliser : `192.168.36.250:4533` (avec la vôtre). Testez-la dans Chrome :
+   `http://192.168.36.250:4533` doit afficher la connexion Navidrome.
+
+   | Ligne de la carte « Remote NDIS » | |
+   |---|---|
+   | **Passerelle par défaut** | le téléphone : **c'est celle-ci** |
+   | Serveur DHCP, Serveurs DNS | souvent la même adresse, mais pas toujours |
+   | Adresse IPv4 | le PC : à ne pas prendre |
+
+   **Elle change à chaque branchement** (le nombre du milieu est tiré au hasard) : refaites
+   l'étape 4 si le site ne trouve plus le téléphone. Pour une adresse fixe : option E.
+   Une carte « VirtualBox Host-Only » (`192.168.56.1`) n'a rien à voir avec le téléphone.
 
 **E. Câble USB sans carte SIM (ADB)** — quand « Modem USB » est grisé ou absent
 (certains Samsung bloquent le partage de connexion sans SIM). Le câble transporte
@@ -104,9 +118,46 @@ La page de connexion Navidrome s'affiche → passez à l'étape 4.
   répond — au démarrage, et si la musique s'arrête parce que le téléphone a changé de
   réseau (le morceau reprend au même endroit). Bouton **Détecter** pour forcer un essai.
 
+### Raccourcis (une seule fois, facultatif)
+
+**PC : raccourci « câble USB »** — `app\tools\conductor-usb.bat` : clic droit → **Envoyer vers** →
+**Bureau (créer un raccourci)**. À chaque session (câble + Modem USB), double-clic :
+- trouve l'adresse du A12 sur le câble (carte « Remote NDIS ») ; option E : lance les
+  `adb forward` (4533 et 8022) et prend `localhost` ;
+- copie l'adresse (à coller dans WinSCP) ;
+- ouvre conductor. avec cette adresse : testée, utilisée, anciennes adresses du câble retirées.
+
+Chrome par défaut, sinon Edge ; pour forcer Edge : `$Browser = "msedge"` dans `conductor-usb.ps1`.
+
+**Téléphone : widget Termux** — dans F-Droid, installez **Termux:Widget**, puis collez dans Termux :
+
+```sh
+mkdir -p ~/.shortcuts
+cat > ~/.shortcuts/conductor <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# conductor. : serveur d'envoi (WinSCP) + Navidrome
+command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd; }
+if pgrep -x navidrome >/dev/null; then
+  echo "Navidrome tourne déjà."; sleep 2
+else
+  exec ~/navidrome.sh
+fi
+EOF
+cat > ~/.shortcuts/conductor-stop <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+pkill -x navidrome; pkill -x sshd; termux-wake-unlock
+echo "Navidrome et l'envoi sont arrêtés."; sleep 2
+EOF
+chmod 700 ~/.shortcuts ~/.shortcuts/*
+```
+
+Appui long sur l'accueil → Widgets → **Termux:Widget** : boutons **conductor** (lance tout) et
+**conductor-stop** (arrête tout). Rien ne s'ouvre ? Paramètres → Applications → Termux →
+**Apparaître au-dessus** → autoriser.
+
 ### 5. Fin de session
 
-Termux → `Ctrl` + `C`. Coupez le point d'accès (C) ou le Modem USB (D) si besoin. Avec E, débrancher le câble suffit.
+Termux → `Ctrl` + `C` (ou widget **conductor-stop**). Coupez le point d'accès (C) ou le Modem USB (D) si besoin. Avec E, débrancher le câble suffit.
 
 ### Si le test de l'étape 3 échoue
 
@@ -243,6 +294,47 @@ puis conductor. → audio-files → **Actualiser**.
 
 ---
 
+## Envoyer de la musique vers le téléphone (WinSCP)
+
+Navidrome ne reçoit pas de fichiers : un serveur SFTP dans Termux + WinSCP sur le PC.
+Les dossiers entiers passent par le câble USB (ou le wifi), Navidrome peut tourner en même temps.
+
+**Une seule fois**
+1. Termux : `pkg install openssh` (répondez `y`).
+2. Termux : `passwd` → choisissez un mot de passe (rien ne s'affiche à la frappe : normal).
+3. Termux : `whoami` → notez l'utilisateur (ex. `u0_a123`).
+4. Termux : `termux-setup-storage` si ce n'est pas déjà fait.
+5. PC : installez **WinSCP** (`winscp.net`, gratuit).
+
+**À chaque envoi**
+1. Reliez PC et A12 (câble + Modem USB) et relevez l'adresse du jour : `ipconfig /all` →
+   carte « Remote NDIS… » → **Passerelle par défaut** (ex. `192.168.36.250`).
+   Option E (ADB) : `adb forward tcp:8022 tcp:8022`, adresse `localhost`.
+2. Termux : `sshd` (tourne en arrière-plan ; Navidrome peut être lancé ensuite, ou dans une
+   autre session : bord gauche → **New session**).
+3. WinSCP → Nouvelle session : **SFTP**, hôte = l'adresse du jour (sans `:4533`), port **8022**,
+   utilisateur de `whoami`, mot de passe de `passwd`. Première fois : acceptez la clé.
+   **Enregistrer** garde les réglages : la prochaine fois, seule l'adresse change.
+4. Volet de droite : allez dans `/storage/emulated/0/Music` (ou le dossier que lit Navidrome ;
+   carte SD : `/storage/1A2B-3C4D/Music`).
+5. Glissez vos dossiers d'albums de gauche (PC) à droite (A12). Un `.lrc` de même nom qu'un
+   morceau lui donne ses paroles synchronisées.
+6. Navidrome les détecte en quelques minutes (ou scan dans son interface), puis
+   conductor. → audio-files → **Actualiser**.
+7. Fin : Termux → `pkill sshd` (ou fermez Termux).
+
+| Problème | Solution |
+|---|---|
+| « Connexion refusée » | `sshd` pas lancé, ou port ≠ 8022 |
+| « Délai dépassé » | l'adresse a changé : refaites `ipconfig /all` |
+| « Accès refusé » | mauvais utilisateur (`whoami`) ou mot de passe (`passwd`) |
+| « Permission refusée » dans le dossier | `termux-setup-storage`, puis acceptez sur le téléphone |
+
+Sans rien installer : désactivez **Modem USB**, le téléphone revient dans l'Explorateur
+Windows, copiez-y vos dossiers, puis réactivez **Modem USB** (nouvelle adresse).
+
+---
+
 ## Bien taguer vos fichiers
 
 Navidrome regroupe les pistes d'un album seulement si **toutes** ont :
@@ -269,7 +361,8 @@ Ce que conductor. utilise aussi dans vos fichiers :
 | « serveur injoignable » | Navidrome tourne-t-il dans Termux ? PC et A12 sur le même réseau ? Adresse changée ? Lien « réessayer » sur la page album. |
 | La page Navidrome ne s'ouvre pas en IPv6 | `ipconfig` sur le PC doit montrer une « Adresse IPv6 » commençant comme celle du A12. Sinon, ajoutez `export ND_ADDRESS="::"` dans `~/navidrome.sh` (avant `navidrome`) et relancez. |
 | Câble USB : « Modem USB » grisé | Câble de charge seule, ou téléphone pas encore reconnu : autre câble, rebranchez, « Transfert de fichiers ». |
-| Câble USB : « Le téléphone ne répond pas à cette adresse » | Navidrome tourne-t-il ? Bonne adresse (passerelle de la carte « Remote NDIS ») ? Testez `http://adresse:4533` dans Chrome. |
+| Câble USB : « Le téléphone ne répond pas à cette adresse » | Navidrome tourne-t-il ? L'adresse a pu changer depuis le dernier branchement : `ipconfig` → passerelle de la carte « Remote NDIS ». Testez `http://adresse:4533` dans Chrome. |
+| Câble USB : pas de carte « Remote NDIS » dans `ipconfig` | « Modem USB » pas activé (bouton bleu), ou câble de charge seule (le téléphone n'apparaît pas dans l'Explorateur). |
 | Le PC passe par le téléphone pour internet | Normal avec le Modem USB : coupez les données mobiles du A12 pour rester hors ligne. |
 | « Utilisateur ou mot de passe incorrect » | Ce sont ceux créés à l'étape 8, pas ceux du téléphone. |
 | « erreur du serveur : … » sur une page album | Message renvoyé par Navidrome ; « relier à vos fichiers » pour choisir l'album à la main. |

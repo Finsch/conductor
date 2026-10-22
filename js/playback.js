@@ -1254,7 +1254,9 @@
     }));
     lyFooter("paroles : " + source, [
       ["modifier", () => startEdit(lines, source)],
-      ["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))]
+      ["recaler", () => startSync(lines.filter(l => l.text).map(l => l.text).join("\n"))],
+      ["coller", () => startPaste(true)],
+      ["importer .lrc", pickLrc]
     ]);
     lyBox().scrollTop = 0;
     startLyricsLoop();
@@ -1263,7 +1265,11 @@
   function showPlain(text, source) {
     lyBox().replaceChildren(...text.replace(/\r/g, "").split("\n").map(line =>
       el("p", "fs-ly-line is-plain" + (line.trim() ? "" : " is-gap"), line.trim() || " ")));
-    lyFooter("paroles non synchronisées · " + source, [["caler les paroles", () => startSync(text), true]]);
+    lyFooter("paroles non synchronisées · " + source, [
+      ["caler les paroles", () => startSync(text), true],
+      ["coller", () => startPaste(true)],
+      ["importer .lrc", pickLrc]
+    ]);
     lyBox().scrollTop = 0;
   }
 
@@ -1303,10 +1309,10 @@
       lyPlain = res && res.plain || null;
       if (res && res.lines && res.lines.length) showSynced(res.lines, res.source);
       else if (res && res.plain) showPlain(res.plain, res.source);
-      else if (res && res.instrumental) lyricsMessage("Instrumental ♪", [["coller des paroles", startPaste]]);
-      else lyricsMessage("Pas de paroles trouvées pour ce morceau.", [["coller des paroles", startPaste, true]]);
+      else if (res && res.instrumental) lyricsMessage("Instrumental ♪", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]);
+      else lyricsMessage("Pas de paroles trouvées pour ce morceau.", [["coller des paroles", startPaste, true], ["importer .lrc", pickLrc]]);
     }).catch(() => {
-      if (key === lyKey) lyricsMessage("Paroles indisponibles (hors ligne ?).", [["coller des paroles", startPaste]]);
+      if (key === lyKey) lyricsMessage("Paroles indisponibles (hors ligne ?).", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]);
     });
   }
 
@@ -1315,17 +1321,76 @@
   // commence. Le résultat est enregistré (datastorage/lyrics-synced/) : le
   // karaoké s'en sert ensuite pour toujours.
 
-  function startPaste() {
+  function startPaste(empty) {
     stopLyricsLoop();
+    lyLines = null;
     const area = el("textarea", "fs-ly-paste");
-    area.placeholder = "Collez les paroles ici, une ligne par ligne chantée…";
-    area.value = lyPlain || "";
+    area.placeholder = "Collez les paroles ici, une ligne par ligne chantée…\n\nContenu d'un fichier .lrc ([00:12.40]…) : les temps sont repris tels quels, sans calage.";
+    area.value = empty === true ? "" : (lyPlain || "");
     lyBox().replaceChildren(area);
-    lyFooter("coller les paroles du morceau", [
-      ["caler ces paroles", () => { if (area.value.trim()) startSync(area.value, true); }, true],
-      ["annuler", () => { lyKey = ""; renderKaraoke(); }]
-    ]);
+    // Texte avec horodatages (.lrc) : bouton « utiliser », sinon « caler »
+    const footer = () => {
+      const timed = isLrc(area.value);
+      lyFooter(timed ? "paroles synchronisées (.lrc) reconnues" : "coller les paroles du morceau", [
+        timed ? ["utiliser ces paroles", () => importSynced(area.value), true]
+              : ["caler ces paroles", () => { if (area.value.trim()) startSync(area.value, true); }, true],
+        ["annuler", () => { lyKey = ""; renderKaraoke(); }]
+      ]);
+    };
+    let wasTimed = null;
+    area.addEventListener("input", () => { const t = isLrc(area.value); if (t !== wasTimed) { wasTimed = t; footer(); } });
+    wasTimed = isLrc(area.value);
+    footer();
     setTimeout(() => area.focus(), 0);
+  }
+
+  // ---------- Paroles .lrc collées ou importées : utilisées telles quelles ----------
+
+  const LRC_TIME = /^\s*\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]/m;
+  function isLrc(text) {
+    const lines = LRC_TIME.test(text || "") && Karaoke.parseLrc(text);
+    return !!(lines && lines.some(l => l.text));
+  }
+
+  async function importSynced(text) {
+    const lines = Karaoke.parseLrc(text);
+    if (!lines || !lines.some(l => l.text)) { lyricsMessage("Aucun horodatage reconnu dans ce fichier.", [["coller des paroles", startPaste], ["importer .lrc", pickLrc]]); return; }
+    const info = lyInfo;
+    stopLyricsLoop();
+    const saved = await Karaoke.saveManual(info, lines, "fichier .lrc importé").catch(() => false);
+    // Paroles simples de la page album : mises à jour si elles ne sont pas écrites à la main
+    if (saved && typeof Disk !== "undefined" && Disk.readLyrics && info.albumId) {
+      const data = Object.assign({}, (await Disk.readLyrics(info.albumId).catch(() => null)) || {});
+      const k = Karaoke.key(info.title);
+      if (!data[k] || !data[k].edited) {
+        data[k] = { text: lines.map(l => l.text).filter(Boolean).join("\n"), source: "fichier .lrc" };
+        Disk.writeLyrics(info.albumId, data);
+      }
+    }
+    lyKey = "";
+    renderKaraoke();
+    if (!saved) setTimeout(() => {
+      const foot = fs.querySelector(".fs-ly-src span");
+      if (foot) foot.textContent += " · non enregistrées sur le disque (dossier datastorage non autorisé)";
+    }, 300);
+  }
+
+  function pickLrc() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".lrc,.txt,text/plain";
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      if (!file || !state) return;
+      const text = await file.text().catch(() => "");
+      if (isLrc(text)) importSynced(text);
+      else {   // fichier sans horodatage : paroles simples, à caler
+        startPaste(true);
+        const area = lyBox().querySelector(".fs-ly-paste");
+        if (area) { area.value = text; area.dispatchEvent(new Event("input")); }
+      }
+    });
+    input.click();
   }
 
   function startSync(text, pasted) {

@@ -26,6 +26,29 @@
 
   // ---------- Connexion ----------
 
+  // Dernières adresses entrées (et utilisateur) : proposées dans le formulaire de connexion,
+  // même après « Déconnecter ». La plus récente est préremplie, les autres dans la liste du champ.
+  const RECENT_KEY = "conductor01.server.recent";
+  function readRecent() {
+    try { const r = JSON.parse(localStorage.getItem(RECENT_KEY)); return r && Array.isArray(r.urls) ? r : { urls: [], user: "" }; }
+    catch (e) { return { urls: [], user: "" }; }
+  }
+  function rememberAddress(url, user) {
+    const v = (url || "").trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!v) return;
+    const r = readRecent();
+    r.urls = [v].concat(r.urls.filter(u => u !== v)).slice(0, 6);
+    if (user) r.user = user;
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(r)); } catch (e) {}
+  }
+  function fillConnect() {
+    const r = readRecent();
+    const list = $("c-url-recent");
+    if (list) list.replaceChildren(...r.urls.map(u => { const o = document.createElement("option"); o.value = u; return o; }));
+    if (!$("c-url").value && r.urls[0]) $("c-url").value = r.urls[0];
+    if (!$("c-user").value && r.user) $("c-user").value = r.user;
+  }
+
   $("connect-form").addEventListener("submit", e => {
     e.preventDefault();
     const btn = $("c-submit");
@@ -33,6 +56,7 @@
     btn.textContent = "Connexion…";
     $("c-error").hidden = true;
 
+    rememberAddress($("c-url").value, $("c-user").value.trim());
     Server.connect($("c-url").value, $("c-user").value, $("c-pass").value)
       .then(() => Server.refreshIndex())
       .then(() => { $("c-pass").value = ""; render(true); })
@@ -46,6 +70,8 @@
   });
 
   $("s-logout").addEventListener("click", () => {
+    const conf = Server.config();
+    if (conf) rememberAddress(conf.url, conf.user);
     Server.disconnect();
     render();
   });
@@ -102,6 +128,7 @@
     e.preventDefault();
     const input = $("nd-addr-input");
     if (!input.value.trim()) return;
+    rememberAddress(input.value);
     const btn = $("nd-addr-btn");
     btn.disabled = true;
     btn.textContent = "Test…";
@@ -403,6 +430,7 @@
     renderSd();
     const configured = Server.isConfigured();
     $("connect-block").hidden = configured;
+    if (!configured) fillConnect();
     $("status-block").hidden = !configured;
     if (!configured) {
       $("missing-block").hidden = true;

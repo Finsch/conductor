@@ -60,7 +60,8 @@
       <form class="connect-form" id="connect-form">
         <div class="form-row">
           <label class="label" for="c-url">Adresse du serveur</label>
-          <input class="field" id="c-url" placeholder="192.168.1.23:4533 ou adresse IPv6" required autocomplete="off">
+          <input class="field" id="c-url" placeholder="192.168.1.23:4533 ou adresse IPv6" required autocomplete="off" list="c-url-recent">
+          <datalist id="c-url-recent"></datalist>
         </div>
         <div class="form-row">
           <label class="label" for="c-user">Utilisateur</label>
@@ -94,7 +95,7 @@
         <p class="label">Adresses du téléphone <span class="optional">(conductor. prend celle qui répond)</span></p>
         <ul class="nd-addr-list" id="nd-addr-list"></ul>
         <form class="nd-addr-add" id="nd-addr-form">
-          <input class="field field-small" id="nd-addr-input" placeholder="Autre adresse, ex. câble USB : 192.168.42.129" autocomplete="off">
+          <input class="field field-small" id="nd-addr-input" placeholder="Autre adresse, ex. câble USB : 192.168.36.250" autocomplete="off">
           <button type="submit" class="btn btn-ghost btn-small" id="nd-addr-btn">Ajouter</button>
           <button type="button" class="btn btn-ghost btn-small" id="nd-addr-detect" title="Essaie toutes les adresses et garde celle qui répond">Détecter</button>
         </form>

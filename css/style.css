@@ -6389,7 +6389,9 @@ a.footer-help {
 }
 
 /* « conductor. » dans les guides et la page À propos */
-.ab-brand {
+.ab-brand,
+.album-facts span.ab-brand {
+  display: inline;
   padding: 1px 5px;
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   font-size: 0.88em;

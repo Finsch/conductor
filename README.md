@@ -99,6 +99,7 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 - **Full screen** (`P` or the ⤢ button): large cover on a blurred background, track, artist, album, progress, controls, ★, *next track* and *next album*. The cursor and hints hide after 3 s without moving the mouse. `Esc` or `P` to leave.
 - **Karaoke** (`K` or the microphone button): synced lyrics next to the cover — the current line is highlighted and stays centered, click a line to jump there, scroll freely (auto-scroll resumes after 4 s).
 - **Manual sync** ("caler"): when only plain lyrics exist, or none (paste them), sync them by pressing `Enter` at the start of each line while listening; `Backspace` undoes the last line, `Space` pauses, `Esc` cancels. The result is saved and used forever — see `docs/calage-paroles.md`.
+- **Import a `.lrc`** ("importer .lrc", or paste its content in "coller"): timestamps are used as-is, no manual sync; replaces any previous version.
 - **Edit synced lyrics** ("modifier"): fix the text of any line without losing its timing, nudge a line ±0.1 s or set it to the current position, insert / delete lines, or shift the whole song. Saved like a manual sync.
 
 ### Lyrics
@@ -253,6 +254,7 @@ conductor/
 │   │                       data (store), disk (datastorage), playback (engine), sdcard (local folders),
 │   │                       navidrome (phone), lyrics / karaoke, cover-actions, shortcuts, volume…
 │   ├── assets/
+│   ├── tools/              conductor-usb.bat / .ps1 (phone over USB cable: finds its address, opens conductor.)
 │   └── docs/               navidrome-man.md, calage-paroles.md, tier-guide.md, toolkit.md
 └── datastorage/            your data, outside the repo
     ├── collection.js       collection, notes, listening time
@@ -284,7 +286,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 
 | File | Content |
 |---|---|
-| `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), troubleshooting, tagging tips |
+| `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), sending music folders to the phone with WinSCP (SFTP over the USB cable), troubleshooting, tagging tips; one-click USB shortcut (`tools/conductor-usb.bat`) and Termux:Widget launcher |
 | `docs/calage-paroles.md` | Syncing lyrics by hand for the karaoke, step by step |
 | `docs/tier-guide.md` | What S / A / B tiers mean |
 | `docs/toolkit.md` | Services used, costs |

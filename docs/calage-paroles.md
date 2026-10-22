@@ -23,6 +23,8 @@ Vous n'avez donc à caler que les morceaux pour lesquels rien n'a été trouvé.
 | `paroles non synchronisées · …` | le texte existe, pas les temps | **caler les paroles** |
 | `Pas de paroles trouvées` | rien du tout | **coller des paroles** |
 
+> **Vous avez déjà le fichier `.lrc` ?** Rien à caler : bouton **importer .lrc** (partie 3 bis).
+
 > Pour que le calage soit **enregistré**, le dossier `datastorage` doit être autorisé (bandeau en bas à
 > gauche du site). Sinon, il ne dure que le temps de la session.
 
@@ -47,6 +49,25 @@ Vous n'avez donc à caler que les morceaux pour lesquels rien n'a été trouvé.
 4. Cliquez **caler ces paroles**.
 
 Les paroles collées sont aussi gardées pour la page de l'album (source « vous »).
+
+---
+
+## 3 bis. Vous avez le fichier .lrc : l'importer
+
+Un `.lrc` contient déjà les temps (`[00:12.40]Karma police`) : pas besoin de caler.
+
+- **importer .lrc** (en bas du panneau des paroles, toujours visible) → choisissez le fichier :
+  les paroles s'affichent tout de suite, synchronisées.
+- Ou ouvrez le `.lrc` dans le Bloc-notes, copiez tout, cliquez **coller** (ou **coller des paroles**) et collez :
+  conductor. reconnaît les temps, le bouton devient **utiliser ces paroles**.
+
+La version importée **remplace** celle d'avant (LRCLIB, calage…), avec la source « fichier .lrc importé ».
+Elle est enregistrée comme un calage. Un décalage ? **modifier** → **tout décaler** (partie 7).
+Un fichier sans temps est traité comme des paroles simples, à caler.
+
+> Les morceaux du téléphone peuvent aussi avoir leur `.lrc` **à côté du fichier audio, avec le même nom** :
+> Navidrome le transmet (relancez un scan après l'avoir ajouté). Mais si le karaoké a déjà des paroles
+> enregistrées pour ce morceau, elles passent avant : importez plutôt.
 
 ---
 
