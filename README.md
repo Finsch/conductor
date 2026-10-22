@@ -191,6 +191,8 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 - `lyrics/` and `lyrics-synced/` — plain and synced lyrics;
 - `journal-entries/` — one Markdown note per day.
 
+**One-click archive** — the archive icon in the footer (or `Shift + A`) puts the whole `datastorage` folder, the app code (without `.git` or downloaded audio) and the browser-side settings (phone addresses, preferences) into a single dated `.zip` (`conductor-archive-2026-10-22.zip`), saved wherever you choose: USB stick, external drive, synced folder. No compression (covers already are), a few seconds. A reminder appears on the collection when the last archive is two weeks old. The `app` folder is picked once at the first archive (then one "Autoriser" click per session). To restore: unzip — `app` and `datastorage` side by side make a complete `conductor/` (see `LISEZ-MOI.txt` inside).
+
 ---
 
 ## Keyboard shortcuts
@@ -220,6 +222,7 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `K` | Karaoke (full screen) |
 | `O` | Open the page of the album playing |
 | `Shift + W` | Wrapped: the year in music |
+| `Shift + A` | Archive all your data (.zip) |
 | `Alt + I` · `Alt + J` · `Alt + U` · `Alt + A` | Insights · Journal · Next up · audio-files |
 | `Alt + G` | Collection |
 | `Alt + C` · `Alt + M` · `Alt + H` | Fiches à compléter · Manuals · Listening history (journal) |

@@ -50,6 +50,7 @@
       ["Alt + C", "Fiches à compléter"],
       ["Alt + M", "Manuels"],
       ["Maj + W", "Wrapped : le bilan de l'année"],
+      ["Maj + A", "Archiver toutes vos données (.zip)"],
       ["O", "Ouvrir la page de l'album en cours de lecture"],
       ["H", "Accueil, tout réinitialisé"],
       ["Échap", "Quitter un champ · retour à la page précédente"]
@@ -337,6 +338,13 @@
       return;
     }
 
+    // Maj + A : archive complète de vos données (dans l'enveloppe : js/archive.js)
+    if (e.shiftKey && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      runArchive();
+      return;
+    }
+
     // Maj + W : le bilan de l'année (wrapped)
     if (e.shiftKey && e.key.toLowerCase() === "w") {
       e.preventDefault();
@@ -434,6 +442,12 @@
     return k;
   }
 
+  // Archive complète : faite par l'enveloppe (seule à accéder à datastorage)
+  function runArchive() {
+    if (window.top !== window) parent.postMessage({ conductor: true, type: "cmd", name: "archive", args: [] }, "*");
+    else if (window.Archive) Archive.run();
+  }
+
   function openHelp() {
     if (!help) {
       help = document.createElement("dialog");
@@ -498,6 +512,7 @@
 
   // Icônes au trait (currentColor)
   const ICON = {
+    archive: '<rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/>',
     disc: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/>',
     vinyl: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5" opacity=".45"/><circle cx="12" cy="12" r="1.6"/>',
     people: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.5 13.8c2 .7 3.5 2.6 3.5 5.2"/>',
@@ -560,6 +575,8 @@
         '<div class="footer-bottom">' +
           '<p class="footer-stats"></p>' +
           '<div class="footer-tools">' +
+            '<button type="button" class="footer-help footer-archive" title="Archiver toutes vos données en un .zip (Maj + A)" ' +
+              'aria-label="Archiver">' + svg(ICON.archive) + '</button>' +
             '<a class="footer-help footer-manuals" href="' + ROOT + 'pages/manuals.html" title="Manuels : les guides pas à pas" ' +
               'aria-label="Manuels">' + svg(ICON.book) + '</a>' +
             '<button type="button" class="footer-help" title="Raccourcis clavier (?)" ' +
@@ -567,7 +584,8 @@
           '</div>' +
         '</div>' +
       '</div></div>';
-    footer.querySelector("button.footer-help").addEventListener("click", openHelp);
+    footer.querySelector("button.footer-help:not(.footer-archive)").addEventListener("click", openHelp);
+    footer.querySelector(".footer-archive").addEventListener("click", runArchive);
     statsEl = footer.querySelector(".footer-stats");
     // Volume fixe, à gauche du bouton clavier (js/volume.js)
     if (window.Volume) {

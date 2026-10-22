@@ -6388,6 +6388,34 @@ a.footer-help {
   margin-right: -17px;
 }
 
+/* archive : juste à gauche des manuels */
+.footer-help.footer-archive {
+  width: 24px;
+  margin-right: 4px;
+}
+
+.goal-notice.archive-notice {
+  border-left-color: #c9a35a;
+}
+
+.goal-notice .text-btn.goal-link {
+  align-self: center;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.goal-notice .text-btn.goal-link:hover {
+  text-decoration: underline;
+}
+
 /* « conductor. » dans les guides et la page À propos */
 .ab-brand,
 .album-facts span.ab-brand {

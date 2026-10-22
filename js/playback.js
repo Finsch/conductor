@@ -332,6 +332,7 @@
     togglePanel: () => togglePanel(),
     closeMini: () => closeMini(),
     fullscreen: () => fsOpen(!fsIsOpen()),
+    archive: () => { if (typeof Archive !== "undefined") Archive.run(); },
     // Stockage local (js/sdcard.js) : demandes de la page audio-files
     "sd:add": () => { if (typeof SD !== "undefined") SD.add(); },
     "sd:rescan": id => { if (typeof SD !== "undefined") SD.rescan(id); },
@@ -1838,6 +1839,12 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     // Maj + W : le bilan de l'année (wrapped)
+    // Maj + A : archive complète de vos données (js/archive.js)
+    if (e.shiftKey && e.key.toLowerCase() === "a" && !sync) {
+      e.preventDefault();
+      if (typeof Archive !== "undefined") Archive.run();
+      return;
+    }
     if (e.shiftKey && e.key.toLowerCase() === "w" && !sync) {
       e.preventDefault();
       fsOpen(false);

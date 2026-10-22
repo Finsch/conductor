@@ -43,7 +43,7 @@ Pour le site lui-même, rien d'autre à installer sur le PC. Sous Linux : `docs/
 | Navigateur (localStorage) | Copie de travail de la collection · réglages Navidrome (jeton) · préférences d'affichage |
 | Téléphone | Vos fichiers audio (seule copie) |
 
-À sauvegarder : le dossier `datastorage` (et vos fichiers audio sur le téléphone).
+À sauvegarder : le dossier `datastorage` (et vos fichiers audio sur le téléphone). Le plus simple : icône **archive** du pied de page (ou `Maj + A`) → un `.zip` daté de tout `datastorage`, du code de l'app et des réglages du navigateur, à mettre sur une clé ou un disque externe. Rappel sur la collection au-delà de 2 semaines.
 
 ## 4. Sans internet
 

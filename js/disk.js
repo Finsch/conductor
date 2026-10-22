@@ -542,7 +542,8 @@ const Disk = window.top !== window ? frameDisk() : (function () {
     init, changed, choose, allow, writeNow, cacheCovers, retryCovers,
     writeLyrics, lyricsPath, pendingLyricsFor, safeName,
     readLyrics, readSynced, writeSynced, coverBlob, coverFile,
-    state: () => state
+    state: () => state,
+    dir: () => handle   // dossier datastorage (archive : js/archive.js)
   };
 })();
 
