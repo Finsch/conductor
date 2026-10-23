@@ -33,6 +33,15 @@
   const hhmm = d => pad(d.getHours()) + ":" + pad(d.getMinutes());
   const longDate = d => DAYS_LONG[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 
+  // Thoughts : réflexions écrites sur les pages album (album.thoughts), de la plus récente à la plus ancienne
+  function allThoughts() {
+    const out = [];
+    Store.raw().forEach(a => (a.thoughts || []).forEach(t => { if (t && t.at && t.text) out.push({ album: a, t, at: new Date(t.at) }); }));
+    return out.sort((x, y) => y.at - x.at);
+  }
+  const thoughtHref = x => "album.html?id=" + encodeURIComponent(x.album.id) + "&thoughts=" + encodeURIComponent(x.t.id);
+  const mmssTh = sec => pad(Math.floor((sec || 0) / 60)) + ":" + pad(Math.round(sec || 0) % 60);
+
   function durationOf(a) {
     if (a.duration) return a.duration;
     return (a.tracks || []).reduce((s, t) => s + (t.duration || 0), 0) || 0;
@@ -137,6 +146,8 @@
     const days = new Date(year, month + 1, 0).getDate();
     const todayKey = dayKey(today);
     const notes = Store.notes();
+    const thByDay = new Map();
+    allThoughts().forEach(x => { const k = dayKey(x.at); thByDay.set(k, (thByDay.get(k) || 0) + 1); });
 
     for (let d = 1; d <= days; d++) {
       const date = new Date(year, month, d);
@@ -164,10 +175,12 @@
 
       // Note du jour
       const has = !!notes[k];
-      const nb = el("button", "jr-note-btn" + (has ? " has-note" : ""));
+      const thN = thByDay.get(k) || 0;
+      const nb = el("button", "jr-note-btn" + (has ? " has-note" : thN ? " has-thoughts" : ""));
       nb.type = "button";
       nb.innerHTML = has ? NOTE_ICON_ON : NOTE_ICON;
-      nb.title = has ? "Lire la note du " + d + " " + MONTHS[month] : "Écrire une note pour le " + d + " " + MONTHS[month];
+      nb.title = (has ? "Lire la note du " + d + " " + MONTHS[month] : "Écrire une note pour le " + d + " " + MONTHS[month]) +
+        (thN ? " · " + thN + " thought" + (thN > 1 ? "s" : "") + " ce jour-là" : "");
       nb.setAttribute("aria-label", nb.title);
       nb.addEventListener("click", e => { e.stopPropagation(); openNote(k); });
       cell.appendChild(nb);
@@ -863,10 +876,28 @@
     noteSaved = note ? note.text : "";
     area.value = noteSaved;
     $("jr-note-title").textContent = longDate(parseDay(k));
+    renderDayThoughts(k);
     $("jr-note-delete").hidden = !note;
     resetDelete();
     if (!noteDialog.open) noteDialog.showModal();
     setNoteMode(!!note);   // note existante : lecture ; nouvelle : écriture
+  }
+
+  // Thoughts du jour, sous la note (lecture ; clic → la réflexion sur sa page album)
+  function renderDayThoughts(k) {
+    const list = allThoughts().filter(x => dayKey(x.at) === k).reverse();
+    $("jr-thoughts").hidden = !list.length;
+    $("jr-thoughts-list").replaceChildren(...list.map(x => {
+      const li = el("li", "jr-thought");
+      const head = el("p", "jr-thought-head");
+      const a = el("a", "jr-thought-album", x.album.title);
+      a.href = thoughtHref(x);
+      a.title = "Ouvrir les thoughts de " + x.album.title + " — " + x.album.artist;
+      head.append(el("span", "jr-thought-time", hhmm(x.at)), a, el("span", "jr-thought-artist", x.album.artist));
+      if (x.t.moment) head.appendChild(el("span", "jr-thought-moment", "♪ " + (x.t.moment.index + 1) + ". " + x.t.moment.title + " · " + mmssTh(x.t.moment.time)));
+      li.append(head, el("p", "jr-thought-text", x.t.text));
+      return li;
+    }));
   }
 
   function keepNote() {
@@ -1073,26 +1104,39 @@
   function runFind() {
     const raw = findInput.value.trim();
     const q = normalize(raw);
-    const notes = Object.entries(Store.notes()).sort((a, b) => b[0].localeCompare(a[0]));
-    const found = q ? notes.filter(([, n]) => normalize(n.text).includes(q)) : notes;
-    $("jr-find-status").textContent = !notes.length
-      ? "Aucune note pour l'instant. Survolez un jour du calendrier pour en écrire une."
-      : q ? (found.length ? plural(found.length, "note") + " trouvée" + (found.length > 1 ? "s" : "") : "Aucune note ne contient « " + raw + " ».")
-        : plural(notes.length, "note") + ", de la plus récente à la plus ancienne.";
-    $("jr-find-list").replaceChildren(...found.slice(0, 50).map(([k, n]) => {
+    // Notes du journal et thoughts des pages album, ensemble, du plus récent au plus ancien
+    const notes = Object.entries(Store.notes()).map(([k, n]) => ({ kind: "note", k, text: n.text, sort: k + "T23:59" }));
+    const thoughts = allThoughts().map(x => ({ kind: "thought", x, text: x.t.text, sort: dayKey(x.at) + "T" + hhmm(x.at),
+      haystack: x.t.text + " " + x.album.title + " " + x.album.artist }));
+    const items = notes.concat(thoughts).sort((a, b) => b.sort.localeCompare(a.sort));
+    const found = q ? items.filter(it => normalize(it.haystack || it.text).includes(q)) : items;
+    const nN = found.filter(it => it.kind === "note").length, nT = found.length - nN;
+    const count = [nN ? plural(nN, "note") : "", nT ? nT + " thought" + (nT > 1 ? "s" : "") : ""].filter(Boolean).join(" et ");
+    $("jr-find-status").textContent = !items.length
+      ? "Aucune note pour l'instant. Survolez un jour du calendrier pour en écrire une, ou « thoughts » sur une page album."
+      : q ? (found.length ? count + " trouvé" + (found.length > 1 ? "s" : "") : "Rien ne contient « " + raw + " ».")
+        : count + ", du plus récent au plus ancien.";
+    $("jr-find-list").replaceChildren(...found.slice(0, 50).map(it => {
       const li = el("li");
       const b = el("button", "jr-find-item");
       b.type = "button";
       const p = el("span", "jr-find-snippet");
-      const flat = n.text.replace(/\s+/g, " ");
-      p.appendChild(q ? snippet(n.text, q) : document.createTextNode(flat.slice(0, 140) + (flat.length > 140 ? "…" : "")));
-      b.append(el("span", "jr-find-date", longDate(parseDay(k))), p);
-      b.addEventListener("click", () => {
-        findDialog.close();
-        const d = parseDay(k);
-        if (d.getFullYear() !== year || d.getMonth() !== month) setMonth(d.getFullYear(), d.getMonth());
-        openNote(k);
-      });
+      const flat = it.text.replace(/\s+/g, " ");
+      p.appendChild(q && normalize(it.text).includes(q) ? snippet(it.text, q) : document.createTextNode(flat.slice(0, 140) + (flat.length > 140 ? "…" : "")));
+      if (it.kind === "note") {
+        b.append(el("span", "jr-find-date", longDate(parseDay(it.k))), p);
+        b.addEventListener("click", () => {
+          findDialog.close();
+          const d = parseDay(it.k);
+          if (d.getFullYear() !== year || d.getMonth() !== month) setMonth(d.getFullYear(), d.getMonth());
+          openNote(it.k);
+        });
+      } else {
+        const date = el("span", "jr-find-date", longDate(it.x.at) + " · " + hhmm(it.x.at));
+        date.appendChild(el("span", "jr-find-kind", "thoughts · " + it.x.album.title + " — " + it.x.album.artist));
+        b.append(date, p);
+        b.addEventListener("click", () => { findDialog.close(); location.href = thoughtHref(it.x); });
+      }
       li.appendChild(b);
       return li;
     }));

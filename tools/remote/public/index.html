@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#161616">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="conductor.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>conductor. · télécommande</title>
+<style>
+  :root {
+    --bg: #161616;
+    --text: #f2f2f2;
+    --muted: #9a9a9a;
+    --line: rgba(255, 255, 255, 0.14);
+    --accent: #f2f2f2;
+    --ok: #6fbf73;
+    --off: #e07c6c;
+    --gold: #e8c45a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* Fond : la pochette, floue */
+  .bg {
+    position: fixed; inset: -60px;
+    background: center / cover no-repeat;
+    filter: blur(50px) saturate(1.15) brightness(0.36);
+    transition: background-image 0.4s;
+    z-index: 0;
+  }
+  .app {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    height: 100%;
+    padding: max(14px, env(safe-area-inset-top)) 22px max(18px, env(safe-area-inset-bottom));
+    max-width: 520px; margin: 0 auto;
+  }
+
+  /* En-tête : état de la connexion */
+  .top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-height: 28px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
+  .dot.is-on { background: var(--ok); }
+  .brand { font-weight: 700; color: var(--text); }
+  .top .grow { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* Zone des gestes : pochette */
+  .stage {
+    flex: 1; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    touch-action: none;
+    position: relative;
+    margin: 10px 0 6px;
+  }
+  .cover {
+    width: min(100%, 46vh); aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06) center / cover no-repeat;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+    transition: transform 0.25s ease, opacity 0.25s;
+    will-change: transform;
+  }
+  .cover.is-dragging { transition: none; }
+  .cover-empty { display: grid; place-items: center; color: var(--muted); font-size: 14px; text-align: center; padding: 20px; }
+
+  /* Réglette du volume pendant le geste */
+  .osd {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 120px; padding: 14px 18px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.72);
+    border-radius: 14px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .osd.is-on { opacity: 1; }
+  .osd b { display: block; font-size: 34px; font-weight: 600; line-height: 1.1; }
+  .osd span { font-size: 12px; color: var(--muted); }
+
+  /* Titres */
+  .meta { text-align: left; margin-top: 4px; }
+  .meta-row { display: flex; align-items: flex-start; gap: 10px; }
+  .meta-text { flex: 1; min-width: 0; }
+  .track { margin: 0; font-size: 22px; font-weight: 650; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub { margin: 4px 0 0; font-size: 15px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .star { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); flex: none; margin-top: -6px; }
+  .star svg { width: 26px; height: 26px; }
+  .star.is-on { color: var(--gold); }
+
+  /* Progression (lecture seule) */
+  .progress { margin-top: 16px; }
+  .bar { position: relative; height: 4px; background: var(--line); border-radius: 2px; }
+  .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); border-radius: 2px; }
+  .times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Boutons */
+  .controls { display: flex; align-items: center; justify-content: center; gap: 34px; margin: 14px 0 10px; }
+  .ctl { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; }
+  .ctl svg { width: 30px; height: 30px; }
+  .ctl:active { background: rgba(255, 255, 255, 0.08); }
+  .play { width: 76px; height: 76px; color: #161616; background: var(--accent); }
+  .play svg { width: 34px; height: 34px; }
+  .play:active { background: #d6d6d6; }
+
+  /* Volumes */
+  .vols { display: grid; gap: 10px; margin-top: 4px; }
+  .vol { display: grid; grid-template-columns: 44px 36px 1fr 36px 52px; align-items: center; gap: 4px; }
+  .vol-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .vol-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; font-size: 22px; color: var(--muted); }
+  .vol-btn:active { background: rgba(255, 255, 255, 0.08); }
+  .vol-bar { position: relative; height: 28px; touch-action: none; }
+  .vol-bar::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--line); }
+  .vol-fill { position: absolute; left: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--accent); }
+  .vol-knob { position: absolute; top: 7px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--accent); }
+  .vol-value { text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .vol.is-muted .vol-fill, .vol.is-muted .vol-knob { background: var(--muted); }
+  .hint { margin: 10px 0 0; font-size: 11px; text-align: center; color: rgba(255, 255, 255, 0.4); }
+
+  /* Message (PC absent, rien en lecture) */
+  .notice { margin: 6px 0 0; padding: 10px 12px; font-size: 13px; color: var(--muted); background: rgba(0, 0, 0, 0.35); border-radius: 8px; text-align: center; }
+
+  /* Appairage */
+  .pair { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; gap: 14px; }
+  .pair h1 { margin: 0; font-size: 28px; }
+  .pair p { margin: 0; color: var(--muted); font-size: 15px; }
+  .pin {
+    width: 210px; margin: 10px auto 0; padding: 12px;
+    font: 600 34px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.4em; text-align: center; text-indent: 0.4em;
+    color: var(--text); background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); border-radius: 10px; outline: none;
+    -webkit-user-select: text; user-select: text;
+  }
+  .pin:focus { border-color: var(--muted); }
+  .pair-btn { margin: 6px auto 0; padding: 12px 28px; font-weight: 600; color: #161616; background: var(--accent); border-radius: 999px; }
+  .pair-btn:disabled { opacity: 0.4; }
+  .pair-err { min-height: 20px; color: var(--off) !important; }
+
+  /* Conseil : ajouter à l'écran d'accueil (Safari / Chrome, pas encore en appli) */
+  .install {
+    display: flex; align-items: center; gap: 10px;
+    margin: 4px 0 0; padding: 10px 12px;
+    font-size: 13px; line-height: 1.35; color: var(--text);
+    background: rgba(255, 255, 255, 0.09); border-radius: 10px;
+  }
+  .install svg { width: 22px; height: 22px; flex: none; }
+  .install span { flex: 1; }
+  .install button { color: var(--muted); font-size: 20px; width: 28px; height: 28px; flex: none; }
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<div class="app">
+  <header class="top">
+    <span class="dot" id="dot"></span>
+    <span class="grow"><span class="brand">conductor.</span> <span id="where">connexion…</span></span>
+    <button class="icon-btn" id="forget" title="Oublier ce PC" aria-label="Oublier ce PC" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>
+    </button>
+  </header>
+
+  <!-- Appairage : code affiché sur le PC -->
+  <section class="pair" id="pair" hidden>
+    <h1>conductor.</h1>
+    <p>Scannez le QR code de conductor.<br>(icône téléphone du pied de page)<br>ou tapez le code affiché :</p>
+    <input class="pin" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" placeholder="····">
+    <p class="pair-err" id="pair-err"></p>
+    <button class="pair-btn" id="pair-btn" disabled>Appairer</button>
+  </section>
+
+  <!-- Télécommande -->
+  <main id="remote" hidden style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="stage" id="stage">
+      <div class="cover" id="cover"></div>
+      <div class="osd" id="osd"><b id="osd-value">14</b><span id="osd-label">volume · sur 20</span></div>
+    </div>
+
+    <p class="notice" id="notice" hidden></p>
+    <p class="install" id="install" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M8.5 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7.5A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-1.5-1.5h-2.5"/></svg>
+      <span id="install-text"></span>
+      <button id="install-close" aria-label="Masquer">×</button>
+    </p>
+
+    <div class="meta">
+      <div class="meta-row">
+        <div class="meta-text">
+          <p class="track" id="track">—</p>
+          <p class="sub" id="sub"></p>
+        </div>
+        <button class="star" id="star" aria-label="Morceau préféré" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" id="star-path"/></svg>
+        </button>
+      </div>
+      <div class="progress">
+        <div class="bar"><div class="bar-fill" id="fill"></div></div>
+        <div class="times"><span id="cur">0:00</span><span id="left">0:00</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctl" id="prev" aria-label="Morceau précédent">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.2v14H6zM19 5.5v13L9.5 12z"/></svg>
+      </button>
+      <button class="ctl play" id="play" aria-label="Lecture / pause">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="play-icon"><path d="M7 4.5v15l13-7.5z"/></svg>
+      </button>
+      <button class="ctl" id="next" aria-label="Morceau suivant">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.8 5H18v14h-2.2zM5 5.5v13l9.5-6.5z"/></svg>
+      </button>
+    </div>
+
+    <div class="vols">
+      <div class="vol" id="vol-app">
+        <span class="vol-label">appli</span>
+        <button class="vol-btn" data-step="-1" aria-label="Volume de l'appli −">−</button>
+        <div class="vol-bar" role="slider" aria-label="Volume de l'appli"><div class="vol-fill"></div><div class="vol-knob"></div></div>
+        <button class="vol-btn" data-step="1" aria-label="Volume de l'appli +">+</button>
+        <span class="vol-value"></span>
+      </div>
+      <div class="vol" id="vol-pc" hidden>
+        <span class="vol-label">PC</span>
+        <button class="vol-btn" data-step="-5" aria-label="Volume du PC −">−</button>
+        <div class="vol-bar" role="slider" aria-label="Volume du PC"><div class="vol-fill"></div><div class="vol-knob"></div></div>
+        <button class="vol-btn" data-step="5" aria-label="Volume du PC +">+</button>
+        <span class="vol-value"></span>
+      </div>
+    </div>
+    <p class="hint">glisser ← → : titre · ↑ ↓ : volume de l'appli</p>
+  </main>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const TOKEN_KEY = "conductor-remote-token";
+  // Clé du QR code (…/#k=…) : appairage sans taper de code. Gardée dans l'adresse, pour que
+  // l'icône de l'écran d'accueil (stockage à part sur iPhone) s'appaire aussi toute seule.
+  const QR_KEY = (/[#&]k=([0-9a-f]{24})/.exec(location.hash) || [])[1] || "";
+  const PLAY = '<path d="M7 4.5v15l13-7.5z"/>';
+  const PAUSE = '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
+
+  let ws = null, retry = 0, retryTimer = 0, triedKey = false;
+  let token = "";
+  try { token = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+  let msg = null;            // dernier état reçu
+  let receivedAt = 0;
+  let appVol = null, pcVol = null;   // valeurs affichées (optimistes pendant un réglage)
+  let appHold = 0, pcHold = 0;       // jusqu'à quand garder la valeur locale (réglage en cours)
+
+  const device = /iPhone/.test(navigator.userAgent) ? "iPhone" : /iPad/.test(navigator.userAgent) ? "iPad"
+    : /Android/.test(navigator.userAgent) ? "Android" : "navigateur";
+
+  function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} }
+
+  // ---------- Connexion ----------
+
+  function setOnline(on, text) {
+    $("dot").classList.toggle("is-on", !!on);
+    $("where").textContent = text || "";
+  }
+
+  function connect() {
+    clearTimeout(retryTimer);
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    setOnline(false, "connexion…");
+    try { ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"); }
+    catch (e) { schedule(); return; }
+    ws.onopen = () => {
+      retry = 0;
+      if (token) ws.send(JSON.stringify({ type: "hello", token }));
+      else if (QR_KEY) ws.send(JSON.stringify({ type: "pair", key: QR_KEY, device }));
+      else showPair();
+    };
+    ws.onmessage = e => {
+      let m = null;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (m.type === "need-pin") {
+        token = "";
+        try { localStorage.removeItem(TOKEN_KEY); } catch (err) {}
+        if (QR_KEY && !triedKey) { triedKey = true; ws.send(JSON.stringify({ type: "pair", key: QR_KEY, device })); }
+        else showPair();
+      }
+      else if (m.type === "paired") { token = m.token; try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {} showRemote(); vibrate(20); }
+      else if (m.type === "welcome") showRemote();
+      else if (m.type === "pair-error") { showPair(); $("pair-err").textContent = m.reason || "Code refusé."; $("pin").select(); vibrate(60); }
+      else if (m.type === "state") { msg = m; receivedAt = performance.now(); render(); }
+    };
+    ws.onclose = () => { setOnline(false, "PC injoignable · nouvel essai…"); schedule(); };
+    ws.onerror = () => {};
+  }
+  function schedule() {
+    clearTimeout(retryTimer);
+    retry = Math.min(retry + 1, 6);
+    retryTimer = setTimeout(connect, [0, 800, 1500, 2500, 4000, 6000, 10000][retry]);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { retry = 0; connect(); } });
+  window.addEventListener("online", () => { retry = 0; connect(); });
+
+  function send(name, value) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "cmd", name, value }));
+  }
+
+  // ---------- Appairage ----------
+
+  function showPair() {
+    $("pair").hidden = false;
+    $("remote").hidden = true;
+    $("forget").hidden = true;
+    setOnline(true, "appairage");
+    setTimeout(() => $("pin").focus(), 50);
+  }
+  function showRemote() {
+    $("pair").hidden = true;
+    $("remote").hidden = false;
+    $("forget").hidden = false;
+    installHint();
+  }
+
+  // Ouverte dans Safari / Chrome (pas depuis l'écran d'accueil) : proposer de l'y ajouter
+  const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  function installHint() {
+    let seen = false;
+    try { seen = localStorage.getItem("conductor-remote-install-hint") === "1"; } catch (e) {}
+    if (standalone || seen) return;
+    const ios = /iPhone|iPad/.test(navigator.userAgent);
+    $("install-text").innerHTML = ios
+      ? "Pour l'ouvrir comme une appli : <b>Partager</b> puis <b>Sur l'écran d'accueil</b>."
+      : "Pour l'ouvrir comme une appli : menu <b>⋮</b> puis <b>Ajouter à l'écran d'accueil</b>.";
+    $("install").hidden = false;
+  }
+  $("install-close").addEventListener("click", () => {
+    $("install").hidden = true;
+    try { localStorage.setItem("conductor-remote-install-hint", "1"); } catch (e) {}
+  });
+  $("pin").addEventListener("input", () => {
+    $("pin").value = $("pin").value.replace(/\D/g, "").slice(0, 4);
+    $("pair-btn").disabled = $("pin").value.length !== 4;
+    $("pair-err").textContent = "";
+    if ($("pin").value.length === 4) pair();
+  });
+  $("pair-btn").addEventListener("click", pair);
+  function pair() {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "pair", pin: $("pin").value, device }));
+  }
+  $("forget").addEventListener("click", () => {
+    if (!confirm("Oublier ce PC ? Il faudra de nouveau le code.")) return;
+    token = "";
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    if (ws) ws.close();
+  });
+
+  // ---------- Affichage ----------
+
+  const mmss = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  let coverUrl = "";
+
+  function position() {
+    const st = msg && msg.state;
+    if (!st) return 0;
+    const t = (st.time || 0) + (st.playing ? (performance.now() - receivedAt) / 1000 : 0);
+    return st.duration ? Math.min(t, st.duration) : t;
+  }
+
+  function render() {
+    const m = msg || {};
+    const st = m.state;
+    setOnline(!!m.host, m.host ? "· " + (m.hostname || "PC") : "· conductor. fermé sur le PC");
+    const notice = !m.host ? "Ouvrez conductor. sur le PC (le relais tourne, mais l'appli n'est pas ouverte)."
+      : !st ? "Rien en lecture. Lancez un album sur le PC." : "";
+    $("notice").textContent = notice;
+    $("notice").hidden = !notice;
+
+    $("track").textContent = st ? st.track || "—" : "—";
+    $("sub").textContent = st ? [st.artist, st.album].filter(Boolean).join(" — ") + (st.count ? "  ·  " + (st.index + 1) + "/" + st.count : "") : "";
+    document.title = st ? st.track + " · " + st.artist : "conductor. · télécommande";
+    $("play-icon").innerHTML = st && st.playing ? PAUSE : PLAY;
+    $("star").classList.toggle("is-on", !!(st && st.starred));
+    $("star").setAttribute("aria-pressed", String(!!(st && st.starred)));
+    $("star").disabled = !st;
+
+    const url = m.cover && token ? m.cover + "&t=" + encodeURIComponent(token) : "";
+    if (url !== coverUrl) {
+      coverUrl = url;
+      $("cover").style.backgroundImage = url ? "url('" + url + "')" : "";
+      $("bg").style.backgroundImage = url ? "url('" + url + "')" : "";
+    }
+    $("cover").classList.toggle("cover-empty", !url);
+    $("cover").textContent = url ? "" : (st ? "" : "♪");
+
+    if (performance.now() > appHold && st) appVol = st.muted ? 0 : st.volume;
+    if (performance.now() > appHold && !st && m.appVolume != null) appVol = m.appVolume;
+    if (performance.now() > pcHold) pcVol = m.sysVolume;
+    renderVols();
+    tick();
+  }
+
+  function tick() {
+    const st = msg && msg.state;
+    const dur = st ? st.duration || 0 : 0;
+    const t = position();
+    $("fill").style.width = dur ? (t / dur * 100) + "%" : "0";
+    $("cur").textContent = mmss(t);
+    $("left").textContent = dur ? "−" + mmss(dur - t) : "";
+  }
+  setInterval(tick, 500);
+
+  function renderVols() {
+    paintVol($("vol-app"), appVol, 20, v => v + " / 20", msg && msg.state && msg.state.muted);
+    $("vol-pc").hidden = pcVol == null;
+    if (pcVol != null) paintVol($("vol-pc"), pcVol, 100, v => v + " %", msg && msg.sysMuted);
+  }
+  function paintVol(box, v, max, fmt, muted) {
+    const pct = v == null ? 0 : Math.max(0, Math.min(1, v / max)) * 100;
+    box.querySelector(".vol-fill").style.width = pct + "%";
+    box.querySelector(".vol-knob").style.left = pct + "%";
+    box.querySelector(".vol-value").textContent = v == null ? "" : (muted ? "muet" : fmt(v));
+    box.classList.toggle("is-muted", !!muted);
+  }
+
+  // ---------- Boutons ----------
+
+  $("play").addEventListener("click", () => {
+    vibrate();
+    send("toggle");
+    if (msg && msg.state) { msg.state.time = position(); receivedAt = performance.now(); msg.state.playing = !msg.state.playing; render(); }
+  });
+  $("next").addEventListener("click", () => { vibrate(); send("next"); });
+  $("prev").addEventListener("click", () => { vibrate(); send("prev"); });
+  $("star").addEventListener("click", () => {
+    vibrate(12);
+    send("star");
+    if (msg && msg.state) { msg.state.starred = !msg.state.starred; render(); }
+  });
+
+  // Volume de l'appli (0..20) et du PC (0..100) : réglettes et boutons − / +
+  function setApp(v, final) {
+    appVol = Math.max(0, Math.min(20, Math.round(v)));
+    appHold = performance.now() + 1500;
+    renderVols();
+    throttled("volume", appVol, final);
+  }
+  function setPc(v, final) {
+    pcVol = Math.max(0, Math.min(100, Math.round(v)));
+    pcHold = performance.now() + 1500;
+    renderVols();
+    throttled("sysVolume", pcVol, final);
+  }
+  const lastSent = {};
+  const pending = {};
+  function throttled(name, value, final) {
+    const now = performance.now();
+    clearTimeout(pending[name]);
+    if (final || !lastSent[name] || now - lastSent[name] > 90) { lastSent[name] = now; send(name, value); }
+    else pending[name] = setTimeout(() => { lastSent[name] = performance.now(); send(name, value); }, 90);
+  }
+  function bindVol(box, max, setter, get) {
+    const bar = box.querySelector(".vol-bar");
+    const at = e => { const r = bar.getBoundingClientRect(); return (e.clientX - r.left) / r.width * max; };
+    bar.addEventListener("pointerdown", e => { bar.setPointerCapture(e.pointerId); setter(at(e)); });
+    bar.addEventListener("pointermove", e => { if (bar.hasPointerCapture(e.pointerId)) setter(at(e)); });
+    bar.addEventListener("pointerup", e => { setter(at(e), true); vibrate(); });
+    box.querySelectorAll(".vol-btn").forEach(b => b.addEventListener("click", () => {
+      vibrate();
+      setter((get() || 0) + Number(b.dataset.step), true);
+    }));
+  }
+  bindVol($("vol-app"), 20, setApp, () => appVol);
+  bindVol($("vol-pc"), 100, setPc, () => pcVol);
+
+  // ---------- Gestes sur la pochette ----------
+  // ← → : titre suivant / précédent · ↑ ↓ : volume de l'appli (un cran tous les 22 px)
+
+  const stage = $("stage"), cover = $("cover");
+  let g = null, osdTimer = 0;
+  function osd(v) {
+    $("osd-value").textContent = v;
+    $("osd").classList.add("is-on");
+    clearTimeout(osdTimer);
+    osdTimer = setTimeout(() => $("osd").classList.remove("is-on"), 700);
+  }
+  stage.addEventListener("pointerdown", e => {
+    stage.setPointerCapture(e.pointerId);
+    g = { x: e.clientX, y: e.clientY, mode: "", base: appVol || 0, steps: 0 };
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!g) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (!g.mode && Math.hypot(dx, dy) > 12) g.mode = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+    if (g.mode === "h") {
+      cover.classList.add("is-dragging");
+      cover.style.transform = "translateX(" + dx * 0.45 + "px) rotate(" + dx * 0.02 + "deg)";
+    } else if (g.mode === "v") {
+      const steps = Math.trunc(-dy / 22);
+      if (steps !== g.steps) {
+        g.steps = steps;
+        vibrate(5);
+        setApp(g.base + steps);
+        osd(appVol);
+      }
+    }
+  });
+  function endGesture(e) {
+    if (!g) return;
+    const dx = e.clientX - g.x;
+    cover.classList.remove("is-dragging");
+    cover.style.transform = "";
+    if (g.mode === "h" && Math.abs(dx) > 70) {
+      vibrate(15);
+      const next = dx < 0;
+      send(next ? "next" : "prev");
+      cover.style.transform = "translateX(" + (next ? -40 : 40) + "px)";
+      cover.style.opacity = "0.4";
+      setTimeout(() => { cover.style.transform = ""; cover.style.opacity = ""; }, 180);
+    } else if (g.mode === "v") {
+      setApp(g.base + g.steps, true);
+    }
+    g = null;
+  }
+  stage.addEventListener("pointerup", endGesture);
+  stage.addEventListener("pointercancel", endGesture);
+
+  // ---------- Démarrage ----------
+
+  if (token || QR_KEY) showRemote(); else showPair();
+  connect();
+})();
+</script>
+</body>
+</html>

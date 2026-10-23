@@ -212,6 +212,18 @@
     });
   }
 
+  // Volume changé ailleurs (télécommande du téléphone, autre page) : on suit
+  window.addEventListener("storage", e => {
+    if (e.key !== KEY || !e.newValue) return;
+    try {
+      const s = JSON.parse(e.newValue);
+      if (!s || !Number.isFinite(s.level) || clamp(s.level) === level) return;
+      level = clamp(s.level);
+      if (level > 0) { lastAudible = level; muted = false; }
+      apply();
+    } catch (err) {}
+  });
+
   window.Volume = {
     attach, set, up, down, zero, max, toggleMute, show, mountFooter,
     level: () => level,

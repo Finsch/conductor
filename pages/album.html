@@ -40,7 +40,11 @@
 
       <!-- Colonne 1 : infos, lecteur, titres, mots-clés, votre avis -->
       <div class="album-main">
-        <h1 class="album-heading" id="a-title"></h1>
+        <div class="album-title-row">
+          <h1 class="album-heading" id="a-title"></h1>
+          <!-- Thoughts : vos réflexions sur l'album (visible au survol, comme « paroles » ; touche W) -->
+          <a class="album-thoughts" id="a-thoughts" href="#" title="Vos réflexions sur cet album (W)">thoughts</a>
+        </div>
         <p class="album-by">par <a class="text-link" id="a-artist"></a></p>
         <p class="album-facts" id="a-facts"></p>
 
@@ -162,6 +166,24 @@
       <input type="search" class="field" id="link-input" placeholder="Nom de l'album ou de l'artiste" autocomplete="off">
       <p class="hint" id="link-status"></p>
       <ul class="results" id="link-results"></ul>
+    </div>
+  </dialog>
+
+  <!-- Thoughts : réflexions datées sur l'album -->
+  <dialog class="modal th-dialog" id="th-dialog" aria-labelledby="th-title">
+    <div class="modal-head">
+      <h2 class="modal-title" id="th-title">thoughts</h2>
+      <button type="button" class="icon-btn" id="th-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-step">
+      <form class="th-form" id="th-form" autocomplete="off">
+        <textarea class="field th-input" id="th-input" rows="3" placeholder="Une pensée, une impression, ce que l'album vous fait…"></textarea>
+        <div class="th-actions">
+          <span class="th-hint" id="th-hint">Ctrl + Entrée</span>
+          <button type="submit" class="btn btn-small" id="th-add" disabled>Ajouter</button>
+        </div>
+      </form>
+      <ul class="th-list" id="th-list"></ul>
     </div>
   </dialog>
 

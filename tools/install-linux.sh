@@ -45,7 +45,31 @@ Terminal=true
 Categories=AudioVideo;Audio;
 DESK
 
-chmod +x "$APPS/conductor.desktop" "$APPS/conductor-usb.desktop"
+cat > "$APPS/conductor-remote.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=conductor télécommande
+Comment=Relais pour piloter conductor. depuis un téléphone
+Exec="$TOOLS/remote/start-remote.sh"
+Icon=$ICON
+Terminal=true
+Categories=AudioVideo;Audio;
+DESK
+
+chmod +x "$TOOLS"/remote/*.sh "$TOOLS"/remote/relay.js 2>/dev/null || true
+
+# Bouton « Démarrer la télécommande » de conductor. : lien conductor-remote:// → relais sans fenêtre
+cat > "$APPS/conductor-remote-handler.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=conductor télécommande (lien)
+Exec="$TOOLS/remote/start-remote-bg.sh" %u
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/conductor-remote;
+DESK
+command -v xdg-mime >/dev/null && xdg-mime default conductor-remote-handler.desktop x-scheme-handler/conductor-remote 2>/dev/null || true
+chmod +x "$APPS/conductor.desktop" "$APPS/conductor-usb.desktop" "$APPS/conductor-remote.desktop"
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS" >/dev/null 2>&1 || true
 
 DESKTOP="$(command -v xdg-user-dir >/dev/null && xdg-user-dir DESKTOP || echo "$HOME/Desktop")"

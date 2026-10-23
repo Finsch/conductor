@@ -1916,6 +1916,11 @@
     queue: () => queue.slice(),
     inQueue: id => queue.includes(id),
     state: () => state,
+    star: () => toggleTrackStar(),
+    starred: () => {
+      const a = state && Store.get(state.albumId);
+      return !!a && (a.favorites || []).includes(currentTrackKey());
+    },
     isAlbum: id => !!state && state.albumId === id,
     index: () => (state ? state.index : -1)
   };

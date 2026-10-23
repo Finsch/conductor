@@ -81,6 +81,7 @@
     ]],
     ["Album et journal", [
       ["E", "Modifier la fiche (page album)"],
+      ["W", "Thoughts : vos réflexions sur l'album (page album)"],
       ["Maj + F", "♥ Album favori (page album)"],
       ["+", "Ajouter l'album à la file d'attente (page album)"],
       ["C", "Copier [[Artiste]] - [[Album]] de l'album en cours"],
@@ -377,6 +378,12 @@
         return;
       }
     }
+    // W : thoughts, les réflexions sur l'album (page album)
+    if (e.key.toLowerCase() === "w" && PAGE === "album") {
+      const t = document.getElementById("a-thoughts");
+      if (t) { e.preventDefault(); t.click(); }
+      return;
+    }
     // E : la lettre E quelle que soit la disposition ; page album → « Modifier la fiche »
     if (e.key.toLowerCase() === "e" && PAGE === "album") {
       const b = document.getElementById("edit-btn");
@@ -512,6 +519,7 @@
 
   // Icônes au trait (currentColor)
   const ICON = {
+    remote: '<rect x="7" y="2.5" width="10" height="19" rx="2.2"/><circle cx="12" cy="9" r="2.4"/><path d="M10 15h4M10 18h4"/>',
     archive: '<rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/>',
     disc: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/>',
     vinyl: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5" opacity=".45"/><circle cx="12" cy="12" r="1.6"/>',
@@ -575,6 +583,8 @@
         '<div class="footer-bottom">' +
           '<p class="footer-stats"></p>' +
           '<div class="footer-tools">' +
+            '<button type="button" class="footer-help footer-remote" title="Télécommande : piloter depuis un téléphone" ' +
+              'aria-label="Télécommande">' + svg(ICON.remote) + '</button>' +
             '<button type="button" class="footer-help footer-archive" title="Archiver toutes vos données en un .zip (Maj + A)" ' +
               'aria-label="Archiver">' + svg(ICON.archive) + '</button>' +
             '<a class="footer-help footer-manuals" href="' + ROOT + 'pages/manuals.html" title="Manuels : les guides pas à pas" ' +
@@ -584,7 +594,11 @@
           '</div>' +
         '</div>' +
       '</div></div>';
-    footer.querySelector("button.footer-help:not(.footer-archive)").addEventListener("click", openHelp);
+    footer.querySelector("button.footer-help:not(.footer-archive):not(.footer-remote)").addEventListener("click", openHelp);
+    footer.querySelector(".footer-remote").addEventListener("click", () => {
+      if (window.top !== window) parent.postMessage({ conductor: true, type: "cmd", name: "remotePanel", args: [] }, "*");
+      else if (window.RemotePanel) RemotePanel.open();
+    });
     footer.querySelector(".footer-archive").addEventListener("click", runArchive);
     statsEl = footer.querySelector(".footer-stats");
     // Volume fixe, à gauche du bouton clavier (js/volume.js)

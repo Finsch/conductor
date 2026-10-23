@@ -147,6 +147,11 @@
       <div class="jr-note-actions">
         <span class="hint" id="jr-note-hint">I écrire · Ctrl+E aperçu · Ctrl+Entrée enregistrer</span>
       </div>
+      <!-- Thoughts écrits ce jour-là sur les pages album -->
+      <div class="jr-thoughts" id="jr-thoughts" hidden>
+        <h3 class="jr-thoughts-title">thoughts du jour</h3>
+        <ul class="jr-thoughts-list" id="jr-thoughts-list"></ul>
+      </div>
     </div>
   </dialog>
 
@@ -157,7 +162,7 @@
       <button type="button" class="icon-btn" id="jr-find-close" aria-label="Fermer">×</button>
     </div>
     <div class="modal-step">
-      <input type="search" class="field" id="jr-find-input" placeholder="Un mot, un album, #tag…" autocomplete="off">
+      <input type="search" class="field" id="jr-find-input" placeholder="Un mot, un album, #tag… (notes et thoughts)" autocomplete="off">
       <p class="hint" id="jr-find-status"></p>
       <ul class="jr-find-list" id="jr-find-list"></ul>
     </div>

@@ -65,6 +65,7 @@ The interface is in French.
 - **Sheet**: release date, label, genre, styles, family, moods ("ressenti"), custom tags; edit with **Modifier la fiche** (`E`), including the cover (URL, image from the PC, or the cover of your files). In that window, an image copied elsewhere can be pasted as the cover: **right-click the cover preview → Coller la pochette depuis le presse-papiers**, or `Ctrl + V` (Chrome may ask once for clipboard access for the right-click).
 - **Intensity** 1–10 and **tier S / A / B** (Masterpiece / Excellent work / Very good job — see `docs/tier-guide.md`).
 - **Listens**: count and date of the last one.
+- **Thoughts**: a "thoughts" link next to the album title (on hover, like "paroles"; or `W`) opens a window of dated notes on the album — thoughts, impressions — as many as you like, newest first; `Ctrl + Enter` to add. If the album is playing, the note records the track and second (♪ 2. Paranoid Android · 02:15). Edit or delete each note; an unsent draft is kept. Saved in `collection.js`. They also appear in the **journal** under the note of the day they were written, and `Alt + S` searches them with the notes.
 - **You may also like**: 4 similar albums from your collection, refresh for others.
 - **Files**: shows where the audio comes from (local folder or phone), with **relier à vos fichiers** to link the album by hand (search in your local folders and on the phone), **changer** and **délier**.
 
@@ -134,6 +135,8 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - **Several addresses for the same phone** — home Wi-Fi, phone hotspot, **USB cable (USB tethering, or ADB port forwarding when tethering is unavailable, e.g. no SIM card)**: add them once, conductor. uses the one that answers, at start-up and when the music stops because the network changed (the track resumes where it was). Fully offline over a USB cable.
 - Albums split by Navidrome (one track with different tags) are merged back; album covers, embedded lyrics and exact durations come from the phone.
 - Albums on the phone but not in the collection are listed, ready to add.
+
+**Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, ★, app volume (out of 20) and PC volume, gestures (swipe ← → for tracks, ↑ ↓ for volume), synced both ways. Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. On 4G or another network, **Tailscale** links the phone to the PC. See `docs/telecommande.md`.
 
 **From YouTube to conductor.** — a typical path for a new album:
 
@@ -209,6 +212,7 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `H` | Home, everything reset |
 | `F` | Favourite albums filter (collection) |
 | `E` | Edit the album sheet (album page) |
+| `W` | Thoughts: your notes on the album (album page) |
 | `J` | Today's note (journal page) |
 | `Shift + ← →` | Previous / next page (collection, journal history) |
 | `Space` | Play / pause |
@@ -269,8 +273,9 @@ conductor/
 │   ├── assets/
 │   ├── tools/              conductor-usb.bat / .ps1 (phone over USB cable: finds its address, opens conductor.),
 │   │                       telecharger_albums.ps1 (downloads album playlists with yt-dlp, one folder per album),
-│   │                       Linux: conductor-usb.sh, telecharger_albums.sh, install-linux.sh (app menu entries)
-│   └── docs/               navidrome-man.md, daily-tel-usb.md, linux.md, youtube-a-conductor.md, calage-paroles.md, tier-guide.md, toolkit.md
+│   │                       Linux: conductor-usb.sh, telecharger_albums.sh, install-linux.sh (app menu entries),
+│   │                       remote/ (phone remote control: relay.js, start-remote.bat / .sh, public/ page)
+│   └── docs/               navidrome-man.md, telecommande.md, daily-tel-usb.md, linux.md, youtube-a-conductor.md, calage-paroles.md, tier-guide.md, toolkit.md
 └── datastorage/            your data, outside the repo
     ├── collection.js       collection, notes, listening time
     ├── collection.prev.js  previous version (safety net)
@@ -302,6 +307,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 | File | Content |
 |---|---|
 | `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), sending music folders to the phone with WinSCP (SFTP over the USB cable), troubleshooting, tagging tips; one-click USB shortcut (`tools/conductor-usb.bat`) and Termux:Widget launcher |
+| `docs/telecommande.md` | Remote control from a phone: relay (`tools/remote`), Tailscale for 4G, pairing, gestures |
 | `docs/daily-tel-usb.md` | Daily routine over the USB cable, in 5 steps: start (cable, USB tethering, Termux widget, `conductor-usb`) and stop |
 | `docs/linux.md` | Running conductor. on Linux: browser (snap / Flatpak notes), `tools/install-linux.sh` (app menu entries), USB cable (`conductor-usb.sh`, `ip route`, ADB), sending files over `sftp://`, yt-dlp + Kid3 |
 | `docs/youtube-a-conductor.md` | The full path for a new album: YouTube → yt-dlp (`tools/telecharger_albums.ps1`) → **TagScanner** (fix tags) → WinSCP → Navidrome → USB cable → conductor. |

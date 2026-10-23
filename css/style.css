@@ -1197,6 +1197,136 @@ a.btn {
   white-space: pre-line;
 }
 
+/* Réflexions : notes datées sur l'album (« thoughts », à côté du titre) */
+
+.album-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.album-thoughts {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  visibility: hidden;
+}
+
+.album-title-row:hover .album-thoughts,
+.album-thoughts:focus-visible {
+  visibility: visible;
+}
+
+.album-thoughts:hover {
+  color: var(--text);
+}
+
+.th-dialog {
+  width: min(640px, calc(100% - 32px));
+}
+
+.th-item.is-highlight .th-text {
+  padding-left: 10px;
+  border-left: 2px solid var(--text-muted);
+}
+
+.th-form {
+  margin: 0;
+}
+
+.th-input {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.55;
+}
+
+.th-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.th-hint {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.th-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.th-item {
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.th-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.th-moment {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.th-tools {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  visibility: hidden;
+}
+
+.th-item:hover .th-tools,
+.th-item:focus-within .th-tools {
+  visibility: visible;
+}
+
+.th-tool {
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.th-tool:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.th-tool.is-armed {
+  color: #e07c6c;
+}
+
+.th-text {
+  margin: 6px 0 0;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.th-edit {
+  margin-top: 8px;
+}
+
 /* Colonne pochette */
 
 .album-art {
@@ -4271,6 +4401,68 @@ body.has-mini-player {
   background: rgba(20, 20, 20, 0.95);
 }
 
+/* Pas de note, mais des thoughts ce jour-là : bouton visible, contour seulement */
+.jr-note-btn.has-thoughts {
+  visibility: visible;
+  box-shadow: inset 0 0 0 1px var(--text-muted);
+}
+
+.jr-thoughts {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.jr-thoughts-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jr-thoughts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jr-thought {
+  padding: 10px 0;
+}
+
+.jr-thought + .jr-thought {
+  border-top: 1px solid var(--border);
+}
+
+.jr-thought-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.jr-thought-album {
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.jr-thought-album:hover {
+  text-decoration: underline;
+}
+
+.jr-thought-text {
+  margin: 4px 0 0;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .jr-note-btn.has-note {
   color: #1b1b1b;
   background: var(--text);
@@ -4834,6 +5026,12 @@ body.has-mini-player {
   margin-bottom: 3px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.jr-find-kind {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .jr-find-snippet {
@@ -6386,6 +6584,81 @@ a.footer-help {
 .footer-help.footer-manuals {
   width: 24px;
   margin-right: -17px;
+}
+
+/* télécommande : à gauche de l'archive */
+.footer-help.footer-remote {
+  width: 24px;
+  margin-right: 4px;
+}
+
+/* Fenêtre « Télécommande » (dans l'enveloppe) */
+.rm-dialog {
+  width: min(420px, calc(100% - 32px));
+  text-align: center;
+}
+
+.rm-lead {
+  margin: 0 0 14px;
+}
+
+.rm-help {
+  margin-top: 14px;
+  text-align: left;
+}
+
+.rm-qr {
+  display: inline-block;
+  padding: 0;
+  line-height: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.rm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.rm-tab {
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rm-tab.is-on {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.rm-url {
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
+
+.rm-url b {
+  letter-spacing: 0.15em;
+}
+
+.rm-phones {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 /* archive : juste à gauche des manuels */

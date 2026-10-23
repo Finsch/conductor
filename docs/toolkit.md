@@ -24,6 +24,8 @@ Aucun serveur en ligne, aucun abonnement, rien de payant.
 | **Chrome ou Edge** (Chromium sous Linux) | PC, Windows ou Linux | Fait tourner le site ; seuls navigateurs capables d'écrire dans `datastorage` |
 | **Termux** (via F-Droid) | Samsung A12 | Terminal Linux sur Android |
 | **Navidrome** (+ ffmpeg, taglib) | A12, dans Termux | Sert vos MP3/FLAC en wifi ou par câble USB (titres, pochettes, paroles, flux audio) |
+| **Node.js** (facultatif) | PC | Fait tourner le relais de la télécommande (`tools/remote`) |
+| **Tailscale** (facultatif) | PC + téléphone qui pilote | Relie le téléphone au PC en 4G ou sur un autre wifi (télécommande) |
 | **Termux:Widget** (facultatif) | A12 | Bouton d'accueil qui lance Navidrome et le serveur d'envoi |
 | **openssh** (`sshd`) | A12, dans Termux | Reçoit les fichiers envoyés par WinSCP |
 | **WinSCP** (facultatif) | PC | Envoie des dossiers d'albums vers le téléphone (SFTP, par le câble USB) ; Linux : gestionnaire de fichiers en `sftp://` |

@@ -480,6 +480,84 @@ const MANUALS = [
     ]
   },
 
+  {
+    id: "telecommande",
+    title: "Télécommande : piloter conductor. depuis un téléphone",
+    short: "iPhone ou Android, en wifi ou en 4G : pochette, lecture / pause, titres, ★, volumes, gestes. Un relais sur le PC, aucune appli à installer sur le téléphone.",
+    icon: "remote",
+    time: "15 min la première fois, puis un double-clic",
+    intro: "Un petit relais tourne sur le PC (Node.js) : le téléphone ouvre sa page dans le navigateur et pilote conductor. Même réseau (wifi, point d'accès, partage de connexion) : rien de plus. En 4G ou sur un autre wifi : Tailscale relie le téléphone au PC, sans changer de réseau. Le téléphone qui pilote n'a pas besoin d'être celui qui contient la musique.",
+    parts: [
+      {
+        title: "Une seule fois (PC)",
+        steps: [
+          {
+            title: "Installer Node.js",
+            body: "<p>Dans PowerShell, puis fermez et rouvrez la fenêtre. Linux : <code>sudo apt install nodejs</code> (version 18 ou plus).</p>",
+            code: "winget install OpenJS.NodeJS.LTS"
+          },
+          {
+            title: "Le bouton « Démarrer la télécommande »",
+            body: "<p>Double-clic sur <code>app\\tools\\remote\\install-button.bat</code>, une fois. Le bouton de conductor. (icône téléphone du pied de page) lance alors le relais, sans fenêtre. Le script propose aussi de le lancer à chaque démarrage de Windows : plus rien à faire ensuite. Linux : <code>install-linux.sh</code> le fait.</p><p>Sans le bouton : <code>start-remote.bat</code> lance le relais dans une fenêtre (à laisser ouverte).</p>",
+            tip: "Au premier lancement, Windows demande d'autoriser Node.js sur le réseau : cochez <b>réseaux privés</b> et <b>réseaux publics</b> (le wifi de la résidence est souvent « public »), puis <b>Autoriser</b>. Au premier clic sur le bouton, Chrome demande d'ouvrir « conductor-remote » : cochez <b>Toujours autoriser</b>."
+          }
+        ]
+      },
+      {
+        title: "En 4G ou sur un autre wifi : Tailscale",
+        steps: [
+          {
+            title: "Pourquoi",
+            body: "<p>En 4G, le téléphone n'est pas sur le réseau du PC ; et beaucoup de wifis de résidence empêchent les appareils de se voir. <b>Tailscale</b> (gratuit pour un usage personnel) crée un réseau privé entre vos appareils : le téléphone joint le PC où qu'il soit, connexion directe et chiffrée, le PC n'est pas exposé sur internet. Le téléphone garde son internet normal.</p>"
+          },
+          {
+            title: "Installer sur le PC et le téléphone",
+            body: "<ol><li>PC : installez Tailscale, ouvrez-le et connectez-vous (compte Google, Microsoft ou Apple).</li><li>Téléphone : appli <b>Tailscale</b> (App Store ou Play Store), <b>même compte</b>, activez-la.</li><li>Le relais affiche alors une adresse <code>http://100.…:8765</code> marquée « Tailscale ».</li></ol>",
+            code: "winget install tailscale.tailscale",
+            tip: "Sur l'iPhone, Tailscale apparaît comme un VPN : laissez-le activé (il ne fait passer que le trafic vers vos appareils)."
+          }
+        ]
+      },
+      {
+        title: "Appairer le téléphone (une fois par téléphone)",
+        steps: [
+          {
+            title: "Scanner le QR code",
+            body: "<p>conductor. → icône <b>téléphone</b> du pied de page → <b>Démarrer la télécommande</b> si besoin : un <b>QR code</b> s'affiche. Visez-le avec l'<b>appareil photo</b> du téléphone et touchez le lien : la télécommande s'ouvre, déjà appairée. Plusieurs réseaux ? Choisissez l'onglet (Wifi, Tailscale…) avant de scanner.</p>",
+            tip: "Sans appareil photo : tapez l'adresse affichée sous le QR code, puis le code à 4 chiffres. Le code et le QR code ne changent pas d'une fois sur l'autre (« Nouveau code » les renouvelle et oublie les téléphones)."
+          },
+          {
+            title: "En faire une appli sur le téléphone",
+            body: "<p>Juste après le scan, dans Safari : <b>Partager</b> → <b>Sur l'écran d'accueil</b> (Android, Chrome : <b>⋮</b> → <b>Ajouter à l'écran d'accueil</b>). L'icône conductor. s'ouvre ensuite en plein écran, comme une appli, et retrouve le PC toute seule.</p>",
+            tip: "L'icône garde l'adresse du PC. Si elle change (wifi de résidence qui redonne une autre adresse), rescannez le QR code et refaites l'icône. Avec Tailscale, l'adresse ne change pas."
+          }
+        ]
+      },
+      {
+        title: "Piloter",
+        steps: [
+          {
+            title: "Les commandes",
+            body: "<table class=\"mn-table\"><tr><th>Geste / bouton</th><th>Effet</th></tr><tr><td>⏯ ⏮ ⏭</td><td>lecture / pause, titre précédent / suivant</td></tr><tr><td>★</td><td>morceau préféré</td></tr><tr><td>glisser ← → sur la pochette</td><td>titre suivant / précédent</td></tr><tr><td>glisser ↑ ↓ sur la pochette</td><td>volume de l'appli (un cran tous les 2 cm environ)</td></tr><tr><td>réglette <b>APPLI</b></td><td>volume de conductor., sur 20</td></tr><tr><td>réglette <b>PC</b></td><td>volume de Windows (ou de Linux)</td></tr></table><p>Tout est synchronisé dans les deux sens : un changement sur le PC s'affiche aussitôt sur le téléphone. Le point vert en haut indique que le PC répond.</p>"
+          },
+          {
+            title: "Au quotidien",
+            body: "<p>PC : conductor. (relais lancé au démarrage de Windows, ou bouton <b>Démarrer la télécommande</b>). Téléphone : l'icône de l'écran d'accueil (Tailscale activé en 4G). Le QR code ne sert qu'à appairer un <b>nouveau</b> téléphone. Pour arrêter le relais : icône téléphone → <b>Arrêter le relais</b>.</p>"
+          }
+        ]
+      }
+    ],
+    trouble: [
+      ["La page ne s'ouvre pas sur le téléphone", "Le relais tourne-t-il (fenêtre ouverte) ? Bonne adresse ? Pare-feu : autorisez Node.js (réseaux privés et publics). Wifi de résidence : passez par l'adresse Tailscale."],
+      ["« conductor. fermé sur le PC »", "Le relais tourne mais conductor. n'est pas ouvert : ouvrez-le (il se relie tout seul en quelques secondes)."],
+      ["« Démarrer la télécommande » ne fait rien", "Lancez une fois <code>install-button.bat</code> ; Node.js doit être installé. Le détail des erreurs est dans <code>tools/remote/relay-errors.log</code>."],
+      ["« Code incorrect » ou « QR code périmé »", "Le code a été renouvelé (« Nouveau code ») : scannez le QR code affiché maintenant. 5 erreurs : attente de 30 secondes."],
+      ["Pas de réglette PC", "Le volume de l'ordinateur n'a pas pu être lu. Windows : rien à installer, relancez le relais. Linux : installez <code>pulseaudio-utils</code> (pactl) ou <code>alsa-utils</code>."],
+      ["« Port 8765 déjà utilisé »", "Le relais tourne déjà dans une autre fenêtre : gardez-en une seule."],
+      ["Changer de téléphone, ou en retirer un", "Sur le téléphone : icône en haut à droite (oublier ce PC). Pour tous les retirer : supprimez <code>tools/remote/.remote-tokens.json</code> sur le PC."]
+    ]
+  },
+
   // ===================================================================
   {
     id: "calage-paroles",

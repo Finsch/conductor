@@ -1165,6 +1165,146 @@
   $("link-close").addEventListener("click", () => linkDialog.close());
   linkDialog.addEventListener("click", e => { if (e.target === linkDialog) linkDialog.close(); });
 
+  // ---------- Réflexions : notes datées sur l'album ----------
+  // album.thoughts = [{ id, at (ISO), text, edited?, moment?: { index, title, time } }]
+  // « moment » : morceau et seconde, si l'album jouait au moment d'écrire.
+
+  const DRAFT_KEY = "conductor01.thoughtDraft." + album.id;
+  const thInput = $("th-input");
+
+  function autosize(t) {
+    t.style.height = "auto";
+    t.style.height = Math.min(t.scrollHeight + 2, 420) + "px";
+  }
+
+  function thoughtDate(iso) {
+    const d = new Date(iso);
+    const day = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    return formatDate(day) + " · " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  // Morceau en cours, si c'est cet album qui joue
+  function currentMoment() {
+    const st = window.Playback && Playback.state && Playback.state();
+    if (!st || st.albumId !== album.id || !st.tracks || !st.tracks[st.index]) return null;
+    const time = Playback.audio ? Playback.audio.currentTime || 0 : 0;
+    return { index: st.index, title: st.tracks[st.index].title || "", time: Math.round(time) };
+  }
+
+  function saveThoughts(list) {
+    album = Store.update(album.id, { thoughts: list.length ? list : null }) || album;
+    renderThoughts();
+  }
+
+  const thDialog = $("th-dialog");
+
+  function openThoughts(highlightId) {
+    $("th-title").textContent = "thoughts · " + album.title;
+    renderThoughts(null, highlightId);
+    if (!thDialog.open) thDialog.showModal();
+    if (!highlightId) setTimeout(() => { thInput.focus(); autosize(thInput); }, 0);
+  }
+
+  function renderThoughts(editId, highlightId) {
+    const list = (album.thoughts || []).slice().sort((a, b) => b.at.localeCompare(a.at));
+    const link = $("a-thoughts");
+    link.textContent = list.length ? "thoughts · " + list.length : "thoughts";
+    link.classList.toggle("has-thoughts", list.length > 0);
+    $("th-list").replaceChildren(...list.map(t => {
+      const li = el("li", "th-item" + (t.id === highlightId ? " is-highlight" : ""));
+      if (t.id === highlightId) setTimeout(() => li.scrollIntoView({ block: "center" }), 50);
+      const head = el("p", "th-head");
+      head.appendChild(el("span", "th-date", thoughtDate(t.at) + (t.edited ? " · modifiée" : "")));
+      if (t.moment) {
+        const m = el("span", "th-moment", "♪ " + (t.moment.index + 1) + ". " + t.moment.title + " · " + mmss(t.moment.time));
+        m.title = "Le morceau qui jouait en écrivant";
+        head.appendChild(m);
+      }
+      const actions = el("span", "th-tools");
+      li.append(head);
+
+      if (editId === t.id) {
+        const area = el("textarea", "field th-input th-edit");
+        area.value = t.text;
+        const ok = el("button", "btn btn-small", "Enregistrer");
+        const cancel = el("button", "btn btn-ghost btn-small", "Annuler");
+        ok.type = cancel.type = "button";
+        const done = () => {
+          const v = area.value.trim();
+          if (!v) return;
+          saveThoughts((album.thoughts || []).map(x => x.id === t.id ? Object.assign({}, x, { text: v, edited: new Date().toISOString() }) : x));
+        };
+        ok.addEventListener("click", done);
+        cancel.addEventListener("click", () => renderThoughts());
+        area.addEventListener("keydown", e => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done(); }
+          else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); renderThoughts(); }
+        });
+        area.addEventListener("input", () => autosize(area));
+        const row = el("div", "th-actions");
+        row.append(el("span", "th-hint", "Ctrl + Entrée"), cancel, ok);
+        li.append(area, row);
+        setTimeout(() => { autosize(area); area.focus(); area.setSelectionRange(area.value.length, area.value.length); }, 0);
+        return li;
+      }
+
+      const edit = el("button", "th-tool", "modifier");
+      edit.type = "button";
+      edit.addEventListener("click", () => renderThoughts(t.id));
+      const del = el("button", "th-tool", "supprimer");
+      del.type = "button";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed) { saveThoughts((album.thoughts || []).filter(x => x.id !== t.id)); return; }
+        del.dataset.armed = "1";
+        del.textContent = "supprimer ? oui";
+        del.classList.add("is-armed");
+        setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "supprimer"; del.classList.remove("is-armed"); } }, 3000);
+      });
+      actions.append(edit, del);
+      head.appendChild(actions);
+      li.appendChild(el("p", "th-text", t.text));
+      return li;
+    }));
+  }
+
+  function addThought() {
+    const text = thInput.value.trim();
+    if (!text) return;
+    const now = new Date().toISOString();
+    const t = { id: "t" + Date.now().toString(36), at: now, text };
+    const m = currentMoment();
+    if (m) t.moment = m;
+    thInput.value = "";
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+    autosize(thInput);
+    $("th-add").disabled = true;
+    saveThoughts((album.thoughts || []).concat(t));
+  }
+
+  // Brouillon gardé (page quittée avant d'ajouter)
+  try { thInput.value = localStorage.getItem(DRAFT_KEY) || ""; } catch (e) {}
+  $("th-add").disabled = !thInput.value.trim();
+  setTimeout(() => autosize(thInput), 0);
+  thInput.addEventListener("input", () => {
+    autosize(thInput);
+    $("th-add").disabled = !thInput.value.trim();
+    try {
+      if (thInput.value.trim()) localStorage.setItem(DRAFT_KEY, thInput.value);
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {}
+  });
+  thInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addThought(); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); thInput.blur(); }
+  });
+  $("th-form").addEventListener("submit", e => { e.preventDefault(); addThought(); });
+  $("a-thoughts").addEventListener("click", e => { e.preventDefault(); openThoughts(); });
+  $("th-close").addEventListener("click", () => thDialog.close());
+  thDialog.addEventListener("click", e => { if (e.target === thDialog) thDialog.close(); });
+  // Depuis le journal (recherche, note du jour) : album.html?id=…&thoughts=<id de la réflexion>
+  const askedThought = new URLSearchParams(location.search).get("thoughts");
+  if (askedThought != null) setTimeout(() => openThoughts(askedThought || null), 0);
+
   // ---------- Démarrage ----------
 
   renderInfo();
@@ -1173,6 +1313,7 @@
   renderTier();
   renderLogs();
   renderPlays();
+  renderThoughts();
 
   const needsInfo = !album.enrichedAt || !(album.tracks || []).length;
   $("tracks-status").textContent = needsInfo ? "Récupération des informations…" : "";
