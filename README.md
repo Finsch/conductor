@@ -20,6 +20,7 @@ The interface is in French.
   - [Features](#features)
     - [Collection](#collection)
     - [Album page](#album-page)
+    - [Bacs](#bacs)
     - [Artist page](#artist-page)
     - [Next up](#next-up)
     - [Playback](#playback)
@@ -68,6 +69,15 @@ The interface is in French.
 - **Thoughts**: a "thoughts" link next to the album title (on hover, like "paroles"; or `W`) opens a window of dated notes on the album — thoughts, impressions — as many as you like, newest first; `Ctrl + Enter` to add. If the album is playing, the note records the track and second (♪ 2. Paranoid Android · 02:15). Edit or delete each note; an unsent draft is kept. Saved in `collection.js`. They also appear in the **journal** under the note of the day they were written, and `Alt + S` searches them with the notes.
 - **You may also like**: 4 similar albums from your collection, refresh for others.
 - **Files**: shows where the audio comes from (local folder or phone), with **relier à vos fichiers** to link the album by hand (search in your local folders and on the phone), **changer** and **délier**.
+
+### Bacs
+
+**bacs** page (next to insights in the menu, `Alt + B`): album selections, like playlists but for albums.
+- All bacs as cards (2 × 2 cover mosaic, or a chosen cover; number of albums, total length), sorted A → Z or by last change.
+- One bac: **▶ Lire le bac** (plays the first album, the others go to the queue), **Ajouter à la file**, rename, delete; add albums from the collection (search by title or artist), reorder by drag and drop (like next up), remove ×; on each album, ▶ plays it and ≡+ adds it to the queue.
+- **Cover of a bac**: automatic mosaic, the cover of one of its albums, an image from the PC, or an image pasted with `Ctrl + V`.
+- From an album page: **Bacs** button (`B`) — tick the bacs it belongs to, or create a new one with the album in it.
+- Saved in `datastorage/collection.js` (so in backups and the archive).
 
 ### Artist page
 
@@ -136,7 +146,7 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - Albums split by Navidrome (one track with different tags) are merged back; album covers, embedded lyrics and exact durations come from the phone.
 - Albums on the phone but not in the collection are listed, ready to add.
 
-**Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, ★, app volume (out of 20) and PC volume, gestures (swipe ← → for tracks, ↑ ↓ for volume), synced both ways. Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. On 4G or another network, **Tailscale** links the phone to the PC. See `docs/telecommande.md`.
+**Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, ★, PC volume, gestures on the cover (swipe ← → for tracks, ↑ ↓ for the app volume out of 20), synced both ways; **lyrics** on the phone (microphone button): the karaoke's synced lyrics follow the music, tap a line to jump there; the **queue** (play an album now, remove, reorder by dragging, clear); **thoughts** on the current album (write, read, edit, delete — saved with the album, shown in the journal); a minimal **catalog** — one search bar over title, artist, genre, style, mood, label, year — to play an album or add it to the queue. `Alt + R` opens the remote window (QR code). Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. On 4G or another network, **Tailscale** links the phone to the PC. See `docs/telecommande.md`.
 
 **From YouTube to conductor.** — a typical path for a new album:
 
@@ -230,6 +240,9 @@ Everything is written to `datastorage/` (once the folder is authorised), a fract
 | `Alt + I` · `Alt + J` · `Alt + U` · `Alt + A` | Insights · Journal · Next up · audio-files |
 | `Alt + G` | Collection |
 | `Alt + C` · `Alt + M` · `Alt + H` | Fiches à compléter · Manuals · Listening history (journal) |
+| `Alt + R` | Remote control window (QR code for the phone) |
+| `Alt + B` | Bacs (album selections) |
+| `B` | Put the album in a bac (album page) |
 | `Alt + T` | Today's journal note (opened or created), from any page |
 | `Alt + S` | Search the journal notes (journal page) |
 | `L` | ★ the track playing (favourite track) |
@@ -251,7 +264,8 @@ Once albums are in the collection and your files are on a local drive (or the ph
 - collection, album and artist pages, covers (local copies), filters and search;
 - playback of local files and Navidrome over Wi-Fi / hotspot / USB (local network only);
 - full screen, karaoke and lyrics already loaded or synced;
-- journal, notes, insights, wrapped, next up, exports and backups.
+- journal, notes, insights, wrapped, next up, exports and backups;
+- the phone remote control, when the phone is on the same Wi-Fi as the PC (from 4G or another network, Tailscale needs internet).
 
 Needs internet: adding an album through the search (Deezer, Discogs) and completing sheets (genres, styles, tracklists), Deezer previews, lyrics never loaded before, covers whose site refused the copy (see *fiches à compléter*), Genius / Wikipedia links. Adding an album from your local folders works offline.
 
@@ -307,7 +321,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 | File | Content |
 |---|---|
 | `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), sending music folders to the phone with WinSCP (SFTP over the USB cable), troubleshooting, tagging tips; one-click USB shortcut (`tools/conductor-usb.bat`) and Termux:Widget launcher |
-| `docs/telecommande.md` | Remote control from a phone: relay (`tools/remote`), Tailscale for 4G, pairing, gestures |
+| `docs/telecommande.md` | Remote control from a phone: relay (`tools/remote`), Tailscale for 4G, pairing, gestures, lyrics, queue, thoughts, catalog |
 | `docs/daily-tel-usb.md` | Daily routine over the USB cable, in 5 steps: start (cable, USB tethering, Termux widget, `conductor-usb`) and stop |
 | `docs/linux.md` | Running conductor. on Linux: browser (snap / Flatpak notes), `tools/install-linux.sh` (app menu entries), USB cable (`conductor-usb.sh`, `ip route`, ADB), sending files over `sftp://`, yt-dlp + Kid3 |
 | `docs/youtube-a-conductor.md` | The full path for a new album: YouTube → yt-dlp (`tools/telecharger_albums.ps1`) → **TagScanner** (fix tags) → WinSCP → Navidrome → USB cable → conductor. |

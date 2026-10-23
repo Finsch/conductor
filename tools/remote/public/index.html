@@ -68,10 +68,11 @@
     display: flex; align-items: center; justify-content: center;
     touch-action: none;
     position: relative;
-    margin: 10px 0 6px;
+    margin: 10px 0 14px;
+    container-type: size;   /* la pochette tient toujours dans la place qui reste */
   }
   .cover {
-    width: min(100%, 46vh); aspect-ratio: 1 / 1;
+    width: min(100cqw, 100cqh); aspect-ratio: 1 / 1;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.06) center / cover no-repeat;
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
@@ -80,6 +81,139 @@
   }
   .cover.is-dragging { transition: none; }
   .cover-empty { display: grid; place-items: center; color: var(--muted); font-size: 14px; text-align: center; padding: 20px; }
+
+  /* Paroles (karaoké) : à la place de la pochette */
+  .lyrics {
+    position: absolute; inset: 0;
+    overflow-y: auto; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 30% 4px;
+    -webkit-mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
+            mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
+  }
+  .lyrics::-webkit-scrollbar { display: none; }
+  .stage.is-lyrics { touch-action: auto; }
+  .stage.is-lyrics .cover { visibility: hidden; }
+  .ly-line {
+    margin: 0 0 18px;
+    font-size: 25px; font-weight: 700; line-height: 1.25;
+    color: var(--text);
+    opacity: 0.32;
+    transition: opacity 0.25s, transform 0.25s;
+    transform-origin: left center;
+    cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+  }
+  .ly-line.is-past { opacity: 0.5; }
+  .ly-line.is-now { opacity: 1; transform: scale(1.02); }
+  .ly-line.is-gap { font-size: 20px; }
+  .ly-plain { margin: 0; font-size: 19px; line-height: 1.55; white-space: pre-line; color: var(--text); opacity: 0.9; }
+  .ly-msg { margin: 0; padding-top: 30%; text-align: center; font-size: 16px; color: var(--muted); }
+  .ly-src { margin: 26px 0 0; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lyr-btn { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); flex: none; margin-top: 14px; }
+  .lyr-btn svg { width: 24px; height: 24px; }
+  .lyr-btn.is-on { color: var(--text); }
+
+  /* File d'attente : panneau qui monte du bas */
+  .q-btn { position: relative; }
+  .q-badge {
+    position: absolute; top: 0; right: -2px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+    color: #161616; background: var(--text); border-radius: 999px;
+  }
+  .sheet {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .sheet.is-open { opacity: 1; pointer-events: auto; }
+  .sheet-panel {
+    max-height: 86%;
+    display: flex; flex-direction: column;
+    background: #1d1d1d;
+    border-radius: 16px 16px 0 0;
+    padding: 8px 0 max(14px, env(safe-area-inset-bottom));
+    transform: translateY(30px); transition: transform 0.22s ease;
+  }
+  .sheet.is-open .sheet-panel { transform: none; }
+  .sheet-grab { width: 38px; height: 5px; margin: 2px auto 8px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); }
+  .sheet-head { display: flex; align-items: center; padding: 0 16px 8px 20px; }
+  .sheet-title { flex: 1; margin: 0; font-size: 17px; font-weight: 700; }
+  .sheet-sub { margin: 0 20px 6px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #8b9096; }
+  .sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .q-list { list-style: none; margin: 0; padding: 0; position: relative; }
+  .q-row {
+    display: flex; align-items: center; gap: 12px;
+    height: 64px; padding: 0 8px 0 20px;
+    background: #1d1d1d;
+    transition: transform 0.18s ease;
+    position: relative;
+  }
+  .q-row.is-dragging { transition: none; z-index: 2; background: #2a2a2a; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5); border-radius: 8px; }
+  .q-row.is-now { padding-left: 20px; }
+  .q-cover { width: 46px; height: 46px; flex: none; border-radius: 3px; background: rgba(255, 255, 255, 0.06) center / cover no-repeat; }
+  .q-text { flex: 1; min-width: 0; }
+  .q-title { margin: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .q-artist { margin: 2px 0 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .q-act { width: 40px; height: 40px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; flex: none; }
+  .q-act svg { width: 18px; height: 18px; }
+  .q-act:active { background: rgba(255, 255, 255, 0.08); }
+  .q-grip { width: 40px; height: 64px; display: grid; place-items: center; color: var(--muted); font-size: 18px; flex: none; touch-action: none; }
+  .q-empty { margin: 18px 20px; font-size: 14px; color: var(--muted); }
+  .q-foot { display: flex; justify-content: center; padding: 12px 20px 0; }
+  .q-clear { padding: 9px 18px; font-size: 14px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
+  .q-clear.is-armed { color: var(--off); border-color: var(--off); }
+
+  /* Thoughts : réflexions datées sur l'album en cours */
+  .th-btn { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); flex: none; margin-top: 14px; position: relative; }
+  .th-btn svg { width: 23px; height: 23px; }
+  .th-btn.has-thoughts { color: var(--text); }
+  .th-count { position: absolute; top: 4px; right: 2px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 9.5px; font-weight: 700; line-height: 15px; text-align: center; color: #161616; background: var(--text); border-radius: 999px; }
+  .th-form { padding: 0 20px 4px; }
+  .th-input {
+    display: block; width: 100%; min-height: 96px; max-height: 40vh; resize: none;
+    padding: 12px 14px;
+    font: 16px/1.45 inherit; font-family: inherit;   /* 16 px : pas de zoom automatique sur iPhone */
+    color: var(--text); background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line); border-radius: 12px; outline: none;
+    -webkit-user-select: text; user-select: text;
+  }
+  .th-input:focus { border-color: var(--muted); }
+  .th-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .th-hint { flex: 1; font-size: 12px; color: var(--muted); }
+  .th-add { padding: 10px 20px; font-weight: 600; color: #161616; background: var(--text); border-radius: 999px; }
+  .th-add:disabled { opacity: 0.35; }
+  .th-list { list-style: none; margin: 10px 0 0; padding: 0 20px; }
+  .th-item { padding: 14px 0; border-top: 1px solid var(--line); }
+  .th-head { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: 12px; color: var(--muted); }
+  .th-moment { margin: 2px 0 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .th-del { margin-left: auto; font-size: 12px; color: var(--muted); padding: 2px 0 2px 10px; }
+  .th-del.is-armed { color: var(--off); }
+  .th-edit-btn { font-size: 12px; color: var(--muted); padding: 2px 0 2px 10px; }
+  .th-head .th-edit-btn { margin-left: auto; }
+  .th-head .th-edit-btn + .th-del { margin-left: 0; }
+  .th-editor { margin-top: 8px; }
+  .th-editor .th-input { min-height: 96px; }
+  .th-editor .th-row { justify-content: flex-end; }
+  .th-cancel { padding: 10px 14px; font-size: 14px; color: var(--muted); }
+  .th-text { margin: 6px 0 0; font-size: 15px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+  .th-none { margin: 14px 20px; font-size: 14px; color: var(--muted); }
+
+  /* Catalogue : recherche dans la collection */
+  .cat-panel { height: 92%; max-height: 92%; }
+  .cat-search { padding: 0 20px 8px; }
+  .cat-input {
+    width: 100%; height: 44px; padding: 0 14px;
+    font: 16px inherit; font-family: inherit;   /* 16 px : pas de zoom automatique sur iPhone */
+    color: var(--text); background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line); border-radius: 12px; outline: none;
+    -webkit-user-select: text; user-select: text;
+  }
+  .cat-input:focus { border-color: var(--muted); }
+  .cat-status { margin: 4px 20px 6px; font-size: 12px; color: var(--muted); }
 
   /* Réglette du volume pendant le geste */
   .osd {
@@ -99,11 +233,20 @@
   .meta { text-align: left; margin-top: 4px; }
   .meta-row { display: flex; align-items: flex-start; gap: 10px; }
   .meta-text { flex: 1; min-width: 0; }
-  .track { margin: 0; font-size: 22px; font-weight: 650; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sub { margin: 4px 0 0; font-size: 15px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .star { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); flex: none; margin-top: -6px; }
-  .star svg { width: 26px; height: 26px; }
+  /* Comme le plein écran du PC : TITRE n / N, titre en grand, artiste, album · année */
+  .kicker { margin: 0; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8b9096; }
+  /* Une seule ligne : la taille diminue pour que le titre tienne (puis « … » s'il est très long) */
+  .track {
+    margin: 6px 0 4px;
+    font-size: 27px; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .artist { margin: 0; font-size: 17px; color: #c9cdd1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .album { margin: 3px 0 0; font-size: 14px; color: #8b9096; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .star { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); flex: none; margin-top: 14px; }
+  .star svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
   .star.is-on { color: var(--gold); }
+  .star.is-on svg { fill: currentColor; }
 
   /* Progression (lecture seule) */
   .progress { margin-top: 16px; }
@@ -122,7 +265,7 @@
 
   /* Volumes */
   .vols { display: grid; gap: 10px; margin-top: 4px; }
-  .vol { display: grid; grid-template-columns: 44px 36px 1fr 36px 52px; align-items: center; gap: 4px; }
+  .vol { display: grid; grid-template-columns: 30px 36px 1fr 36px 48px; align-items: center; gap: 4px; }
   .vol-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .vol-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; font-size: 22px; color: var(--muted); }
   .vol-btn:active { background: rgba(255, 255, 255, 0.08); }
@@ -166,10 +309,79 @@
 </head>
 <body>
 <div class="bg" id="bg"></div>
+<!-- Catalogue : recherche dans la collection -->
+<div class="sheet" id="cat-sheet" aria-hidden="true">
+  <div class="sheet-panel cat-panel" role="dialog" aria-label="Catalogue">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2 class="sheet-title">catalogue</h2>
+      <button class="icon-btn" id="cat-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </div>
+    <div class="cat-search">
+      <input class="cat-input" id="cat-input" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Album, artiste, genre, année…">
+    </div>
+    <p class="cat-status" id="cat-status"></p>
+    <div class="sheet-body">
+      <ul class="q-list" id="cat-list"></ul>
+    </div>
+  </div>
+</div>
+<!-- Thoughts de l'album en cours -->
+<div class="sheet" id="th-sheet" aria-hidden="true">
+  <div class="sheet-panel" role="dialog" aria-label="Thoughts">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2 class="sheet-title" id="th-title">thoughts</h2>
+      <button class="icon-btn" id="th-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="th-form">
+        <textarea class="th-input" id="th-input" placeholder="Une pensée, une impression, ce que l'album vous fait…"></textarea>
+        <div class="th-row">
+          <span class="th-hint" id="th-hint"></span>
+          <button class="th-add" id="th-add" disabled>Ajouter</button>
+        </div>
+      </div>
+      <ul class="th-list" id="th-list"></ul>
+      <p class="th-none" id="th-none" hidden>Pas encore de thought sur cet album.</p>
+    </div>
+  </div>
+</div>
+<!-- File d'attente -->
+<div class="sheet" id="sheet" aria-hidden="true">
+  <div class="sheet-panel" role="dialog" aria-label="File d'attente">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2 class="sheet-title">File d'attente</h2>
+      <button class="icon-btn" id="sheet-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="sheet-body">
+      <p class="sheet-sub">en cours</p>
+      <div id="q-now"></div>
+      <p class="sheet-sub" id="q-next-title">à suivre</p>
+      <ul class="q-list" id="q-list"></ul>
+      <p class="q-empty" id="q-empty" hidden>Rien à suivre. Ajoutez des albums à la file depuis le PC.</p>
+      <div class="q-foot"><button class="q-clear" id="q-clear" hidden>Vider la file</button></div>
+    </div>
+  </div>
+</div>
 <div class="app">
   <header class="top">
     <span class="dot" id="dot"></span>
     <span class="grow"><span class="brand">conductor.</span> <span id="where">connexion…</span></span>
+    <button class="icon-btn" id="cat-btn" title="Catalogue" aria-label="Catalogue : rechercher un album" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+    </button>
+    <button class="icon-btn q-btn" id="q-btn" title="File d'attente" aria-label="File d'attente" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h12M4 11.5h12M4 16.5h7"/><path d="M15.5 14.5v6l5-3z" fill="currentColor" stroke="none"/></svg>
+      <span class="q-badge" id="q-badge" hidden></span>
+    </button>
     <button class="icon-btn" id="forget" title="Oublier ce PC" aria-label="Oublier ce PC" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>
     </button>
@@ -188,6 +400,7 @@
   <main id="remote" hidden style="display:flex;flex-direction:column;flex:1;min-height:0">
     <div class="stage" id="stage">
       <div class="cover" id="cover"></div>
+      <div class="lyrics" id="lyrics" hidden></div>
       <div class="osd" id="osd"><b id="osd-value">14</b><span id="osd-label">volume · sur 20</span></div>
     </div>
 
@@ -201,11 +414,20 @@
     <div class="meta">
       <div class="meta-row">
         <div class="meta-text">
+          <p class="kicker" id="kicker"></p>
           <p class="track" id="track">—</p>
-          <p class="sub" id="sub"></p>
+          <p class="artist" id="artist"></p>
+          <p class="album" id="album"></p>
         </div>
+        <button class="th-btn" id="th-btn" aria-label="Thoughts : réflexions sur l'album">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z"/><path d="M8 9.3h8M8 12.3h5"/></svg>
+          <span class="th-count" id="th-count" hidden></span>
+        </button>
+        <button class="lyr-btn" id="lyr-btn" aria-label="Paroles" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><g transform="translate(15.8 6.4) rotate(40)"><circle r="4.6" fill="currentColor"/><path d="M-3 4.7A5.6 5.6 0 0 0 3 4.7L1.2 12.2a1.2 1.2 0 0 1-2.4 0z" fill="currentColor"/></g><path d="M7 16.6c-1.7.8-2.8 1.9-2 2.9.8 1 2.7.3 3.4 1.2.6.8-.1 1.8-.8 2.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
         <button class="star" id="star" aria-label="Morceau préféré" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" id="star-path"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>
         </button>
       </div>
       <div class="progress">
@@ -227,13 +449,6 @@
     </div>
 
     <div class="vols">
-      <div class="vol" id="vol-app">
-        <span class="vol-label">appli</span>
-        <button class="vol-btn" data-step="-1" aria-label="Volume de l'appli −">−</button>
-        <div class="vol-bar" role="slider" aria-label="Volume de l'appli"><div class="vol-fill"></div><div class="vol-knob"></div></div>
-        <button class="vol-btn" data-step="1" aria-label="Volume de l'appli +">+</button>
-        <span class="vol-value"></span>
-      </div>
       <div class="vol" id="vol-pc" hidden>
         <span class="vol-label">PC</span>
         <button class="vol-btn" data-step="-5" aria-label="Volume du PC −">−</button>
@@ -242,7 +457,7 @@
         <span class="vol-value"></span>
       </div>
     </div>
-    <p class="hint">glisser ← → : titre · ↑ ↓ : volume de l'appli</p>
+    <p class="hint" id="hint">glisser sur la pochette ← → : titre · ↑ ↓ : volume de l'appli</p>
   </main>
 </div>
 
@@ -277,6 +492,7 @@
   }
 
   function connect() {
+    rtts.length = 0;
     clearTimeout(retryTimer);
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     setOnline(false, "connexion…");
@@ -300,7 +516,18 @@
       else if (m.type === "paired") { token = m.token; try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {} showRemote(); vibrate(20); }
       else if (m.type === "welcome") showRemote();
       else if (m.type === "pair-error") { showPair(); $("pair-err").textContent = m.reason || "Code refusé."; $("pin").select(); vibrate(60); }
-      else if (m.type === "state") { msg = m; receivedAt = performance.now(); render(); }
+      else if (m.type === "state") {
+        msg = m;
+        receivedAt = performance.now();
+        if (m.state && m.state.playing) m.state.time = (m.state.time || 0) + latency();   // compensation du trajet réseau
+        render();
+      }
+      else if (m.type === "time") syncTime(m.time);
+      else if (m.type === "pong") { const rtt = performance.now() - m.c; if (rtt >= 0 && rtt < 3000) { rtts.push(rtt); if (rtts.length > 7) rtts.shift(); } }
+      else if (m.type === "lyrics") { lyrics = m.lyrics || null; renderLyrics(); }
+      else if (m.type === "queue") { queue = Array.isArray(m.queue) ? m.queue : []; renderQueue(); }
+      else if (m.type === "thoughts") { thoughts = m.thoughts || null; renderThoughts(); }
+      else if (m.type === "results") showResults(m);
     };
     ws.onclose = () => { setOnline(false, "PC injoignable · nouvel essai…"); schedule(); };
     ws.onerror = () => {};
@@ -313,6 +540,28 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { retry = 0; connect(); } });
   window.addEventListener("online", () => { retry = 0; connect(); });
 
+  // ---------- Horloge : position précise pour les paroles ----------
+  // Le PC envoie sa position chaque seconde ; on y ajoute la moitié du temps d'aller-retour
+  // (mesuré par ping toutes les 3 s) et on recale en douceur (petits écarts) ou d'un coup.
+  const rtts = [];
+  function latency() {
+    if (!rtts.length) return 0.05;
+    const sorted = rtts.slice().sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)] / 2000;
+  }
+  setInterval(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "ping", c: performance.now() })); }, 3000);
+  window.conductorRemotePosition = () => position();   // diagnostic (console)
+  function syncTime(t) {
+    const st = msg && msg.state;
+    if (!st || !Number.isFinite(t)) return;
+    const target = t + latency();
+    const predicted = position();
+    const diff = target - predicted;
+    st.time = Math.abs(diff) > 0.35 || !st.playing ? target : predicted + diff * 0.35;
+    st.playing = true;
+    receivedAt = performance.now();
+  }
+
   function send(name, value) {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "cmd", name, value }));
   }
@@ -323,6 +572,8 @@
     $("pair").hidden = false;
     $("remote").hidden = true;
     $("forget").hidden = true;
+    $("q-btn").hidden = true;
+    $("cat-btn").hidden = true;
     setOnline(true, "appairage");
     setTimeout(() => $("pin").focus(), 50);
   }
@@ -330,6 +581,8 @@
     $("pair").hidden = true;
     $("remote").hidden = false;
     $("forget").hidden = false;
+    $("q-btn").hidden = false;
+    $("cat-btn").hidden = false;
     installHint();
   }
 
@@ -387,8 +640,11 @@
     $("notice").textContent = notice;
     $("notice").hidden = !notice;
 
-    $("track").textContent = st ? st.track || "—" : "—";
-    $("sub").textContent = st ? [st.artist, st.album].filter(Boolean).join(" — ") + (st.count ? "  ·  " + (st.index + 1) + "/" + st.count : "") : "";
+    const title = st ? st.track || "—" : "—";
+    if ($("track").textContent !== title) { $("track").textContent = title; fitTitle(); }
+    $("kicker").textContent = st && st.count ? "titre " + (st.index + 1) + " / " + st.count : "";
+    $("artist").textContent = st ? st.artist || "" : "";
+    $("album").textContent = st ? (st.album || "") + (st.year ? " · " + st.year : "") : "";
     document.title = st ? st.track + " · " + st.artist : "conductor. · télécommande";
     $("play-icon").innerHTML = st && st.playing ? PAUSE : PLAY;
     $("star").classList.toggle("is-on", !!(st && st.starred));
@@ -409,7 +665,22 @@
     if (performance.now() > pcHold) pcVol = m.sysVolume;
     renderVols();
     tick();
+    checkTrack();
+    renderQueue();
+    renderThoughts();
   }
+
+  // Titre sur une ligne : de 27 px jusqu'à 17 px au plus petit
+  function fitTitle() {
+    const el = $("track");
+    let size = 27;
+    el.style.fontSize = size + "px";
+    while (el.scrollWidth > el.clientWidth && size > 17) {
+      size -= 1;
+      el.style.fontSize = size + "px";
+    }
+  }
+  window.addEventListener("resize", fitTitle);
 
   function tick() {
     const st = msg && msg.state;
@@ -422,7 +693,8 @@
   setInterval(tick, 500);
 
   function renderVols() {
-    paintVol($("vol-app"), appVol, 20, v => v + " / 20", msg && msg.state && msg.state.muted);
+    $("hint").textContent = lyOn ? "toucher une ligne : la lecture y va · micro : retour à la pochette"
+      : "glisser sur la pochette ← → : titre · ↑ ↓ : volume de l'appli" + (appVol != null ? " (" + appVol + "/20)" : "");
     $("vol-pc").hidden = pcVol == null;
     if (pcVol != null) paintVol($("vol-pc"), pcVol, 100, v => v + " %", msg && msg.sysMuted);
   }
@@ -481,8 +753,415 @@
       setter((get() || 0) + Number(b.dataset.step), true);
     }));
   }
-  bindVol($("vol-app"), 20, setApp, () => appVol);
   bindVol($("vol-pc"), 100, setPc, () => pcVol);
+
+  // ---------- Paroles (karaoké) ----------
+  // Bouton micro : les paroles remplacent la pochette. Synchronisées : la ligne chantée est
+  // mise en avant et reste au centre ; toucher une ligne y amène la lecture (sur le PC).
+
+  const LYR_KEY = "conductor-remote-lyrics";
+  let lyrics = null, lyOn = false, lyNow = -2, lyUserScroll = 0, lyRaf = 0;
+  try { lyOn = localStorage.getItem(LYR_KEY) === "1"; } catch (e) {}
+
+  function setLyrics(on) {
+    lyOn = on;
+    try { localStorage.setItem(LYR_KEY, on ? "1" : "0"); } catch (e) {}
+    renderLyrics();
+    renderVols();
+  }
+  $("lyr-btn").addEventListener("click", () => { vibrate(); setLyrics(!lyOn); });
+
+  function lineAt(lines, t) {
+    let lo = 0, hi = lines.length - 1, ans = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (lines[mid].t <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    return ans;
+  }
+
+  function renderLyrics() {
+    const box = $("lyrics");
+    $("lyr-btn").classList.toggle("is-on", lyOn);
+    $("lyr-btn").setAttribute("aria-pressed", String(lyOn));
+    $("stage").classList.toggle("is-lyrics", lyOn);
+    box.hidden = !lyOn;
+    cancelAnimationFrame(lyRaf);
+    lyRaf = 0;
+    if (!lyOn) return;
+    lyNow = -2;
+    const L = lyrics;
+    const st = msg && msg.state;
+    const msgEl = text => { const p = document.createElement("p"); p.className = "ly-msg"; p.textContent = text; return p; };
+    if (!st) { box.replaceChildren(msgEl("Rien en lecture.")); return; }
+    if (!L || L.status === "loading") { box.replaceChildren(msgEl("Recherche des paroles…")); return; }
+    if (L.status === "instrumental") { box.replaceChildren(msgEl("Instrumental ♪")); return; }
+    if (L.status === "offline") { box.replaceChildren(msgEl("Paroles indisponibles (le PC est hors ligne ?).")); return; }
+    if (L.status === "none") { box.replaceChildren(msgEl("Pas de paroles pour ce morceau.")); return; }
+    const src = document.createElement("p");
+    src.className = "ly-src";
+    src.textContent = "paroles : " + (L.source || "");
+    if (L.status === "plain") {
+      const p = document.createElement("p");
+      p.className = "ly-plain";
+      p.textContent = L.plain;
+      box.replaceChildren(p, src);
+      box.scrollTop = 0;
+      return;
+    }
+    box.replaceChildren(...L.lines.map((l, i) => {
+      const p = document.createElement("p");
+      p.className = "ly-line" + (l.text ? "" : " is-gap");
+      p.textContent = l.text || "♪";
+      p.addEventListener("click", () => {
+        vibrate();
+        send("seek", l.t);
+        if (msg && msg.state) { msg.state.time = l.t; receivedAt = performance.now(); }
+        lyUserScroll = 0;
+      });
+      return p;
+    }), src);
+    box.scrollTop = 0;
+    loop();
+  }
+
+  function loop() {
+    lyRaf = requestAnimationFrame(loop);
+    const L = lyrics;
+    if (!lyOn || !L || L.status !== "synced") return;
+    const i = lineAt(L.lines, position() + 0.2);   // comme le karaoké du PC
+    if (i === lyNow) return;
+    lyNow = i;
+    const box = $("lyrics");
+    const kids = box.children;
+    for (let n = 0; n < L.lines.length; n++) {
+      kids[n].classList.toggle("is-now", n === i);
+      kids[n].classList.toggle("is-past", n < i);
+    }
+    if (Date.now() - lyUserScroll > 4000) {
+      const el = kids[Math.max(0, i)];
+      if (el) box.scrollTo({ top: el.offsetTop - box.clientHeight * 0.38, behavior: "smooth" });
+    }
+  }
+  // Défilement à la main : le suivi automatique reprend 4 s plus tard
+  ["touchstart", "wheel"].forEach(ev => $("lyrics").addEventListener(ev, () => { lyUserScroll = Date.now(); }, { passive: true }));
+  // Morceau changé : les paroles du précédent ne s'affichent plus
+  let lastTrackKey = "";
+  function checkTrack() {
+    const st = msg && msg.state;
+    const k = st ? st.albumId + "|" + st.index : "";
+    if (k !== lastTrackKey) { lastTrackKey = k; if (lyrics && st && lyrics.key !== st.albumId + "|" + st.track) lyrics = { status: "loading" }; renderLyrics(); }
+  }
+
+  // ---------- File d'attente ----------
+  // Albums à suivre : toucher ▶ lance l'album tout de suite (le reste de la file est gardé),
+  // × le retire, la poignée ⠿ le déplace (glisser), « Vider la file » efface tout.
+
+  let queue = [];
+  const ROW_H = 64;
+  const ICON_Q_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+  const ICON_Q_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+  const coverUrl2 = path => path && token ? path + "&t=" + encodeURIComponent(token) : "";
+
+  function openSheet(on) {
+    $("sheet").classList.toggle("is-open", on);
+    $("sheet").setAttribute("aria-hidden", String(!on));
+    if (on) renderQueue();
+  }
+  $("q-btn").addEventListener("click", () => { vibrate(); openSheet(true); });
+  $("sheet-close").addEventListener("click", () => openSheet(false));
+  $("sheet").addEventListener("click", e => { if (e.target === $("sheet")) openSheet(false); });
+
+  function qRow(item, i, now) {
+    const li = document.createElement(now ? "div" : "li");
+    li.className = "q-row" + (now ? " is-now" : "");
+    const cover = document.createElement("span");
+    cover.className = "q-cover";
+    const url = now ? coverUrl : coverUrl2(item.cover);
+    if (url) cover.style.backgroundImage = "url('" + url + "')";
+    const text = document.createElement("div");
+    text.className = "q-text";
+    const t = document.createElement("p"); t.className = "q-title"; t.textContent = item.title || "";
+    const a = document.createElement("p"); a.className = "q-artist"; a.textContent = (item.artist || "") + (item.year ? " · " + item.year : "");
+    text.append(t, a);
+    li.append(cover, text);
+    if (now) return li;
+    const play = document.createElement("button");
+    play.className = "q-act"; play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer maintenant");
+    play.addEventListener("click", () => { vibrate(); send("queuePlay", { i, id: item.id }); openSheet(false); });
+    const del = document.createElement("button");
+    del.className = "q-act"; del.innerHTML = ICON_Q_DEL; del.setAttribute("aria-label", "Retirer de la file");
+    del.addEventListener("click", () => {
+      vibrate();
+      send("queueRemove", { i, id: item.id });
+      queue.splice(i, 1);
+      renderQueue();
+    });
+    const grip = document.createElement("span");
+    grip.className = "q-grip"; grip.textContent = "⠿"; grip.setAttribute("aria-hidden", "true");
+    grip.addEventListener("pointerdown", e => startQDrag(e, li, i));
+    li.append(play, del, grip);
+    return li;
+  }
+
+  function renderQueue() {
+    const n = queue.length;
+    $("q-badge").hidden = !n;
+    $("q-badge").textContent = n > 99 ? "99+" : String(n);
+    if (!$("sheet").classList.contains("is-open") || qDrag) return;
+    const st = msg && msg.state;
+    $("q-now").replaceChildren(...(st ? [qRow({ title: st.album, artist: st.artist, year: st.year }, -1, true)] : []));
+    $("q-list").replaceChildren(...queue.map((item, i) => qRow(item, i, false)));
+    $("q-empty").hidden = n > 0;
+    $("q-next-title").textContent = n ? "à suivre · " + n + " album" + (n > 1 ? "s" : "") : "à suivre";
+    $("q-clear").hidden = !n;
+  }
+
+  // Vider : un premier toucher arme, le second vide
+  $("q-clear").addEventListener("click", () => {
+    const b = $("q-clear");
+    if (b.dataset.armed) { send("queueClear"); queue = []; renderQueue(); delete b.dataset.armed; b.classList.remove("is-armed"); b.textContent = "Vider la file"; return; }
+    vibrate(20);
+    b.dataset.armed = "1";
+    b.classList.add("is-armed");
+    b.textContent = "Vider toute la file ?";
+    setTimeout(() => { delete b.dataset.armed; b.classList.remove("is-armed"); b.textContent = "Vider la file"; }, 3000);
+  });
+
+  // Glisser avec la poignée : la ligne suit le doigt, les autres s'écartent
+  let qDrag = null;
+  function startQDrag(e, li, from) {
+    e.preventDefault();
+    const rows = [...$("q-list").children];
+    qDrag = { li, from, to: from, y: e.clientY, rows };
+    li.classList.add("is-dragging");
+    vibrate(10);
+    const move = ev => {
+      if (!qDrag) return;
+      const dy = ev.clientY - qDrag.y;
+      li.style.transform = "translateY(" + dy + "px)";
+      const to = Math.max(0, Math.min(rows.length - 1, from + Math.round(dy / ROW_H)));
+      if (to !== qDrag.to) { qDrag.to = to; vibrate(4); }
+      rows.forEach((r, k) => {
+        if (r === li) return;
+        const shift = from < to && k > from && k <= to ? -ROW_H : to < from && k >= to && k < from ? ROW_H : 0;
+        r.style.transform = shift ? "translateY(" + shift + "px)" : "";
+      });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      const d = qDrag;
+      qDrag = null;
+      d.rows.forEach(r => { r.style.transform = ""; });
+      li.classList.remove("is-dragging");
+      if (d.to !== d.from) {
+        const item = queue[d.from];
+        send("queueMove", { i: d.from, id: item.id, to: d.to });
+        queue.splice(d.from, 1);
+        queue.splice(d.to, 0, item);
+      }
+      renderQueue();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
+  // ---------- Catalogue (recherche dans la collection) ----------
+  // Un seul champ : titre, artiste, genre, styles, ressenti, label, année… Tous les mots
+  // doivent correspondre. ▶ lance l'album (la file est gardée), ≡+ l'ajoute à la file.
+
+  const catInput = $("cat-input");
+  let catSeq = 0, catTimer = 0;
+  const ICON_CAT_QUEUE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h12M4 11.5h12M4 16.5h7"/><path d="M17.5 14v6M14.5 17h6"/></svg>';
+
+  function openCatalog(on) {
+    $("cat-sheet").classList.toggle("is-open", on);
+    $("cat-sheet").setAttribute("aria-hidden", String(!on));
+    if (on) setTimeout(() => { catInput.focus(); catInput.select(); }, 250);
+    else catInput.blur();
+  }
+  $("cat-btn").addEventListener("click", () => { vibrate(); openCatalog(true); });
+  $("cat-close").addEventListener("click", () => openCatalog(false));
+  $("cat-sheet").addEventListener("click", e => { if (e.target === $("cat-sheet")) openCatalog(false); });
+
+  function runSearch() {
+    const q = catInput.value.trim();
+    if (!q) { $("cat-list").replaceChildren(); $("cat-status").textContent = ""; return; }
+    $("cat-status").textContent = "recherche…";
+    send("search", { q, id: ++catSeq });
+  }
+  catInput.addEventListener("input", () => { clearTimeout(catTimer); catTimer = setTimeout(runSearch, 220); });
+  catInput.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); clearTimeout(catTimer); runSearch(); catInput.blur(); } });
+
+  function showResults(m) {
+    if (m.id !== catSeq) return;   // réponse d'une recherche plus ancienne
+    const items = m.items || [];
+    $("cat-status").textContent = items.length ? items.length + (items.length >= 40 ? "+" : "") + " album" + (items.length > 1 ? "s" : "")
+      : "Aucun album ne correspond à « " + m.q + " ».";
+    $("cat-list").replaceChildren(...items.map(item => {
+      const li = document.createElement("li");
+      li.className = "q-row";
+      const cover = document.createElement("span");
+      cover.className = "q-cover";
+      const url = coverUrl2(item.cover);
+      if (url) cover.style.backgroundImage = "url('" + url + "')";
+      const text = document.createElement("div");
+      text.className = "q-text";
+      const t = document.createElement("p"); t.className = "q-title"; t.textContent = item.title;
+      const a = document.createElement("p"); a.className = "q-artist";
+      a.append(document.createTextNode(item.artist + (item.year ? " · " + item.year : "")));
+      text.append(t, a);
+      const play = document.createElement("button");
+      play.className = "q-act"; play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer " + item.title);
+      play.addEventListener("click", () => { vibrate(15); send("playAlbum", { id: item.id }); openCatalog(false); });
+      const queueBtn = document.createElement("button");
+      queueBtn.className = "q-act"; queueBtn.innerHTML = ICON_CAT_QUEUE; queueBtn.setAttribute("aria-label", "Ajouter " + item.title + " à la file");
+      queueBtn.addEventListener("click", () => {
+        vibrate(12);
+        send("queueAlbum", { id: item.id });
+        queueBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+        queueBtn.style.color = "var(--ok)";
+      });
+      li.append(cover, text, play, queueBtn);
+      return li;
+    }));
+  }
+
+  // ---------- Thoughts (réflexions datées sur l'album en cours) ----------
+  // Comme sur la page album du PC : ajoutées au moment de l'écoute, avec le morceau et
+  // la seconde ; enregistrées dans la collection (et visibles dans le journal du PC).
+
+  let thoughts = null;          // { albumId, album, list: [{ id, at, text, moment? }] }
+  const thInput = $("th-input");
+  const DRAFT = "conductor-remote-thought-draft";
+
+  function openThoughts(on) {
+    $("th-sheet").classList.toggle("is-open", on);
+    $("th-sheet").setAttribute("aria-hidden", String(!on));
+    if (!on) thEditing = null;
+    if (on) { renderThoughts(); setTimeout(() => thInput.focus(), 250); }
+    else thInput.blur();
+  }
+  $("th-btn").addEventListener("click", () => { vibrate(); openThoughts(true); });
+  $("th-close").addEventListener("click", () => openThoughts(false));
+  $("th-sheet").addEventListener("click", e => { if (e.target === $("th-sheet")) openThoughts(false); });
+
+  const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  function when(iso) {
+    const d = new Date(iso);
+    return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() + " · " +
+      String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  let thEditing = null;   // id de la thought en cours de modification (la liste n'est pas redessinée pendant ce temps)
+
+  function renderThoughts() {
+    const st = msg && msg.state;
+    const T = thoughts && st && thoughts.albumId === st.albumId ? thoughts : null;
+    const n = T ? T.list.length : 0;
+    $("th-btn").classList.toggle("has-thoughts", n > 0);
+    $("th-count").hidden = !n;
+    $("th-count").textContent = String(n);
+    $("th-btn").disabled = !st;
+    if (!$("th-sheet").classList.contains("is-open")) return;
+    $("th-title").textContent = "thoughts · " + (st ? st.album : "");
+    $("th-hint").textContent = st ? "noté à ♪ " + (st.index + 1) + ". " + st.track : "";
+    $("th-none").hidden = n > 0;
+    if (thEditing && T && T.list.some(t => t.id === thEditing)) return;
+    thEditing = null;
+    $("th-list").replaceChildren(...(T ? T.list : []).map(t => {
+      const li = document.createElement("li");
+      li.className = "th-item";
+      const head = document.createElement("p");
+      head.className = "th-head";
+      const date = document.createElement("span");
+      date.textContent = when(t.at) + (t.edited ? " · modifiée" : "");
+      head.appendChild(date);
+      const del = document.createElement("button");
+      del.className = "th-del";
+      del.textContent = "supprimer";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed) { send("thoughtDelete", { albumId: T.albumId, id: t.id }); li.remove(); return; }
+        vibrate(15);
+        del.dataset.armed = "1";
+        del.textContent = "supprimer ?";
+        del.classList.add("is-armed");
+        setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "supprimer"; del.classList.remove("is-armed"); } }, 3000);
+      });
+      const editBtn = document.createElement("button");
+      editBtn.className = "th-edit-btn";
+      editBtn.textContent = "modifier";
+      head.append(editBtn, del);
+      const text = document.createElement("p");
+      text.className = "th-text";
+      text.textContent = t.text;
+      editBtn.addEventListener("click", () => {
+        if (thEditing) return;
+        vibrate();
+        thEditing = t.id;
+        editBtn.hidden = del.hidden = true;
+        const box = document.createElement("div");
+        box.className = "th-editor";
+        const area = document.createElement("textarea");
+        area.className = "th-input";
+        area.value = t.text;
+        const row = document.createElement("div");
+        row.className = "th-row";
+        const cancel = document.createElement("button");
+        cancel.className = "th-cancel"; cancel.textContent = "Annuler";
+        const save = document.createElement("button");
+        save.className = "th-add"; save.textContent = "Enregistrer";
+        row.append(cancel, save);
+        box.append(area, row);
+        text.replaceWith(box);
+        const size = () => { area.style.height = "auto"; area.style.height = Math.min(area.scrollHeight + 2, window.innerHeight * 0.4) + "px"; };
+        area.addEventListener("input", () => { size(); save.disabled = !area.value.trim(); });
+        setTimeout(() => { size(); area.focus(); area.setSelectionRange(area.value.length, area.value.length); }, 30);
+        const done = () => { thEditing = null; renderThoughts(); };
+        cancel.addEventListener("click", done);
+        save.addEventListener("click", () => {
+          const v = area.value.trim();
+          if (!v) return;
+          vibrate(15);
+          if (v !== t.text) { send("thoughtEdit", { albumId: T.albumId, id: t.id, text: v }); t.text = v; t.edited = new Date().toISOString(); }
+          done();
+        });
+      });
+      li.appendChild(head);
+      if (t.moment) {
+        const m = document.createElement("p");
+        m.className = "th-moment";
+        m.textContent = "♪ " + (t.moment.index + 1) + ". " + t.moment.title + " · " + mmss(t.moment.time);
+        li.appendChild(m);
+      }
+      li.appendChild(text);
+      return li;
+    }));
+  }
+
+  function autosizeTh() {
+    thInput.style.height = "auto";
+    thInput.style.height = Math.min(thInput.scrollHeight + 2, window.innerHeight * 0.4) + "px";
+  }
+  try { thInput.value = localStorage.getItem(DRAFT) || ""; } catch (e) {}
+  $("th-add").disabled = !thInput.value.trim();
+  thInput.addEventListener("input", () => {
+    autosizeTh();
+    $("th-add").disabled = !thInput.value.trim();
+    try { thInput.value.trim() ? localStorage.setItem(DRAFT, thInput.value) : localStorage.removeItem(DRAFT); } catch (e) {}
+  });
+  $("th-add").addEventListener("click", () => {
+    const st = msg && msg.state;
+    const text = thInput.value.trim();
+    if (!text || !st) return;
+    vibrate(15);
+    send("thoughtAdd", { albumId: st.albumId, text });
+    thInput.value = "";
+    try { localStorage.removeItem(DRAFT); } catch (e) {}
+    autosizeTh();
+    $("th-add").disabled = true;
+    thInput.blur();
+  });
 
   // ---------- Gestes sur la pochette ----------
   // ← → : titre suivant / précédent · ↑ ↓ : volume de l'appli (un cran tous les 22 px)
@@ -496,6 +1175,7 @@
     osdTimer = setTimeout(() => $("osd").classList.remove("is-on"), 700);
   }
   stage.addEventListener("pointerdown", e => {
+    if (lyOn) return;   // paroles affichées : défilement et toucher des lignes, pas de gestes
     stage.setPointerCapture(e.pointerId);
     g = { x: e.clientX, y: e.clientY, mode: "", base: appVol || 0, steps: 0 };
   });
@@ -539,6 +1219,7 @@
   // ---------- Démarrage ----------
 
   if (token || QR_KEY) showRemote(); else showPair();
+  renderLyrics();
   connect();
 })();
 </script>

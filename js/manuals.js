@@ -470,6 +470,15 @@ const MANUALS = [
             body: "<p>TagScanner n'existe que pour Windows (il marche sous Wine). Équivalent natif : <b>Kid3</b> (<code>sudo apt install kid3-qt</code>, ou Flatpak), ou MusicBrainz Picard. Dans Kid3 : sélectionnez toutes les pistes, remplissez Artist, Album Artist, Album, Date ; numéros depuis le nom de fichier : bouton <b>From Filename</b>, format <code>%{track} - %{title}</code> ; enregistrez.</p>"
           }
         ]
+      },
+      {
+        title: "Télécommande",
+        steps: [
+          {
+            title: "Le relais sous Linux",
+            body: "<p>Installez Node.js (<code>sudo apt install nodejs</code>), puis lancez <code>tools/remote/start-remote.sh</code> (ou le bouton du pied de page après <code>install-linux.sh</code>). <kbd>Alt</kbd> + <kbd>R</kbd> affiche le QR code. Le volume du PC passe par <code>pactl</code> (PipeWire / PulseAudio) ou <code>amixer</code>. Le reste est dans le guide <b>Télécommande</b>.</p>"
+          }
+        ]
       }
     ],
     trouble: [
@@ -538,7 +547,7 @@ const MANUALS = [
         steps: [
           {
             title: "Les commandes",
-            body: "<table class=\"mn-table\"><tr><th>Geste / bouton</th><th>Effet</th></tr><tr><td>⏯ ⏮ ⏭</td><td>lecture / pause, titre précédent / suivant</td></tr><tr><td>★</td><td>morceau préféré</td></tr><tr><td>glisser ← → sur la pochette</td><td>titre suivant / précédent</td></tr><tr><td>glisser ↑ ↓ sur la pochette</td><td>volume de l'appli (un cran tous les 2 cm environ)</td></tr><tr><td>réglette <b>APPLI</b></td><td>volume de conductor., sur 20</td></tr><tr><td>réglette <b>PC</b></td><td>volume de Windows (ou de Linux)</td></tr></table><p>Tout est synchronisé dans les deux sens : un changement sur le PC s'affiche aussitôt sur le téléphone. Le point vert en haut indique que le PC répond.</p>"
+            body: "<table class=\"mn-table\"><tr><th>Geste / bouton</th><th>Effet</th></tr><tr><td>⏯ ⏮ ⏭</td><td>lecture / pause, titre précédent / suivant</td></tr><tr><td>★</td><td>morceau préféré</td></tr><tr><td>glisser ← → sur la pochette</td><td>titre suivant / précédent</td></tr><tr><td>glisser ↑ ↓ sur la pochette</td><td>volume de conductor., sur 20 (un cran tous les 2 cm environ)</td></tr><tr><td>réglette <b>PC</b></td><td>volume de Windows (ou de Linux)</td></tr><tr><td>micro (à côté de ★)</td><td>paroles à la place de la pochette : la ligne chantée est mise en avant et suit la musique ; toucher une ligne y amène la lecture. Micro de nouveau : retour à la pochette</td></tr><tr><td>bulle (à côté du micro)</td><td><b>thoughts</b> de l'album en cours : écrire une réflexion (le morceau et la seconde sont notés), relire, modifier et supprimer les précédentes. Elles s'ajoutent à la page album et au journal du PC</td></tr><tr><td>loupe (en haut)</td><td><b>catalogue</b> : une seule barre de recherche — titre, artiste, genre, style, ressenti, label, année… (tous les mots doivent correspondre). ▶ lance l'album (la file est gardée), ≡+ l'ajoute à la file</td></tr><tr><td>icône file (en haut, avec le nombre d'albums)</td><td>la file d'attente : ▶ lance un album tout de suite (le reste est gardé), × le retire, ⠿ glisser pour le déplacer, « Vider la file »</td></tr></table><p>Sur le PC, <kbd>Alt</kbd> + <kbd>R</kbd> ouvre la fenêtre Télécommande (QR code).</p><p>Tout est synchronisé dans les deux sens : un changement sur le PC s'affiche aussitôt sur le téléphone. Le point vert en haut indique que le PC répond.</p>"
           },
           {
             title: "Au quotidien",

@@ -19,6 +19,7 @@
         <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
       </form>
 
+      <a href="bacs.html" class="header-link">bacs</a>
       <a href="insights.html" class="header-link">insights</a>
       <a href="journal.html" class="header-link">journal</a>
       <a href="nextup.html" class="header-link">next up</a>
@@ -93,6 +94,7 @@
           <ul>
             <li>Lecteur et liste des titres, titres favoris ★, paroles de chaque titre.</li>
             <li>La fiche : date de sortie, label, genre, styles, <em>ressenti</em> (ambiances), étiquettes, intensité de 1 à 10 et tier (S chef-d’œuvre, A excellent, B très bon).</li>
+            <li><strong>Bacs</strong> : des sélections d’albums, comme des playlists (page <em>bacs</em>, à côté d’insights). Bouton <strong>Bacs</strong> sur la page album (touche <kbd>B</kbd>) pour y ranger l’album ; <strong>Lire le bac</strong> lance le premier album et met les autres en file d’attente.</li>
             <li><strong>Thoughts</strong> : à côté du titre de l’album (au survol, ou touche <kbd>W</kbd>), vos réflexions datées, autant que vous voulez. Écrites pendant l’écoute, elles retiennent le morceau et la seconde. Elles apparaissent aussi dans le journal, sous la note du jour où elles ont été écrites, et la recherche des notes (<kbd>Alt</kbd> + <kbd>S</kbd>) les trouve.</li>
             <li>Nombre d’écoutes, albums proches dans votre collection, liens Genius et Wikipédia.</li>
             <li>La fiche se remplit toute seule à l’ajout (Deezer, Discogs, MusicBrainz) et se corrige avec <b>Modifier la fiche</b>.</li>
@@ -174,6 +176,14 @@
             <li><strong>Téléphone</strong> : un téléphone Android qui fait tourner Navidrome envoie sa musique au PC, en Wi-Fi, en partage de connexion ou par <strong>câble USB</strong> (sans aucun réseau, et même sans carte SIM). Voir les <a href="manuals.html">manuels</a>.</li>
             <li>Sans fichier, la page album propose les extraits de 30 secondes de Deezer.</li>
           </ul>
+
+          <h3 id="f-telecommande">La télécommande</h3>
+          <ul>
+            <li><strong>Piloter conductor. depuis le téléphone</strong> (iPhone ou Android), sans application à installer : la page s’ouvre dans le navigateur et s’ajoute à l’écran d’accueil comme une appli.</li>
+            <li>Pochette, morceau, lecture / pause, précédent / suivant, ★, <strong>volume du PC</strong> ; gestes sur la pochette (← → morceaux, ↑ ↓ volume de conductor.).</li>
+            <li><strong>Paroles</strong> synchronisées, <strong>file d’attente</strong> (lancer, retirer, réordonner), <strong>thoughts</strong> de l’album en cours (écrire, modifier, supprimer) et un <strong>catalogue</strong> : une seule barre de recherche pour lancer un album ou l’ajouter à la file.</li>
+            <li>Un petit relais tourne sur le PC (Node.js) ; on l’apparie une fois avec un <strong>QR code</strong> (<kbd>Alt</kbd> + <kbd>R</kbd>). Même wifi que le PC, ou n’importe quel réseau avec <strong>Tailscale</strong>. Voir les <a href="manuals.html">manuels</a>.</li>
+          </ul>
         </section>
 
         <!-- 4 -->
@@ -207,6 +217,7 @@
                 <li><strong>Vos fichiers MP3 / FLAC</strong> sur une carte SD, une clé ou un disque (un lecteur de carte si besoin).</li>
                 <li><strong>Un téléphone Android</strong> avec Termux et Navidrome (gratuits), et un câble USB qui transfère les données.</li>
                 <li>Une clé <strong>Discogs</strong> (gratuite) pour plus de résultats de recherche.</li>
+                <li>Pour la <strong>télécommande</strong> : <strong>Node.js</strong> sur le PC, et <strong>Tailscale</strong> (PC + téléphone) pour piloter hors du wifi du PC.</li>
               </ul>
             </div>
           </div>
@@ -225,6 +236,7 @@
               <tr><td>Écouter depuis le téléphone</td><td class="ok">oui, en Wi-Fi local ou câble USB</td><td class="ok">oui</td></tr>
               <tr><td>Plein écran, karaoké, paroles déjà trouvées ou calées</td><td class="ok">oui</td><td class="ok">oui</td></tr>
               <tr><td>Journal, notes, insights, wrapped, next up, export CSV</td><td class="ok">oui</td><td class="ok">oui</td></tr>
+              <tr><td>Télécommande depuis le téléphone</td><td class="mid">oui, sur le même wifi que le PC</td><td class="ok">oui, partout (Tailscale)</td></tr>
               <tr><td>Ajouter un album depuis vos dossiers</td><td class="ok">oui</td><td class="ok">oui</td></tr>
               <tr><td>Ajouter un album par la recherche, compléter une fiche</td><td class="no">non</td><td class="ok">oui</td></tr>
               <tr><td>Paroles jamais chargées auparavant</td><td class="mid">seulement celles de vos fichiers</td><td class="ok">oui (LRCLIB)</td></tr>
@@ -307,6 +319,9 @@
             <dt><kbd>Alt</kbd> + <kbd>G</kbd></dt><dd>collection</dd>
             <dt><kbd>Alt</kbd> + <kbd>I</kbd> <kbd>J</kbd> <kbd>U</kbd> <kbd>A</kbd></dt><dd>insights, journal, next up, audio-files</dd>
             <dt><kbd>Alt</kbd> + <kbd>C</kbd> <kbd>M</kbd> <kbd>H</kbd></dt><dd>à compléter, manuels, historique</dd>
+            <dt><kbd>Alt</kbd> + <kbd>R</kbd></dt><dd>télécommande : QR code pour le téléphone</dd>
+            <dt><kbd>Alt</kbd> + <kbd>B</kbd></dt><dd>bacs, vos sélections d’albums</dd>
+            <dt><kbd>B</kbd></dt><dd>ranger l’album dans un bac (page album)</dd>
           </dl>
         </section>
 

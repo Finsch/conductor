@@ -8273,3 +8273,484 @@ a.wr-rec:hover {
     visibility: visible;
   }
 }
+
+/* ---------- Bacs : sélections d'albums (pages/bacs.html) ---------- */
+
+.bc-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.bc-create {
+  display: flex;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 0 24px;
+}
+
+.bc-create[hidden] {
+  display: none;
+}
+
+.bc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 28px 22px;
+}
+
+.bc-card {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bc-card:hover .bc-card-name {
+  text-decoration: underline;
+}
+
+/* Mosaïque : 1 pochette pleine, ou 2 × 2 */
+.bc-mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--cover-placeholder, #2a2a2a);
+  border-radius: 2px;
+}
+
+.bc-mosaic[data-n="1"] {
+  grid-template-columns: 1fr;
+}
+
+.bc-mosaic[data-n="3"] > :first-child {
+  grid-row: span 2;
+}
+
+.bc-mosaic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bc-mosaic .bc-nocover {
+  width: 100%;
+  height: 100%;
+}
+
+.bc-nocover {
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.bc-card-name {
+  margin: 10px 0 2px;
+  font-weight: 600;
+}
+
+.bc-card-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bc-detail-head {
+  display: flex;
+  gap: 28px;
+  align-items: flex-end;
+  margin: 18px 0 28px;
+}
+
+.bc-mosaic-big {
+  width: 220px;
+  flex: none;
+}
+
+.bc-kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bc-actions .is-danger {
+  color: #e07c6c;
+  border-color: #e07c6c;
+}
+
+.bc-rename-field {
+  font-size: 26px;
+  max-width: 520px;
+}
+
+.bc-add {
+  position: relative;
+  max-width: 640px;
+  margin-bottom: 18px;
+}
+
+.bc-add-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.bc-add-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.bc-add-item:hover,
+.bc-add-item.is-first {
+  background: var(--surface);
+}
+
+.bc-add-plus {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+.bc-add-none {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 860px;
+}
+
+.bc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.bc-row.is-dragging {
+  opacity: 0.6;
+  background: var(--surface);
+}
+
+.bc-grip {
+  width: 20px;
+  font-size: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  visibility: hidden;
+}
+
+.bc-row:hover .bc-grip,
+.bc-row.is-dragging .bc-grip {
+  visibility: visible;
+}
+
+.bc-row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bc-row-link:hover .bc-row-title {
+  text-decoration: underline;
+}
+
+.bc-row-num {
+  width: 22px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bc-row-cover {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.bc-row-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bc-row-cover .bc-nocover {
+  width: 100%;
+  height: 100%;
+}
+
+.bc-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bc-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-row-artist {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc-row-dur {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bc-row-del {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 18px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.bc-row:hover .bc-row-del {
+  visibility: visible;
+}
+
+.bc-row-del:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* Page album : « bacs » (dans quels bacs, ajouter / retirer) */
+.bacs-pop {
+  position: absolute;
+  z-index: 30;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.bacs-pop-title {
+  margin: 4px 6px 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bacs-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 6px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.bacs-pop-item:hover {
+  background: var(--surface);
+}
+
+.bacs-pop-check {
+  width: 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.bacs-pop-item.is-on .bacs-pop-check {
+  color: var(--text);
+}
+
+.bacs-pop-new {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.bacs-pop-new .field {
+  height: 32px;
+  font-size: 13px;
+}
+
+.bacs-pop-link {
+  display: block;
+  margin: 6px 6px 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Bacs : tri, actions des lignes, glisser-déposer, pochette */
+.bc-sort {
+  margin: -8px 0 22px;
+}
+
+.bc-sort[hidden] {
+  display: none;
+}
+
+.bc-row {
+  cursor: grab;
+}
+
+.bc-row.is-drop-before {
+  box-shadow: inset 0 2px 0 var(--text);
+}
+
+.bc-row.is-drop-after {
+  box-shadow: inset 0 -2px 0 var(--text);
+}
+
+.bc-row img {
+  -webkit-user-drag: none;
+}
+
+.bc-row-act {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.bc-row-act svg {
+  width: 16px;
+  height: 16px;
+}
+
+.bc-row:hover .bc-row-act,
+.bc-row-act:focus-visible {
+  visibility: visible;
+}
+
+.bc-row-act:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.bc-cover-wrap {
+  position: relative;
+  flex: none;
+}
+
+.bc-cover-btn {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(20, 20, 20, 0.8);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.bc-cover-wrap:hover .bc-cover-btn,
+.bc-cover-btn:focus-visible {
+  visibility: visible;
+}
+
+.bc-cover-pop {
+  width: 300px;
+  max-width: calc(100vw - 16px);
+}
+
+.bc-cover-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin: 0 6px 6px;
+}
+
+.bc-cover-pick {
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.bc-cover-pick img,
+.bc-cover-pick .bc-nocover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bc-cover-pick.is-on,
+.bc-cover-pick:hover {
+  border-color: var(--text);
+}

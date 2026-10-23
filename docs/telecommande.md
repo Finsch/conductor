@@ -5,8 +5,8 @@ téléphone (Safari / Chrome)  ⇄  relais sur le PC (tools/remote, Node.js)  �
 ```
 
 iPhone ou Android, sans appli à installer. Le téléphone qui pilote n'a pas besoin d'être celui qui
-contient la musique. Version 1 : pochette, morceau, ⏯ ⏮ ⏭, ★, volume de l'appli (sur 20) et du PC,
-gestes (← → titre, ↑ ↓ volume). Synchronisé dans les deux sens.
+contient la musique. Version 1 : pochette, morceau, ⏯ ⏮ ⏭, ★, volume du PC,
+gestes sur la pochette (← → titre, ↑ ↓ volume de l'appli). Synchronisé dans les deux sens.
 
 ---
 
@@ -53,9 +53,17 @@ Avec Tailscale, l'adresse ne change pas.
 | ⏯ ⏮ ⏭ | lecture / pause, titre précédent / suivant |
 | ★ | morceau préféré |
 | glisser ← → sur la pochette | titre suivant / précédent |
-| glisser ↑ ↓ sur la pochette | volume de l'appli |
-| réglette **APPLI** | volume de conductor., sur 20 |
+| glisser ↑ ↓ sur la pochette | volume de conductor., sur 20 |
 | réglette **PC** | volume de Windows (Linux : pactl / amixer) |
+| bulle (à côté du micro) | **thoughts** de l'album en cours : écrire une réflexion (morceau et seconde notés), relire, modifier, supprimer ; elles s'ajoutent à la page album et au journal du PC |
+| loupe (en haut) | **catalogue** : une seule barre de recherche (titre, artiste, genre, style, ressenti, label, année… tous les mots doivent correspondre) ; ▶ lance l'album (la file est gardée), ≡+ l'ajoute à la file |
+| icône file (en haut, avec le nombre d'albums) | **file d'attente** : ▶ lancer un album tout de suite (le reste est gardé), × retirer, ⠿ glisser pour déplacer, « Vider la file » |
+| micro (à côté de ★) | **paroles** à la place de la pochette : ligne chantée mise en avant, qui suit la musique ; toucher une ligne y amène la lecture |
+
+Paroles : celles du karaoké du PC (enregistrées, fichiers `.lrc`, Navidrome, LRCLIB), synchronisées ou
+simples. Le relais doit être relancé après la mise à jour qui les ajoute.
+
+Sur le PC, `Alt + R` ouvre la fenêtre Télécommande (QR code).
 
 ## Au quotidien
 
@@ -83,5 +91,5 @@ de l'écran d'accueil (Tailscale activé en 4G). Arrêter : icône téléphone �
 
 ## La suite (prévue)
 
-Paroles (karaoké), file d'attente, catalogue (recherche, albums, artistes), connexion plus robuste,
-puis le reste : écran verrouillé, notes d'album…
+Connexion plus robuste,
+puis le reste : écran verrouillé…

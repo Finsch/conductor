@@ -1823,13 +1823,20 @@
     close();
   }
   // Mêmes touches quand le focus est dans l'enveloppe (après un clic sur le mini-lecteur)
-  const ALT_PAGES = { i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
+  const ALT_PAGES = { b: "pages/bacs.html", i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
     c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html",
     t: "pages/journal.html?note=today" };
   document.addEventListener("keydown", e => {
     const t = e.target;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
     // Alt + I / J / U / A : insights, journal, next up, audio-files
+    // Alt + R : fenêtre « Télécommande » (js/remote-link.js)
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === "r" && window.RemotePanel) {
+      e.preventDefault();
+      fsOpen(false);
+      RemotePanel.open();
+      return;
+    }
     if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && ALT_PAGES[e.key.toLowerCase()] && !sync) {
       e.preventDefault();
       const dest = ALT_PAGES[e.key.toLowerCase()];

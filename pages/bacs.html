@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bacs · conductor.</title>
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><img class="logo-img" src="../assets/gray-favicon.png" alt="">conductor.</a>
+
+      <form class="search" role="search" action="../index.html" method="get">
+        <label for="search-input" class="visually-hidden">Rechercher un album ou un artiste</label>
+        <input type="search" id="search-input" title="mot1+mot2 : les deux mots · mot1/mot2 : l’un ou l’autre" name="q" placeholder="Rechercher un album ou un artiste" autocomplete="off">
+      </form>
+
+      <a href="bacs.html" class="header-link is-current">bacs</a>
+      <a href="insights.html" class="header-link">insights</a>
+      <a href="journal.html" class="header-link">journal</a>
+      <a href="nextup.html" class="header-link">next up</a>
+      <a href="library.html" class="header-link">audio-files</a>
+      <a href="../index.html#ajouter" class="btn" title="Raccourci : N">Ajouter un album</a>
+    </div>
+  </header>
+
+  <main class="page bacs-page">
+    <!-- Liste des bacs -->
+    <section id="bc-index">
+      <div class="bc-head">
+        <div>
+          <h1 class="album-heading">bacs</h1>
+          <p class="album-facts" id="bc-facts">Des sélections d'albums, comme des playlists.</p>
+        </div>
+        <button type="button" class="btn" id="bc-new">Nouveau bac</button>
+      </div>
+      <div class="chip-list bc-sort" id="bc-sort" role="radiogroup" aria-label="Tri">
+        <button type="button" class="chip" data-sort="az" role="radio">A → Z</button>
+        <button type="button" class="chip" data-sort="recent" role="radio">récemment modifiés</button>
+      </div>
+      <form class="bc-create" id="bc-create" hidden autocomplete="off">
+        <input class="field" id="bc-create-name" placeholder="Nom du bac (ex. dimanche matin, à faire découvrir…)" maxlength="80">
+        <button type="submit" class="btn">Créer</button>
+        <button type="button" class="btn btn-ghost" id="bc-create-cancel">Annuler</button>
+      </form>
+      <p class="empty" id="bc-empty" hidden>Pas encore de bac. Créez-en un ici, ou depuis une page album (bouton « bacs »).</p>
+      <div class="bc-grid" id="bc-grid"></div>
+    </section>
+
+    <!-- Un bac -->
+    <section id="bc-one" hidden>
+      <a href="bacs.html" class="back-link" id="bc-back">← tous les bacs</a>
+      <div class="bc-detail-head">
+        <div class="bc-cover-wrap">
+          <div class="bc-mosaic bc-mosaic-big" id="bc-mosaic"></div>
+          <button type="button" class="bc-cover-btn" id="bc-cover-btn" title="Changer la pochette du bac">pochette</button>
+        </div>
+        <div class="bc-detail-text">
+          <p class="bc-kicker">bac</p>
+          <h1 class="album-heading" id="bc-name"></h1>
+          <p class="album-facts" id="bc-meta"></p>
+          <div class="bc-actions">
+            <button type="button" class="btn" id="bc-play">▶ Lire le bac</button>
+            <button type="button" class="btn btn-ghost" id="bc-queue">Ajouter à la file</button>
+            <button type="button" class="btn btn-ghost" id="bc-rename">Renommer</button>
+            <button type="button" class="btn btn-ghost" id="bc-delete">Supprimer</button>
+          </div>
+        </div>
+      </div>
+      <div class="bc-add">
+        <input type="search" class="field" id="bc-add-input" placeholder="Ajouter un album de la collection : titre ou artiste…" autocomplete="off">
+        <ul class="bc-add-results" id="bc-add-results" hidden></ul>
+      </div>
+      <p class="empty" id="bc-one-empty" hidden>Ce bac est vide. Ajoutez des albums ci-dessus, ou depuis leur page (bouton « bacs »).</p>
+      <ol class="bc-list" id="bc-list"></ol>
+      <input type="file" id="bc-cover-file" accept="image/*" hidden>
+    </section>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../../datastorage/collection.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/navidrome.js"></script>
+  <script src="../js/disk.js"></script>
+  <script src="../js/bacs.js"></script>
+  <script src="../js/volume.js"></script>
+  <script src="../js/playback.js"></script>
+  <script src="../js/shortcuts.js"></script>
+</body>
+</html>

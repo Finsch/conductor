@@ -173,6 +173,11 @@ const remotes = new Set();
 let state = null;                // dernier état du lecteur envoyé par conductor.
 let coverSrc = "";               // pochette en cours (chemin local ou adresse http)
 let coverVer = "";
+let lyrics = null;               // paroles du morceau en cours (envoyées par conductor.)
+let queue = [];                  // file d'attente (albums à suivre), pochettes à part
+let thoughts = null;             // thoughts de l'album en cours
+const searchCovers = new Map();  // albumId → pochette, pour les résultats du catalogue
+const queueCovers = new Map();   // albumId → pochette (chemin local ou adresse http)
 let sysVol = null;               // volume du PC, 0..100 (null : indisponible)
 let sysMuted = false;
 const fails = new Map();         // ip → { n, until } (codes faux)
@@ -203,6 +208,32 @@ function onMessage(peer, msg) {
       }
       if (state) delete state.coverSrc;
       broadcast();
+    } else if (msg.type === "time") {
+      if (state && Number.isFinite(msg.time)) { state.time = msg.time; state.playing = true; }
+      remotes.forEach(r => { if (r.authed) r.send({ type: "time", time: msg.time }); });
+    } else if (msg.type === "queue") {
+      queueCovers.clear();
+      queue = (Array.isArray(msg.queue) ? msg.queue : []).map(q => {
+        if (q.coverSrc) queueCovers.set(q.id, q.coverSrc);
+        return { id: q.id, title: q.title, artist: q.artist, year: q.year, duration: q.duration,
+          cover: q.coverSrc ? "/cover?a=" + encodeURIComponent(q.id) + "&v=" + crypto.createHash("md5").update(q.coverSrc).digest("hex").slice(0, 8) : "" };
+      });
+      remotes.forEach(r => { if (r.authed) r.send({ type: "queue", queue }); });
+    } else if (msg.type === "results") {
+      // Résultats de recherche : pochettes servies par /cover?a=…
+      const items = (Array.isArray(msg.items) ? msg.items : []).map(it => {
+        if (it.coverSrc) searchCovers.set(it.id, it.coverSrc);
+        return { id: it.id, title: it.title, artist: it.artist, year: it.year, genre: it.genre,
+          cover: it.coverSrc ? "/cover?a=" + encodeURIComponent(it.id) + "&v=" + crypto.createHash("md5").update(it.coverSrc).digest("hex").slice(0, 8) : "" };
+      });
+      if (searchCovers.size > 2000) searchCovers.clear();
+      remotes.forEach(r => { if (r.authed) r.send({ type: "results", id: msg.id, q: msg.q, items }); });
+    } else if (msg.type === "thoughts") {
+      thoughts = msg.thoughts || null;
+      remotes.forEach(r => { if (r.authed) r.send({ type: "thoughts", thoughts }); });
+    } else if (msg.type === "lyrics") {
+      lyrics = msg.lyrics || null;
+      remotes.forEach(r => { if (r.authed) r.send({ type: "lyrics", lyrics }); });
     } else if (msg.type === "info") {
       peer.send(relayInfo());
     } else if (msg.type === "new-pairing") {
@@ -221,6 +252,9 @@ function onMessage(peer, msg) {
     return;
   }
 
+  // Téléphone : mesure du délai réseau (aller-retour)
+  if (msg.type === "ping") { peer.send({ type: "pong", c: msg.c }); return; }
+
   // Téléphone : appairage
   if (!peer.authed) {
     const ip = peer.info.ip;
@@ -231,6 +265,9 @@ function onMessage(peer, msg) {
       saveTokens();
       peer.send({ type: "welcome" });
       peer.send(remoteState());
+      if (lyrics) peer.send({ type: "lyrics", lyrics });
+      peer.send({ type: "queue", queue });
+      if (thoughts) peer.send({ type: "thoughts", thoughts });
       log("téléphone connecté : " + peer.info.device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -257,6 +294,9 @@ function onMessage(peer, msg) {
       peer.info.device = device;
       peer.send({ type: "paired", token });
       peer.send(remoteState());
+      if (lyrics) peer.send({ type: "lyrics", lyrics });
+      peer.send({ type: "queue", queue });
+      if (thoughts) peer.send({ type: "thoughts", thoughts });
       log("téléphone appairé : " + device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -272,7 +312,9 @@ function onMessage(peer, msg) {
   if (name === "sysVolume") { setSysVolume(Number(msg.value)); return; }
   if (name === "sysVolumeStep") { if (sysVol != null) setSysVolume(sysVol + Number(msg.value || 0)); return; }
   if (name === "sysMute") { setSysMute(!sysMuted); return; }
-  const allowed = ["toggle", "next", "prev", "star", "volume", "volumeStep", "mute", "seek"];
+  const allowed = ["toggle", "next", "prev", "star", "volume", "volumeStep", "mute", "seek",
+    "queuePlay", "queueRemove", "queueMove", "queueClear", "thoughtAdd", "thoughtDelete", "thoughtEdit",
+    "search", "playAlbum", "queueAlbum"];
   if (!allowed.includes(name)) return;
   if (host) host.send({ type: "cmd", name, value: msg.value });
 }
@@ -280,6 +322,10 @@ function onMessage(peer, msg) {
 function onClose(peer) {
   if (peer === host) {
     host = null;
+    lyrics = null;
+    queue = [];
+    queueCovers.clear();
+    thoughts = null;
     log("conductor. déconnecté");
     broadcast();
   }
@@ -416,9 +462,10 @@ setInterval(() => { if ([...remotes].some(r => r.authed)) refreshSysVolume(); },
 
 // ---------- Pochette en cours ----------
 
-async function sendCover(res) {
+async function sendCover(res, src) {
   try {
-    if (!coverSrc) { res.writeHead(404); res.end(); return; }
+    if (!src) { res.writeHead(404); res.end(); return; }
+    const coverSrc = src;
     if (/^https?:\/\//i.test(coverSrc)) {
       const r = await fetch(coverSrc, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error("HTTP " + r.status);
@@ -451,7 +498,8 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/cover") {
     // Jeton du téléphone exigé (passé dans l'adresse : une <img> n'envoie pas d'en-tête)
     if (!tokens[url.searchParams.get("t") || ""]) { res.writeHead(403); res.end(); return; }
-    sendCover(res);
+    const a = url.searchParams.get("a");
+    sendCover(res, a ? queueCovers.get(a) || searchCovers.get(a) || "" : coverSrc);
     return;
   }
   const name = url.pathname === "/" ? "index.html" : url.pathname.slice(1);

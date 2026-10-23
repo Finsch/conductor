@@ -1305,6 +1305,64 @@
   const askedThought = new URLSearchParams(location.search).get("thoughts");
   if (askedThought != null) setTimeout(() => openThoughts(askedThought || null), 0);
 
+  // ---------- Bacs : ranger l'album dans une ou plusieurs sélections (B) ----------
+
+  let bacsPop = null;
+  function bacsLabel() {
+    const n = Store.bacsOf(album.id).length;
+    $("bacs-btn").textContent = n ? "Bacs · " + n : "Bacs";
+  }
+  function closeBacs() {
+    if (bacsPop) { bacsPop.remove(); bacsPop = null; }
+  }
+  function renderBacsPop() {
+    if (!bacsPop) return;
+    const bacs = Store.bacs().slice().sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    const items = bacs.map(bac => {
+      const on = (bac.albums || []).includes(album.id);
+      const b = el("button", "bacs-pop-item" + (on ? " is-on" : ""));
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(on));
+      b.append(el("span", "bacs-pop-check", on ? "✓" : "+"), el("span", null, bac.name), );
+      b.addEventListener("click", () => { Store.toggleInBac(bac.id, album.id); renderBacsPop(); bacsLabel(); });
+      return b;
+    });
+    const form = el("form", "bacs-pop-new");
+    const input = el("input", "field");
+    input.placeholder = "Nouveau bac…";
+    input.maxLength = 80;
+    const ok = el("button", "btn btn-small", "Créer");
+    ok.type = "submit";
+    form.append(input, ok);
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      if (!input.value.trim()) { input.focus(); return; }
+      Store.createBac(input.value, [album.id]);
+      renderBacsPop();
+      bacsLabel();
+    });
+    input.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeBacs(); } });
+    const link = el("a", "bacs-pop-link", "voir tous les bacs →");
+    link.href = "bacs.html";
+    bacsPop.replaceChildren(el("p", "bacs-pop-title", bacs.length ? "ranger dans" : "aucun bac pour l'instant"), ...items, form, link);
+    if (!bacs.length) setTimeout(() => input.focus(), 0);
+  }
+  function openBacs() {
+    if (bacsPop) { closeBacs(); return; }
+    const btn = $("bacs-btn");
+    bacsPop = el("div", "bacs-pop");
+    document.body.appendChild(bacsPop);
+    renderBacsPop();
+    const r = btn.getBoundingClientRect();
+    bacsPop.style.top = (r.bottom + window.scrollY + 6) + "px";
+    bacsPop.style.left = Math.max(8, Math.min(r.left + window.scrollX, document.documentElement.clientWidth - bacsPop.offsetWidth - 8)) + "px";
+  }
+  $("bacs-btn").addEventListener("click", e => { e.stopPropagation(); openBacs(); });
+  document.addEventListener("click", e => { if (bacsPop && !e.composedPath().includes(bacsPop)) closeBacs(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && bacsPop) { e.preventDefault(); e.stopPropagation(); closeBacs(); } }, true);
+  document.addEventListener("bacs:changed", () => { bacsLabel(); renderBacsPop(); });
+  bacsLabel();
+
   // ---------- Démarrage ----------
 
   renderInfo();

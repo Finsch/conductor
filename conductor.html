@@ -43,7 +43,7 @@
     // Seules les pages du site sont acceptées.
     (function () {
       const want = decodeURIComponent(location.hash.slice(1));
-      const ok = /^(index\.html|pages\/(album|nextup|insights|library|artist|complete|journal|manuals|manual|about|wrapped)\.html)(\?[^#]*)?(#.*)?$/.test(want);
+      const ok = /^(index\.html|pages\/(album|nextup|insights|bacs|library|artist|complete|journal|manuals|manual|about|wrapped)\.html)(\?[^#]*)?(#.*)?$/.test(want);
       document.getElementById("page").src = ok ? want : "index.html";
     })();
   </script>

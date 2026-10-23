@@ -347,6 +347,21 @@ const Store = (function () {
   // Temps d'écoute par jour (journal) : { "AAAA-MM-JJ": secondes }
   const LISTEN_KEY = "conductor01.listening";
 
+  // Bacs : listes d'albums ordonnées (comme une playlist, mais d'albums)
+  //   [{ id, name, albums: [albumId…], cover?, coverAlbum?, createdAt, updatedAt }]
+  //   cover : image choisie (data URL JPEG 600 px) ; coverAlbum : pochette d'un de ses albums ;
+  //   ni l'un ni l'autre : mosaïque des 4 premières pochettes
+  const CRATES_KEY = "conductor01.bacs";
+  function loadCrates() {
+    try { const c = JSON.parse(localStorage.getItem(CRATES_KEY)); return Array.isArray(c) ? c : []; } catch (e) { return []; }
+  }
+  function saveCrates(list) {
+    localStorage.setItem(CRATES_KEY, JSON.stringify(list));
+    localStorage.setItem(SAVED_KEY, new Date().toISOString());
+    document.dispatchEvent(new CustomEvent("bacs:changed"));
+    if (typeof Disk !== "undefined") Disk.changed();
+  }
+
   function loadListening() {
     try { return JSON.parse(localStorage.getItem(LISTEN_KEY)) || {}; } catch (e) { return {}; }
   }
@@ -365,6 +380,7 @@ const Store = (function () {
         localStorage.setItem(KEY, JSON.stringify(file.albums));
         if (file.notes && typeof file.notes === "object") localStorage.setItem(NOTES_KEY, JSON.stringify(file.notes));
         if (file.listening && typeof file.listening === "object") localStorage.setItem(LISTEN_KEY, JSON.stringify(file.listening));
+        if (Array.isArray(file.bacs)) localStorage.setItem(CRATES_KEY, JSON.stringify(file.bacs));
         localStorage.setItem(SAVED_KEY, file.savedAt || new Date().toISOString());
       } catch (e) {
         console.warn("Copie de datastorage dans le navigateur impossible :", e);
@@ -422,6 +438,11 @@ const Store = (function () {
   window.addEventListener("storage", e => {
     if (e.key === LISTEN_KEY) {
       document.dispatchEvent(new CustomEvent("listening:changed"));
+      return;
+    }
+    if (e.key === CRATES_KEY) {
+      document.dispatchEvent(new CustomEvent("bacs:changed"));
+      if (typeof Disk !== "undefined") Disk.changed();
       return;
     }
     if (e.key === NOTES_KEY) {
@@ -507,6 +528,52 @@ const Store = (function () {
       localStorage.setItem(SAVED_KEY, new Date().toISOString());
       document.dispatchEvent(new CustomEvent("listening:changed"));
       if (typeof Disk !== "undefined") Disk.changed();
+    },
+
+    // ---------- Bacs ----------
+    bacs() {
+      return loadCrates();
+    },
+    bac(id) {
+      return loadCrates().find(c => c.id === id) || null;
+    },
+    // Bacs qui contiennent cet album
+    bacsOf(albumId) {
+      return loadCrates().filter(c => (c.albums || []).includes(albumId));
+    },
+    createBac(name, albumIds) {
+      const list = loadCrates();
+      const now = new Date().toISOString();
+      const bac = { id: "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        name: String(name || "").trim() || "Nouveau bac", albums: [...new Set(albumIds || [])], createdAt: now, updatedAt: now };
+      list.push(bac);
+      saveCrates(list);
+      return bac;
+    },
+    // patch : { name } ou { albums: [ids…] } (ordre compris)
+    updateBac(id, patch) {
+      const list = loadCrates();
+      const bac = list.find(c => c.id === id);
+      if (!bac) return null;
+      if (patch.name != null) bac.name = String(patch.name).trim() || bac.name;
+      if (Array.isArray(patch.albums)) bac.albums = [...new Set(patch.albums)];
+      if ("cover" in patch) { if (patch.cover) bac.cover = patch.cover; else delete bac.cover; }
+      if ("coverAlbum" in patch) { if (patch.coverAlbum) bac.coverAlbum = patch.coverAlbum; else delete bac.coverAlbum; }
+      bac.updatedAt = new Date().toISOString();
+      saveCrates(list);
+      return bac;
+    },
+    deleteBac(id) {
+      saveCrates(loadCrates().filter(c => c.id !== id));
+    },
+    // Ajoute (à la fin) ou retire un album d'un bac
+    toggleInBac(id, albumId, on) {
+      const bac = loadCrates().find(c => c.id === id);
+      if (!bac) return null;
+      const has = bac.albums.includes(albumId);
+      const want = on == null ? !has : !!on;
+      if (want === has) return bac;
+      return this.updateBac(id, { albums: want ? bac.albums.concat(albumId) : bac.albums.filter(x => x !== albumId) });
     },
 
     // ---------- Notes du journal ----------

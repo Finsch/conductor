@@ -3,6 +3,8 @@
 // Dans l'enveloppe (conductor.html) : se connecte au relais du PC (ws://127.0.0.1:8765)
 // s'il tourne, lui envoie l'état du lecteur à chaque changement, et exécute les
 // commandes du téléphone (lecture / pause, titre, ★, volume de l'appli).
+// Paroles du morceau en cours (js/karaoke.js : enregistrées, fichiers, LRCLIB) envoyées
+// une fois par morceau, seulement si un téléphone est connecté.
 // Relais absent : nouvel essai de temps en temps, sans rien afficher.
 //
 // Fenêtre « Télécommande » (icône téléphone du pied de page) : démarrer le relais
@@ -70,6 +72,7 @@
     return {
       albumId: st.albumId,
       album: (a && a.title) || st.title || "",
+      year: (a && a.year) || "",
       artist: (a && a.artist) || st.artist || "",
       track: t.title || "",
       index: st.index,
@@ -92,6 +95,146 @@
     }, 60);
   }
 
+  // ---------- Paroles du morceau en cours ----------
+
+  let lyKey = "", lySent = "";
+  function lyricsInfo() {
+    const st = Playback.state();
+    const t = st && st.tracks && st.tracks[st.index];
+    if (!t) return null;
+    const a = typeof Store !== "undefined" ? Store.get(st.albumId) : null;
+    // Mêmes infos que le karaoké du PC (js/playback.js) : même cache, même résultat
+    return { albumId: st.albumId, artist: st.artist, album: (a && a.title) || st.title,
+      title: t.title, duration: t.duration || (Playback.duration && Playback.duration()) || 0, src: t.src };
+  }
+  function sendLyrics(force) {
+    if (!(ws && ws.readyState === 1) || !lastRemotes || typeof Karaoke === "undefined") return;
+    const info = lyricsInfo();
+    if (!info) return;
+    const key = info.albumId + "|" + info.title;
+    if (key !== lyKey || force) {
+      lyKey = key;
+      lySent = "";
+      ws.send(JSON.stringify({ type: "lyrics", lyrics: { key, status: "loading" } }));
+    }
+    Karaoke.find(info).then(res => {
+      if (key !== lyKey || !(ws && ws.readyState === 1)) return;
+      const out = res && res.lines && res.lines.length
+        ? { key, status: "synced", lines: res.lines.map(l => ({ t: Math.round(l.t * 100) / 100, text: l.text || "" })), source: res.source || "" }
+        : res && res.plain ? { key, status: "plain", plain: res.plain, source: res.source || "" }
+        : res && res.instrumental ? { key, status: "instrumental" }
+        : { key, status: "none" };
+      const json = JSON.stringify(out);
+      if (json === lySent) return;
+      lySent = json;
+      ws.send(JSON.stringify({ type: "lyrics", lyrics: out }));
+    }).catch(() => {
+      if (key === lyKey && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "lyrics", lyrics: { key, status: "offline" } }));
+    });
+  }
+
+  // ---------- File d'attente (albums à suivre) ----------
+
+  let queueSent = "";
+  function sendQueue(force) {
+    if (!(ws && ws.readyState === 1) || !lastRemotes) return;
+    const items = Playback.queue().map(qid => {
+      const a = typeof Store !== "undefined" ? Store.get(qid) : null;
+      if (!a) return { id: qid, title: "(album retiré)", artist: "", year: "", duration: 0, coverSrc: "" };
+      return { id: a.id, title: a.title, artist: a.artist, year: a.year || "",
+        duration: a.duration || (a.tracks || []).reduce((s, t) => s + (t.duration || 0), 0) || 0,
+        coverSrc: coverSrc({ albumId: a.id, cover: a.cover, serverCover: a.serverCover }) };
+    });
+    const json = JSON.stringify(items);
+    if (json === queueSent && !force) return;
+    queueSent = json;
+    ws.send(JSON.stringify({ type: "queue", queue: items }));
+  }
+
+  // Commandes de la file : { i: position, id } (l'id vérifie qu'on parle du même album)
+  function queueAt(v) {
+    const q = Playback.queue();
+    const i = v && Number.isInteger(v.i) ? v.i : -1;
+    return i >= 0 && q[i] === (v && v.id) ? i : -1;
+  }
+
+  // ---------- Thoughts de l'album en cours (réflexions datées, comme sur la page album) ----------
+
+  let thSent = "";
+  function sendThoughts(force) {
+    if (!(ws && ws.readyState === 1) || !lastRemotes) return;
+    const st = Playback.state();
+    const a = st && typeof Store !== "undefined" ? Store.get(st.albumId) : null;
+    const out = a ? { albumId: a.id, album: a.title, list: (a.thoughts || []).slice().sort((x, y) => y.at.localeCompare(x.at)) } : null;
+    const json = JSON.stringify(out);
+    if (json === thSent && !force) return;
+    thSent = json;
+    ws.send(JSON.stringify({ type: "thoughts", thoughts: out }));
+  }
+  function addThought(v) {
+    const st = Playback.state();
+    const text = String((v && v.text) || "").trim().slice(0, 5000);
+    const a = v && Store.get(v.albumId);
+    if (!text || !a) return;
+    const t = { id: "t" + Date.now().toString(36), at: new Date().toISOString(), text, from: "téléphone" };
+    // Le morceau et la seconde, si cet album joue (comme sur la page album)
+    if (st && st.albumId === a.id && st.tracks[st.index]) {
+      t.moment = { index: st.index, title: st.tracks[st.index].title || "", time: Math.round(Playback.audio.currentTime || 0) };
+    }
+    Store.update(a.id, { thoughts: (a.thoughts || []).concat(t) });
+    flash("Thought ajoutée depuis le téléphone : " + a.title, 3000);
+  }
+  function editThought(v) {
+    const a = v && Store.get(v.albumId);
+    const text = String((v && v.text) || "").trim().slice(0, 5000);
+    if (!a || !text) return;
+    const list = a.thoughts || [];
+    if (!list.some(t => t.id === v.id && t.text !== text)) { sendThoughts(true); return; }
+    Store.update(a.id, { thoughts: list.map(t => t.id === v.id ? Object.assign({}, t, { text, edited: new Date().toISOString() }) : t) });
+    flash("Thought modifiée depuis le téléphone : " + a.title, 3000);
+  }
+  function deleteThought(v) {
+    const a = v && Store.get(v.albumId);
+    if (!a) return;
+    const list = (a.thoughts || []).filter(t => t.id !== v.id);
+    Store.update(a.id, { thoughts: list.length ? list : null });
+  }
+
+  // ---------- Catalogue : recherche dans la collection ----------
+  // Un seul champ : titre, artiste, genre, styles, ressenti, famille, label, année, tags.
+  // Tous les mots doivent être trouvés (« radiohead 1997 », « jazz modal »).
+
+  const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  function search(v) {
+    const q = norm(v && v.q).trim();
+    const words = q.split(/\s+/).filter(Boolean);
+    let items = [];
+    if (words.length && typeof Store !== "undefined") {
+      const scored = [];
+      Store.raw().forEach(a => {
+        if (a.nextUp) return;
+        const title = norm(a.title), artist = norm(a.artist);
+        const extra = norm([a.genre, (a.styles || []).join(" "), (a.moods || []).join(" "), (a.tags || []).join(" "),
+          typeof familyOf === "function" ? familyOf(a) : "", a.label, a.year].join(" "));
+        const hay = title + " " + artist + " " + extra;
+        if (!words.every(w => hay.includes(w))) return;
+        // Pertinence : titre, puis artiste, puis le reste
+        let score = 0;
+        if (title === q || artist === q) score += 100;
+        if (title.startsWith(q)) score += 40;
+        if (artist.startsWith(q)) score += 30;
+        words.forEach(w => { if (title.includes(w)) score += 10; else if (artist.includes(w)) score += 8; else score += 2; });
+        scored.push({ a, score });
+      });
+      scored.sort((x, y) => y.score - x.score || norm(x.a.artist).localeCompare(norm(y.a.artist)) || (x.a.year || 0) - (y.a.year || 0));
+      items = scored.slice(0, 40).map(({ a }) => ({
+        id: a.id, title: a.title, artist: a.artist, year: a.year || "", genre: a.genre || "",
+        coverSrc: coverSrc({ albumId: a.id, cover: a.cover, serverCover: a.serverCover })
+      }));
+    }
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "results", id: v && v.id, q: (v && v.q) || "", items }));
+  }
+
   // ---------- Commandes du téléphone ----------
 
   function run(name, value) {
@@ -104,6 +247,26 @@
     else if (name === "volumeStep") setVol(readVol().level + Number(value || 0));
     else if (name === "mute") { Playback.audio.muted = !Playback.audio.muted; }
     else if (name === "seek") { if (st && Number.isFinite(Number(value))) Playback.seek(Number(value)); }
+    else if (name === "thoughtAdd") addThought(value);
+    else if (name === "search") { search(value); return; }
+    else if (name === "playAlbum") {
+      // Lancer un album du catalogue : remplace l'album en cours, la file est gardée
+      if (value && Store.get(value.id)) Playback.playId(value.id, !!Playback.state());
+    }
+    else if (name === "queueAlbum") { if (value && Store.get(value.id)) Playback.addToQueue(value.id); }
+    else if (name === "thoughtDelete") deleteThought(value);
+    else if (name === "thoughtEdit") editThought(value);
+    else if (name === "queuePlay") {
+      // Lancer tout de suite un album de la file : retiré de sa place, le reste est gardé
+      const i = queueAt(value);
+      if (i >= 0) { Playback.removeFromQueue(value.id, i); Playback.playId(value.id, true); }
+    }
+    else if (name === "queueRemove") { const i = queueAt(value); if (i >= 0) Playback.removeFromQueue(value.id, i); }
+    else if (name === "queueMove") {
+      const i = queueAt(value);
+      if (i >= 0 && Number.isInteger(value.to)) Playback.moveInQueue(i, value.to);
+    }
+    else if (name === "queueClear") Playback.clearQueue();
     send();
   }
 
@@ -113,7 +276,7 @@
     clearTimeout(timer);
     try { ws = new WebSocket("ws://127.0.0.1:" + PORT + "/ws?role=host"); }
     catch (e) { retry(); return; }
-    ws.onopen = () => { wait = 3000; send(); };
+    ws.onopen = () => { wait = 3000; lyKey = ""; queueSent = ""; thSent = ""; send(); };
     ws.onmessage = e => {
       let m = null;
       try { m = JSON.parse(e.data); } catch (err) { return; }
@@ -122,8 +285,10 @@
         const n = (m.remotes || []).length;
         if (!lastPin) flash("Télécommande prête · icône téléphone du pied de page pour le QR code", 4000);
         else if (n > lastRemotes) flash("Télécommande connectée : " + m.remotes[n - 1], 3500);
+        const more = n > lastRemotes;
         lastPin = m.pin;
         lastRemotes = n;
+        if (more) { sendLyrics(true); sendQueue(true); sendThoughts(true); }   // nouveau téléphone : paroles, file, thoughts
         info = m;
         renderPanel();
       }
@@ -139,7 +304,7 @@
 
   // ---------- Fenêtre « Télécommande » ----------
 
-  let dlg = null, addrIndex = 0, startedAt = 0, startTimer = 0;
+  let dlg = null, addrIndex = -1, startedAt = 0, startTimer = 0;   // -1 : onglet Tailscale par défaut
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const connected = () => !!(ws && ws.readyState === 1 && info);
 
@@ -154,6 +319,7 @@
       dlg.querySelector("#rm-close").addEventListener("click", () => dlg.close());
       dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
     }
+    addrIndex = -1;   // à chaque ouverture : Tailscale (s'il est là)
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "info" }));
     else { clearTimeout(timer); wait = 3000; connect(); }
     renderPanel();
@@ -201,6 +367,7 @@
     if (!list.length) {
       body.append(el("p", "rm-lead", "Ce PC n'est relié à aucun réseau (wifi, partage de connexion ou Tailscale)."));
     } else {
+      if (addrIndex < 0) addrIndex = Math.max(0, list.findIndex(x => x.tailscale));
       addrIndex = Math.min(addrIndex, list.length - 1);
       const a = list[addrIndex];
       const url = a.url + "/#k=" + info.key;
@@ -246,11 +413,17 @@
   }
 
   // Changements côté PC → téléphone, aussitôt
-  document.addEventListener("playback:change", send);
+  document.addEventListener("playback:change", () => { send(); sendLyrics(); sendQueue(); sendThoughts(); });
+  document.addEventListener("albums:changed", () => { sendQueue(); sendThoughts(); });
   document.addEventListener("albums:changed", send);
   window.addEventListener("storage", e => { if (e.key === VOL_KEY) send(); });
-  ["play", "pause", "seeked", "volumechange"].forEach(ev => Playback.audio.addEventListener(ev, send));
-  setInterval(() => { if (ws && ws.readyState === 1 && !Playback.audio.paused) send(); }, 10000);   // recalage de la position
+  ["play", "pause", "seeking", "loadedmetadata"].forEach(ev => Playback.audio.addEventListener(ev, send));
+  // Position précise pour les paroles : envoyée chaque seconde pendant la lecture (message léger)
+  setInterval(() => {
+    if (!(ws && ws.readyState === 1) || !lastRemotes || Playback.audio.paused || !Playback.state()) return;
+    ws.send(JSON.stringify({ type: "time", time: Playback.audio.currentTime || 0 }));
+  }, 1000);
+  setInterval(() => { if (ws && ws.readyState === 1 && !Playback.audio.paused) send(); }, 10000);   // recalage complet
 
   // Pages du cadre : icône du pied de page → { type: "cmd", name: "remotePanel" }
   window.addEventListener("message", e => {

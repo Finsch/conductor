@@ -34,13 +34,14 @@
     : /\/pages\//.test(location.pathname) ? "page" : "home";   // artiste, journal, à compléter…
 
   // Alt + lettre : pages principales
-  const ALT_PAGES = { i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
+  const ALT_PAGES = { b: "pages/bacs.html", i: "pages/insights.html", j: "pages/journal.html", u: "pages/nextup.html", a: "pages/library.html",
     c: "pages/complete.html", m: "pages/manuals.html", h: "pages/journal.html#historique", g: "index.html" };
 
   // Groupes affichés dans la fenêtre « Raccourcis clavier » (touche ?)
   const SHORTCUTS = [
     ["Navigation", [
       ["Alt + G", "Collection"],
+      ["Alt + B", "Bacs : vos sélections d'albums"],
       ["Alt + I", "Insights"],
       ["Alt + J", "Journal"],
       ["Alt + H", "Historique des écoutes (journal)"],
@@ -49,6 +50,7 @@
       ["Alt + A", "audio-files (vos fichiers)"],
       ["Alt + C", "Fiches à compléter"],
       ["Alt + M", "Manuels"],
+      ["Alt + R", "Télécommande : QR code pour le téléphone"],
       ["Maj + W", "Wrapped : le bilan de l'année"],
       ["Maj + A", "Archiver toutes vos données (.zip)"],
       ["O", "Ouvrir la page de l'album en cours de lecture"],
@@ -82,6 +84,7 @@
     ["Album et journal", [
       ["E", "Modifier la fiche (page album)"],
       ["W", "Thoughts : vos réflexions sur l'album (page album)"],
+      ["B", "Ranger l'album dans un bac (page album)"],
       ["Maj + F", "♥ Album favori (page album)"],
       ["+", "Ajouter l'album à la file d'attente (page album)"],
       ["C", "Copier [[Artiste]] - [[Album]] de l'album en cours"],
@@ -286,6 +289,13 @@
         else location.href = ROOT + "pages/journal.html?note=today";
         return;
       }
+      // Alt + R : fenêtre « Télécommande » (QR code), dans l'enveloppe
+      if (k === "r") {
+        e.preventDefault();
+        if (window.top !== window) parent.postMessage({ conductor: true, type: "cmd", name: "remotePanel", args: [] }, "*");
+        else if (window.RemotePanel) RemotePanel.open();
+        return;
+      }
       // Alt + S : recherche dans les notes (page journal)
       if (k === "s" && onJournal) {
         const b = document.getElementById("jr-search-btn");
@@ -382,6 +392,12 @@
     if (e.key.toLowerCase() === "w" && PAGE === "album") {
       const t = document.getElementById("a-thoughts");
       if (t) { e.preventDefault(); t.click(); }
+      return;
+    }
+    // B : bacs de l'album (page album)
+    if (e.key.toLowerCase() === "b" && PAGE === "album") {
+      const b = document.getElementById("bacs-btn");
+      if (b) { e.preventDefault(); b.click(); }
       return;
     }
     // E : la lettre E quelle que soit la disposition ; page album → « Modifier la fiche »
@@ -583,7 +599,7 @@
         '<div class="footer-bottom">' +
           '<p class="footer-stats"></p>' +
           '<div class="footer-tools">' +
-            '<button type="button" class="footer-help footer-remote" title="Télécommande : piloter depuis un téléphone" ' +
+            '<button type="button" class="footer-help footer-remote" title="Télécommande : piloter depuis un téléphone (Alt + R)" ' +
               'aria-label="Télécommande">' + svg(ICON.remote) + '</button>' +
             '<button type="button" class="footer-help footer-archive" title="Archiver toutes vos données en un .zip (Maj + A)" ' +
               'aria-label="Archiver">' + svg(ICON.archive) + '</button>' +

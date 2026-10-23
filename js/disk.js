@@ -69,7 +69,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
   // ---------- Écriture de la collection ----------
 
   function fileContent() {
-    const data = { version: 1, savedAt: Store.savedAt(), albums: Store.raw(), notes: Store.notes(),
+    const data = { version: 1, savedAt: Store.savedAt(), albums: Store.raw(), notes: Store.notes(), bacs: Store.bacs(),
       listening: Store.listening() };
     return "// conductor. — votre collection. Fichier écrit par le site : ne pas modifier à la main.\n" +
       "window.CONDUCTOR_DATA = " + JSON.stringify(data, null, 1) + ";\n";

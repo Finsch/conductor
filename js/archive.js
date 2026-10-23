@@ -110,7 +110,7 @@ const Archive = (function () {
     }
   }
 
-  const IN_COLLECTION = new Set(["conductor01.albums", "conductor01.notes", "conductor01.listening", "conductor01.savedAt"]);
+  const IN_COLLECTION = new Set(["conductor01.albums", "conductor01.notes", "conductor01.listening", "conductor01.savedAt", "conductor01.bacs"]);
   // ---------- Dossier app : choisi une fois, gardé dans le navigateur ----------
 
   function idb(mode, fn) {

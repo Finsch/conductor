@@ -49,6 +49,9 @@ interface `usb0` ou `enx…`).
 Comme `daily-tel-usb.md` : câble, **Modem USB**, widget **conductor** sur le téléphone, **conductor USB**
 sur le PC. Pour arrêter : fermez conductor., widget **conductor-stop**, débranchez.
 
+**Télécommande** : `tools/remote/start-remote.sh` (Node.js), puis `Alt + R` pour le QR code ;
+le volume du PC passe par `pactl` (ou `amixer`). Détails dans `telecommande.md`.
+
 ## 4. Envoyer de la musique vers le téléphone
 
 Le téléphone fait tourner `sshd` (widget **conductor**, ou `sshd` dans Termux ; voir `navidrome-man.md`).
