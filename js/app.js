@@ -69,10 +69,8 @@
     return n + " " + word + (n > 1 ? "s" : "");
   }
 
-  // Ignore accents et majuscules : "bjork" trouve "Björk"
-  function normalize(str) {
-    return (str || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  }
+  // Ignore accents et majuscules : "bjork" trouve "Björk" (fichier commun)
+  const normalize = s => CollectionCore.normalize(s);
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -81,83 +79,21 @@
     return e;
   }
 
-  // Date d'ajout à la collection (anciens albums : date du premier log)
-  function addedAt(a) {
-    return a.addedAt || (a.logs && a.logs[0] && a.logs[0].loggedAt) || "";
-  }
+  // Tris et filtres intensité / décennies / genres : fichier commun avec la télécommande (js/collection-core.js)
+  const Core = CollectionCore;
+  const { addedAt, yearOf, decadeOf, durationOf, genreKey } = Core;
 
   function lastLog(a) {
     return (a.logs && a.logs.length) ? a.logs[a.logs.length - 1] : null;
   }
 
-  function yearOf(a) {
-    if (a.releaseDate) return Number(a.releaseDate.slice(0, 4));
-    return a.year || null;
-  }
-
-  // 1977 → "1970" ; avant 1950 → "avant"
-  function decadeOf(a) {
-    const y = yearOf(a);
-    if (!y) return null;
-    return y < 1950 ? "avant" : String(Math.floor(y / 10) * 10);
-  }
-
-  // ---------- Tri ----------
-
-  const byText = field => (a, b) => (a[field] || "").localeCompare(b[field] || "", "fr", { sensitivity: "base" });
-
-  // Les albums sans valeur (pas d'intensité, pas d'année) vont toujours à la fin
-  function byNumber(get, dir) {
-    return (a, b) => {
-      const x = get(a), y = get(b);
-      if (x == null && y == null) return 0;
-      if (x == null) return 1;
-      if (y == null) return -1;
-      return dir * (x - y);
-    };
-  }
-
-  const SORTS = [
-    { id: "added-desc",   label: "Ajouts récents",          fn: (a, b) => addedAt(b).localeCompare(addedAt(a)) },
-    { id: "added-asc",    label: "Ajouts anciens",          fn: (a, b) => addedAt(a).localeCompare(addedAt(b)) },
-    { id: "title",        label: "Titre A → Z",             fn: byText("title") },
-    { id: "artist",       label: "Artiste A → Z",           fn: (a, b) => byText("artist")(a, b) || byNumber(yearOf, 1)(a, b) },
-    { id: "aggro-desc",   label: "Intensité, forte → douce",  fn: byNumber(a => a.aggressivity || null, -1) },
-    { id: "aggro-asc",    label: "Intensité, douce → forte",  fn: byNumber(a => a.aggressivity || null, 1) },
-    { id: "year-desc",    label: "Sortie récente",          fn: byNumber(yearOf, -1) },
-    { id: "year-asc",     label: "Sortie ancienne",         fn: byNumber(yearOf, 1) },
-    { id: "length-desc",  label: "Durée, longue → courte",  fn: byNumber(durationOf, -1) },
-    { id: "length-asc",   label: "Durée, courte → longue",  fn: byNumber(durationOf, 1) },
-    // Écoutes comptées par le lecteur ; à égalité : la plus récente d'abord / l'ajout le plus ancien d'abord
-    { id: "plays-desc",   label: "Le plus écouté",          fn: (a, b) => playCount(b) - playCount(a) || lastPlay(b).localeCompare(lastPlay(a)) },
-    { id: "plays-asc",    label: "Le moins écouté",         fn: (a, b) => playCount(a) - playCount(b) || addedAt(a).localeCompare(addedAt(b)) }
-  ];
-  function playCount(a) { return (a.plays || []).length; }
-  function lastPlay(a) { const p = a.plays || []; return p.length ? p[p.length - 1].at || "" : ""; }
-
+  const SORTS = Core.SORTS;
   if (!SORTS.some(s => s.id === state.sort)) state.sort = "added-desc";
 
   // ---------- Filtres ----------
 
-  // Recherche : « mot1+mot2 » = les deux présents ; « mot1/mot2 » = l'un ou l'autre.
-  // Les deux se combinent : « jazz+fusion/ambient » = (jazz ET fusion) OU ambient.
-  // Chaque mot peut être dans un champ différent (titre, artiste, genre, styles…).
-  function parseQuery(q) {
-    return q.split("/")
-      .map(group => group.split("+").map(w => w.trim()).filter(Boolean))
-      .filter(group => group.length);
-  }
-
-  function matchesSearch(a, q) {
-    if (!q) return true;
-    const groups = parseQuery(q);
-    if (!groups.length) return true;
-    const fields = [a.title, a.artist, a.genre, familyOf(a), a.label]
-      .concat(a.styles || [], a.keywords || [], a.moods || [], a.tags || [])
-      .map(normalize);
-    const has = w => fields.some(v => v.includes(w));
-    return groups.some(group => group.every(has));
-  }
+  // Recherche : « mot1+mot2 » = les deux présents ; « mot1/mot2 » = l'un ou l'autre (fichier commun)
+  const matchesSearch = (a, q) => CollectionCore.matchesSearch(a, q);
 
   // Index des albums du téléphone (Navidrome), relu à chaque rendu
   let serverIndex = null;
@@ -176,20 +112,12 @@
 
   function matchesFilters(a, skip) {
     if (skip !== "letter" && state.letter && letterField() && letterOf(a[letterField()]) !== state.letter) return false;
-    if (skip !== "intensity" && state.intensities.size && !state.intensities.has(a.aggressivity || 0)) return false;
     if (skip !== "files" && state.filesOnly && !onPhone(a)) return false;
     if (skip !== "fav" && state.favOnly && !a.favorite) return false;
     if (skip !== "tier" && state.tiers.size && !state.tiers.has(a.tier)) return false;
-    if (skip !== "genre" && state.genres.size && !state.genres.has(genreKey(a))) return false;
-    if (skip !== "decade" && state.decades.size && !state.decades.has(decadeOf(a))) return false;
+    if (!Core.matches(a, state, skip)) return false;   // intensité, genres, décennies
     if (skip !== "color" && state.colors.size && !state.colors.has(a.coverColor)) return false;
     return true;
-  }
-
-  // Un genre peut apparaître sous deux familles (famille choisie à la main) :
-  // le filtre travaille donc sur le couple famille + genre.
-  function genreKey(a) {
-    return a.genre ? familyOf(a) + "|" + a.genre : "";
   }
 
   function familyCheck(name, count, keys, onChange) {
@@ -204,8 +132,6 @@
     });
     return box;
   }
-
-  const DECADES = ["1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"];
 
   // Couleurs de pochette : section repliable ; pastilles cliquables (une à la fois)
   function renderColors(base) {
@@ -262,26 +188,12 @@
     // Les compteurs tiennent compte de la recherche et de l'autre filtre
     const base = all.filter(a => matchesSearch(a, q));
 
-    // Genres présents dans la collection, rangés par famille (dépliables)
-    const genreCount = new Map();   // "famille|genre" → nombre
-    all.forEach(a => { const k = genreKey(a); if (k) genreCount.set(k, 0); });
-    base.filter(a => matchesFilters(a, "genre")).forEach(a => {
-      const k = genreKey(a);
-      if (k) genreCount.set(k, genreCount.get(k) + 1);
-    });
-    const byFamily = new Map();
-    [...genreCount.keys()].forEach(k => {
-      const fam = k.slice(0, k.indexOf("|"));
-      if (!byFamily.has(fam)) byFamily.set(fam, []);
-      byFamily.get(fam).push(k);
-    });
-    // Ordre alphabétique (familles et genres) ; « Autres » toujours en dernier
-    const families = [...byFamily.keys()].sort((a, b) =>
-      (a === "Autres") - (b === "Autres") || a.localeCompare(b, "fr", { sensitivity: "base" }));
+    // Compteurs (genres, décennies, intensité) : fichier commun
+    const fc = Core.facets(all, base, matchesFilters);
 
-    genreList.replaceChildren(...(families.length ? families.map(fam => {
-      const keys = byFamily.get(fam).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-      const total = keys.reduce((s, k) => s + genreCount.get(k), 0);
+    // Genres présents dans la collection, rangés par famille (dépliables)
+    const genreCount = fc.genres;   // "famille|genre" → nombre
+    genreList.replaceChildren(...(fc.families.length ? fc.families.map(({ name: fam, keys, total }) => {
       const open = state.openFamilies.has(fam);
       const group = el("div", "family" + (open ? " is-open" : ""));
 
@@ -321,16 +233,9 @@
     }) : [el("p", "filter-empty", "Les genres apparaissent une fois les albums complétés.")]));
 
     // Décennies, à partir des années 1950
-    const decCount = new Map();
-    base.filter(a => matchesFilters(a, "decade")).forEach(a => {
-      const d = decadeOf(a);
-      if (d) decCount.set(d, (decCount.get(d) || 0) + 1);
-    });
-    const decades = (all.some(a => decadeOf(a) === "avant") ? ["avant"] : []).concat(DECADES);
-    decadeList.replaceChildren(...decades.map(d => {
-      const n = decCount.get(d) || 0;
-      const b = el("button", "chip" + (state.decades.has(d) ? " is-active" : ""),
-        d === "avant" ? "avant 1950" : d.slice(2) + "s");
+    decadeList.replaceChildren(...fc.decadeList.map(d => {
+      const n = fc.decades.get(d) || 0;
+      const b = el("button", "chip" + (state.decades.has(d) ? " is-active" : ""), Core.decadeLabel(d));
       b.type = "button";
       b.title = n + " album" + (n > 1 ? "s" : "");
       b.disabled = !n && !state.decades.has(d);
@@ -398,11 +303,8 @@
     }
 
     // Intensité 1 à 10 (plusieurs choix possibles)
-    const intCount = new Map();
-    base.filter(a => matchesFilters(a, "intensity")).forEach(a => {
-      if (a.aggressivity) intCount.set(a.aggressivity, (intCount.get(a.aggressivity) || 0) + 1);
-    });
-    document.getElementById("intensity-list").replaceChildren(...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+    const intCount = fc.intensities;
+    document.getElementById("intensity-list").replaceChildren(...Core.INTENSITIES.map(n => {
       const c = intCount.get(n) || 0;
       const b = el("button", "chip intensity" + (state.intensities.has(n) ? " is-active" : ""), String(n));
       b.type = "button";
@@ -524,12 +426,6 @@
 
   function trackCountOf(a) {
     return (a.tracks && a.tracks.length) || a.trackCount || null;
-  }
-
-  function durationOf(a) {
-    if (a.duration) return a.duration;
-    const sum = (a.tracks || []).reduce((s, t) => s + (t.duration || 0), 0);
-    return sum || null;
   }
 
   function createRow(album) {

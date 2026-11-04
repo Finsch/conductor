@@ -16,7 +16,7 @@
   const PORT = 8765;
   const VOL_KEY = "conductor01.volume";
 
-  let ws = null, wait = 3000, timer = 0, lastPin = "", lastRemotes = 0;
+  let ws = null, wait = 1500, timer = 0, lastPin = "", lastRemotes = 0;
   let info = null;            // dernières infos du relais (code, clé, adresses, téléphones)
 
   function flash(text, ms) {
@@ -200,6 +200,30 @@
     Store.update(a.id, { thoughts: list.length ? list : null });
   }
 
+  // ---------- Collection (tri et filtres sur le téléphone) ----------
+  // Fiche légère de chaque album, sans pochette : le téléphone trie et filtre lui-même, avec les règles
+  // de js/collection-core.js (le même fichier que la page collection du PC). ~250 octets par album.
+
+  let colSent = "", colTimer = 0;
+  function sendCollection(force) {
+    if (!(ws && ws.readyState === 1) || !lastRemotes || typeof Store === "undefined" || typeof CollectionCore === "undefined") return;
+    const C = CollectionCore;
+    const items = Store.all().map(a => ({
+      id: a.id, title: a.title || "", artist: a.artist || "", genre: a.genre || "",
+      familyName: a.genre ? C.familyName(a) : "", aggressivity: a.aggressivity || 0,
+      year: C.yearOf(a) || null, addedAt: C.addedAt(a), duration: C.durationOf(a) || 0,
+      playCount: C.playCount(a), lastPlay: C.lastPlay(a),
+      // Pour la recherche (mêmes champs que la page collection du PC)
+      label: a.label || "", styles: a.styles || [], keywords: a.keywords || [], moods: a.moods || [], tags: a.tags || []
+    }));
+    const json = JSON.stringify(items);
+    if (json === colSent && !force) return;
+    colSent = json;
+    ws.send('{"type":"collection","items":' + json + "}");
+  }
+  // Une écoute, une fiche modifiée… : renvoyée (regroupé, au plus toutes les 2 s)
+  document.addEventListener("albums:changed", () => { clearTimeout(colTimer); colTimer = setTimeout(sendCollection, 2000); });
+
   // ---------- Catalogue : recherche dans la collection ----------
   // Un seul champ : titre, artiste, genre, styles, ressenti, famille, label, année, tags.
   // Tous les mots doivent être trouvés (« radiohead 1997 », « jazz modal »).
@@ -276,7 +300,7 @@
     clearTimeout(timer);
     try { ws = new WebSocket("ws://127.0.0.1:" + PORT + "/ws?role=host"); }
     catch (e) { retry(); return; }
-    ws.onopen = () => { wait = 3000; lyKey = ""; queueSent = ""; thSent = ""; send(); };
+    ws.onopen = () => { wait = 1500; lyKey = ""; queueSent = ""; thSent = ""; colSent = ""; send(); };
     ws.onmessage = e => {
       let m = null;
       try { m = JSON.parse(e.data); } catch (err) { return; }
@@ -288,7 +312,7 @@
         const more = n > lastRemotes;
         lastPin = m.pin;
         lastRemotes = n;
-        if (more) { sendLyrics(true); sendQueue(true); sendThoughts(true); }   // nouveau téléphone : paroles, file, thoughts
+        if (more) { sendLyrics(true); sendQueue(true); sendThoughts(true); sendCollection(true); }   // nouveau téléphone : paroles, file, thoughts
         info = m;
         renderPanel();
       }
@@ -299,8 +323,12 @@
   function retry() {
     clearTimeout(timer);
     timer = setTimeout(connect, wait);
-    wait = Math.min(wait * 1.6, 30000);
+    wait = Math.min(wait * 1.6, 10000);   // relais redémarré : conductor. le retrouve en 10 s au plus
   }
+  // Retour sur conductor. (fenêtre, onglet) : nouvel essai tout de suite si le relais était perdu
+  const soon = () => { if (!ws) { clearTimeout(timer); wait = 1500; connect(); } };
+  window.addEventListener("focus", soon);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) soon(); });
 
   // ---------- Fenêtre « Télécommande » ----------
 
@@ -321,7 +349,7 @@
     }
     addrIndex = -1;   // à chaque ouverture : Tailscale (s'il est là)
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "info" }));
-    else { clearTimeout(timer); wait = 3000; connect(); }
+    else { clearTimeout(timer); wait = 1500; connect(); }
     renderPanel();
     if (!dlg.open) dlg.showModal();
   }
@@ -367,7 +395,11 @@
     if (!list.length) {
       body.append(el("p", "rm-lead", "Ce PC n'est relié à aucun réseau (wifi, partage de connexion ou Tailscale)."));
     } else {
-      if (addrIndex < 0) addrIndex = Math.max(0, list.findIndex(x => x.tailscale));
+      // Par défaut : le point d'accès du PC s'il est allumé (on l'allume justement pour ça, sans internet), sinon Tailscale
+      if (addrIndex < 0) {
+        const h = list.findIndex(x => x.hotspot);
+        addrIndex = h >= 0 ? h : Math.max(0, list.findIndex(x => x.tailscale));
+      }
       addrIndex = Math.min(addrIndex, list.length - 1);
       const a = list[addrIndex];
       const url = a.url + "/#k=" + info.key;
@@ -388,7 +420,9 @@
       const line = el("p", "rm-url");
       line.append(el("code", null, a.url), document.createTextNode("  ·  code "), el("b", null, info.pin));
       body.append(line);
-      body.append(el("p", "hint", a.tailscale
+      body.append(el("p", "hint", a.hotspot
+        ? "Point d'accès du PC : connectez le téléphone à ce wifi (fonctionne sans internet). Adresse différente : appairez avec ce QR code et ajoutez une 2e icône à l'écran d'accueil."
+        : a.tailscale
         ? "Tailscale : le téléphone peut être en 4G ou sur n'importe quel wifi (appli Tailscale activée, même compte)."
         : "Le téléphone doit être sur le même réseau que le PC. En 4G ou ailleurs : Tailscale (voir le manuel)."));
     }

@@ -50,7 +50,8 @@ Comme `daily-tel-usb.md` : câble, **Modem USB**, widget **conductor** sur le t�
 sur le PC. Pour arrêter : fermez conductor., widget **conductor-stop**, débranchez.
 
 **Télécommande** : `tools/remote/start-remote.sh` (Node.js), puis `Alt + R` pour le QR code ;
-le volume du PC passe par `pactl` (ou `amixer`). Détails dans `telecommande.md`.
+le volume du PC passe par `pactl` (ou `amixer`). Sans wifi : `tools/remote/point-acces.sh` (NetworkManager)
+crée un wifi « conductor » pour le téléphone (`http://10.42.0.1:8765`). Détails dans `telecommande.md`.
 
 ## 4. Envoyer de la musique vers le téléphone
 

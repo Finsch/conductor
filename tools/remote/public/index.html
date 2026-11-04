@@ -57,6 +57,11 @@
   .top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-height: 28px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
   .dot.is-on { background: var(--ok); }
+  /* Connexion perdue : dernier état affiché en retrait, le temps de la reconnexion */
+  .stage, .meta, .progress, .controls { transition: opacity 0.3s; }
+  body.is-stale .stage, body.is-stale .meta, body.is-stale .progress, body.is-stale .controls { opacity: 0.45; }
+  body.is-stale .dot { animation: dot-wait 1.2s ease-in-out infinite; }
+  @keyframes dot-wait { 50% { opacity: 0.3; } }
   .brand { font-weight: 700; color: var(--text); }
   .top .grow { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); }
@@ -213,7 +218,46 @@
     -webkit-user-select: text; user-select: text;
   }
   .cat-input:focus { border-color: var(--muted); }
-  .cat-status { margin: 4px 20px 6px; font-size: 12px; color: var(--muted); }
+
+  /* Collection : tri et filtres (intensité, décennies, genres), sans pochettes */
+  .cl-bar { display: flex; align-items: center; gap: 8px; padding: 0 20px 10px; }
+  .cl-sort {
+    flex: 1; min-width: 0; height: 38px; padding: 0 10px;
+    font: inherit; font-size: 16px; color: var(--text);
+    background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 10px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .cl-ftoggle { height: 38px; padding: 0 14px; font-size: 14px; color: var(--text); border: 1px solid var(--line); border-radius: 10px; flex: none; }
+  .cl-ftoggle.is-on { background: rgba(255, 255, 255, 0.12); }
+  .cl-fcount { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; font-size: 11px; font-weight: 700; line-height: 18px; color: #161616; background: var(--text); border-radius: 999px; }
+  .cl-filters { padding: 2px 20px 8px; }
+  .cl-filters[hidden] { display: none; }
+  .cl-group { margin: 0 0 14px; }
+  .cl-label { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #8b9096; }
+  .cl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cl-chip {
+    min-width: 38px; height: 34px; padding: 0 10px; font-size: 14px; color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px; font-variant-numeric: tabular-nums;
+  }
+  .cl-chip small { margin-left: 5px; font-size: 11px; color: var(--muted); }
+  .cl-chip.is-on { color: #161616; background: var(--text); border-color: var(--text); }
+  .cl-chip.is-on small { color: #555; }
+  .cl-chip:disabled { opacity: 0.3; }
+  .cl-fam { border-top: 1px solid var(--line); }
+  .cl-fam-head { display: flex; align-items: center; min-height: 44px; }
+  .cl-fam-pick { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 44px; text-align: left; font-size: 15px; color: var(--text); }
+  .cl-fam-pick:disabled { opacity: 0.35; }
+  .cl-box { width: 20px; height: 20px; flex: none; border: 1.5px solid var(--muted); border-radius: 5px; display: grid; place-items: center; font-size: 13px; font-weight: 700; line-height: 1; color: #161616; }
+  .cl-box.is-on { background: var(--text); border-color: var(--text); }
+  .cl-box.is-part { background: var(--muted); border-color: var(--muted); }
+  .cl-n { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cl-chev { width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); font-size: 18px; transition: transform 0.15s; flex: none; }
+  .cl-fam.is-open .cl-chev { transform: rotate(90deg); }
+  .cl-fam-genres { padding: 0 0 12px 30px; }
+  .cl-reset { font-size: 13px; color: var(--muted); text-decoration: underline; padding: 4px 0; }
+  .cl-status { display: flex; align-items: baseline; justify-content: space-between; margin: 0 20px 4px; font-size: 12px; color: var(--muted); }
+  .cl-row { padding-left: 20px; }
+  .cl-more { display: block; margin: 12px auto 4px; padding: 9px 18px; font-size: 14px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
 
   /* Réglette du volume pendant le geste */
   .osd {
@@ -309,22 +353,32 @@
 </head>
 <body>
 <div class="bg" id="bg"></div>
-<!-- Catalogue : recherche dans la collection -->
-<div class="sheet" id="cat-sheet" aria-hidden="true">
-  <div class="sheet-panel cat-panel" role="dialog" aria-label="Catalogue">
+<!-- Collection : tri et filtres -->
+<div class="sheet" id="cl-sheet" aria-hidden="true">
+  <div class="sheet-panel cat-panel" role="dialog" aria-label="Collection">
     <div class="sheet-grab"></div>
     <div class="sheet-head">
-      <h2 class="sheet-title">catalogue</h2>
-      <button class="icon-btn" id="cat-close" aria-label="Fermer">
+      <h2 class="sheet-title">collection</h2>
+      <button class="icon-btn" id="cl-close" aria-label="Fermer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
       </button>
     </div>
     <div class="cat-search">
-      <input class="cat-input" id="cat-input" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Album, artiste, genre, année…">
+      <input class="cat-input" id="cl-q" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Rechercher : album, artiste, genre, style…">
     </div>
-    <p class="cat-status" id="cat-status"></p>
-    <div class="sheet-body">
-      <ul class="q-list" id="cat-list"></ul>
+    <div class="cl-bar">
+      <select class="cl-sort" id="cl-sort" aria-label="Trier"></select>
+      <button class="cl-ftoggle" id="cl-ftoggle" aria-expanded="false">filtres<span class="cl-fcount" id="cl-fcount" hidden></span></button>
+    </div>
+    <div class="sheet-body" id="cl-body">
+      <div class="cl-filters" id="cl-filters" hidden>
+        <div class="cl-group"><p class="cl-label">Intensité</p><div class="cl-chips" id="cl-int"></div></div>
+        <div class="cl-group"><p class="cl-label">Décennies</p><div class="cl-chips" id="cl-dec"></div></div>
+        <div class="cl-group"><p class="cl-label">Genres</p><div id="cl-gen"></div></div>
+      </div>
+      <p class="cl-status"><span id="cl-count"></span><button class="cl-reset" id="cl-reset" hidden>Réinitialiser</button></p>
+      <ul class="q-list" id="cl-list"></ul>
+      <button class="cl-more" id="cl-more" hidden>Afficher plus</button>
     </div>
   </div>
 </div>
@@ -375,8 +429,8 @@
   <header class="top">
     <span class="dot" id="dot"></span>
     <span class="grow"><span class="brand">conductor.</span> <span id="where">connexion…</span></span>
-    <button class="icon-btn" id="cat-btn" title="Catalogue" aria-label="Catalogue : rechercher un album" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+    <button class="icon-btn" id="cl-btn" title="Collection" aria-label="Collection : trier et filtrer" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>
     </button>
     <button class="icon-btn q-btn" id="q-btn" title="File d'attente" aria-label="File d'attente" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h12M4 11.5h12M4 16.5h7"/><path d="M15.5 14.5v6l5-3z" fill="currentColor" stroke="none"/></svg>
@@ -461,6 +515,7 @@
   </main>
 </div>
 
+<script src="/collection-core.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -485,60 +540,170 @@
   function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} }
 
   // ---------- Connexion ----------
+  // Robuste : 1) les adresses du PC (wifi, Tailscale, point d'accès) sont mémorisées ; si celle de la page
+  // ne répond plus, on essaie les autres en parallèle (ex. icône « wifi » ouverte en 4G : bascule sur Tailscale).
+  // 2) Connexion « fantôme » (réseau changé, téléphone sorti de veille) : plus aucun message depuis 7 s → on
+  // la remplace. 3) Commandes faites pendant la coupure : gardées 8 s et envoyées à la reconnexion.
+
+  const ADDRS_KEY = "conductor-remote-addrs";
+  let base = "";               // "" : l'adresse de la page ; sinon http://autre-adresse:port
+  let authed = false, lastRx = 0, deadline = 0, attempt = null;
+  const offline = [];          // commandes faites hors connexion : { name, value, at }
+
+  function savedAddrs() {
+    try { return JSON.parse(localStorage.getItem(ADDRS_KEY) || "[]").filter(u => typeof u === "string"); } catch (e) { return []; }
+  }
+  function candidates() {
+    const own = location.origin;
+    // Sans jeton (appairage), seulement l'adresse de la page
+    if (!token) return [own];
+    return [own, ...savedAddrs().filter(u => u !== own && !/\/\/(127\.|localhost)/.test(u))];
+  }
+  function via(url) {
+    const h = (/\/\/([^:/]+)/.exec(url) || [])[1] || "";
+    const [x, y, z] = h.split(".").map(Number);
+    return x === 100 && y >= 64 && y <= 127 ? "Tailscale" : (x === 192 && y === 168 && z === 137) || (x === 10 && y === 42) ? "point d'accès" : "";
+  }
+  const abs = path => path ? base + path : "";
 
   function setOnline(on, text) {
     $("dot").classList.toggle("is-on", !!on);
     $("where").textContent = text || "";
   }
+  function setStale(on) { document.body.classList.toggle("is-stale", !!on); }
 
   function connect() {
-    rtts.length = 0;
     clearTimeout(retryTimer);
-    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
-    setOnline(false, "connexion…");
-    try { ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"); }
-    catch (e) { schedule(); return; }
-    ws.onopen = () => {
-      retry = 0;
-      if (token) ws.send(JSON.stringify({ type: "hello", token }));
-      else if (QR_KEY) ws.send(JSON.stringify({ type: "pair", key: QR_KEY, device }));
-      else showPair();
+    if ((ws && ws.readyState <= 1) || attempt) return;
+    rtts.length = 0;
+    if (!navigator.onLine) { setOnline(false, "pas de réseau sur le téléphone"); schedule(); return; }
+    setOnline(false, retry ? "reconnexion…" : "connexion…");
+    const urls = candidates();
+    const socks = [];
+    const me = attempt = { done: false };
+    const finish = winner => {
+      me.done = true;
+      clearTimeout(me.timer);
+      clearTimeout(me.stagger);
+      socks.forEach(o => { if (o.sock !== winner) { o.sock.onopen = o.sock.onclose = null; try { o.sock.close(); } catch (e) {} } });
+      if (attempt === me) attempt = null;
     };
-    ws.onmessage = e => {
+    const tryUrl = url => {
+      if (me.done) return;
+      let sock;
+      try { sock = new WebSocket(url.replace(/^http/, "ws") + "/ws"); } catch (e) { return; }
+      socks.push({ sock, url });
+      sock.onopen = () => { if (me.done) return; finish(sock); adopt(sock, url); };
+      sock.onerror = () => {};
+      sock.onclose = () => {
+        if (me.done) return;
+        if (urls.length === socks.length && socks.every(o => o.sock.readyState === 3)) { finish(null); fail(); }
+      };
+    };
+    tryUrl(urls[0]);
+    // Les autres adresses un peu après : l'adresse de la page gagne quand elle répond
+    me.stagger = setTimeout(() => urls.slice(1).forEach(tryUrl), 700);
+    // Une adresse injoignable peut ne jamais répondre : abandon au bout de 5 s
+    me.timer = setTimeout(() => { if (!me.done) { finish(null); fail(); } }, 5000);
+  }
+  function fail() {
+    setOnline(false, navigator.onLine ? "PC injoignable · nouvel essai…" : "pas de réseau sur le téléphone");
+    setStale(true);
+    schedule();
+  }
+
+  function adopt(sock, url) {
+    ws = sock;
+    base = url === location.origin ? "" : url;
+    retry = 0;
+    authed = false;
+    lastRx = performance.now();
+    deadline = lastRx + 7000;
+    sock.onmessage = e => {
+      lastRx = performance.now();
+      deadline = lastRx + 7000;
       let m = null;
       try { m = JSON.parse(e.data); } catch (err) { return; }
-      if (m.type === "need-pin") {
-        token = "";
-        try { localStorage.removeItem(TOKEN_KEY); } catch (err) {}
-        if (QR_KEY && !triedKey) { triedKey = true; ws.send(JSON.stringify({ type: "pair", key: QR_KEY, device })); }
-        else showPair();
-      }
-      else if (m.type === "paired") { token = m.token; try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {} showRemote(); vibrate(20); }
-      else if (m.type === "welcome") showRemote();
-      else if (m.type === "pair-error") { showPair(); $("pair-err").textContent = m.reason || "Code refusé."; $("pin").select(); vibrate(60); }
-      else if (m.type === "state") {
-        msg = m;
-        receivedAt = performance.now();
-        if (m.state && m.state.playing) m.state.time = (m.state.time || 0) + latency();   // compensation du trajet réseau
-        render();
-      }
-      else if (m.type === "time") syncTime(m.time);
-      else if (m.type === "pong") { const rtt = performance.now() - m.c; if (rtt >= 0 && rtt < 3000) { rtts.push(rtt); if (rtts.length > 7) rtts.shift(); } }
-      else if (m.type === "lyrics") { lyrics = m.lyrics || null; renderLyrics(); }
-      else if (m.type === "queue") { queue = Array.isArray(m.queue) ? m.queue : []; renderQueue(); }
-      else if (m.type === "thoughts") { thoughts = m.thoughts || null; renderThoughts(); }
-      else if (m.type === "results") showResults(m);
+      onMsg(m);
     };
-    ws.onclose = () => { setOnline(false, "PC injoignable · nouvel essai…"); schedule(); };
-    ws.onerror = () => {};
+    sock.onclose = () => { if (ws === sock) drop(); };
+    if (token) sock.send(JSON.stringify({ type: "hello", token }));
+    else if (QR_KEY) sock.send(JSON.stringify({ type: "pair", key: QR_KEY, device }));
+    else showPair();
   }
+
+  // Abandonne la connexion en cours (sans attendre sa fermeture propre, qui peut prendre une minute)
+  function drop() {
+    const old = ws;
+    ws = null;
+    authed = false;
+    if (old) { old.onmessage = old.onclose = null; try { old.close(); } catch (e) {} }
+    if (msg && msg.state) { msg.state.time = position(); receivedAt = performance.now(); }
+    setStale(true);
+    setOnline(false, "reconnexion…");
+    schedule();
+  }
+
+  function welcomed(m) {
+    authed = true;
+    setStale(false);
+    if (Array.isArray(m.addrs) && m.addrs.length) { try { localStorage.setItem(ADDRS_KEY, JSON.stringify(m.addrs)); } catch (e) {} }
+    // Commandes faites pendant la coupure (récentes seulement)
+    const now = Date.now();
+    offline.splice(0).forEach(c => { if (now - c.at < 8000) ws.send(JSON.stringify({ type: "cmd", name: c.name, value: c.value })); });
+  }
+
+  function onMsg(m) {
+    if (m.type === "need-pin") {
+      token = "";
+      try { localStorage.removeItem(TOKEN_KEY); } catch (err) {}
+      if (QR_KEY && !triedKey) { triedKey = true; ws.send(JSON.stringify({ type: "pair", key: QR_KEY, device })); }
+      else showPair();
+    }
+    else if (m.type === "paired") { token = m.token; try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {} welcomed(m); showRemote(); vibrate(20); }
+    else if (m.type === "welcome") { welcomed(m); showRemote(); }
+    else if (m.type === "pair-error") { showPair(); $("pair-err").textContent = m.reason || "Code refusé."; $("pin").select(); vibrate(60); }
+    else if (m.type === "state") {
+      msg = m;
+      receivedAt = performance.now();
+      if (m.state && m.state.playing) m.state.time = (m.state.time || 0) + latency();   // compensation du trajet réseau
+      render();
+    }
+    else if (m.type === "time") syncTime(m.time);
+    else if (m.type === "pong") { const rtt = performance.now() - m.c; if (rtt >= 0 && rtt < 3000) { rtts.push(rtt); if (rtts.length > 7) rtts.shift(); } }
+    else if (m.type === "lyrics") { lyrics = m.lyrics || null; renderLyrics(); }
+    else if (m.type === "queue") { queue = Array.isArray(m.queue) ? m.queue : []; renderQueue(); }
+    else if (m.type === "thoughts") { thoughts = m.thoughts || null; renderThoughts(); }
+    else if (m.type === "collection") { collection = Array.isArray(m.items) ? m.items : []; renderCollection(); }
+  }
+
   function schedule() {
     clearTimeout(retryTimer);
     retry = Math.min(retry + 1, 6);
-    retryTimer = setTimeout(connect, [0, 800, 1500, 2500, 4000, 6000, 10000][retry]);
+    retryTimer = setTimeout(connect, [0, 500, 1000, 2000, 3000, 4000, 5000][retry]);
   }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { retry = 0; connect(); } });
-  window.addEventListener("online", () => { retry = 0; connect(); });
+  function reconnectNow() { retry = 0; connect(); }
+
+  // Chien de garde : la connexion se tait (réseau changé, PC en veille…) → on la remplace
+  setInterval(() => {
+    if (!ws || ws.readyState !== 1 || document.hidden) return;
+    if (performance.now() > deadline) drop();
+  }, 1000);
+
+  // Retour sur la page / écran rallumé : la connexion a souvent été coupée sans prévenir. Un ping ;
+  // sans réponse en 2,5 s, on reconnecte.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (ws && ws.readyState === 1) {
+      deadline = Math.min(deadline, performance.now() + 2500);
+      try { ws.send(JSON.stringify({ type: "ping", c: performance.now() })); } catch (e) { drop(); }
+    } else reconnectNow();
+  });
+  window.addEventListener("online", reconnectNow);
+  window.addEventListener("offline", () => { if (!ws) setOnline(false, "pas de réseau sur le téléphone"); });
+  window.addEventListener("pageshow", e => { if (e.persisted) reconnectNow(); });
+  // Toucher l'état (en haut) : nouvel essai immédiat
+  $("where").parentElement.addEventListener("click", () => { if (!authed) { vibrate(); reconnectNow(); } });
 
   // ---------- Horloge : position précise pour les paroles ----------
   // Le PC envoie sa position chaque seconde ; on y ajoute la moitié du temps d'aller-retour
@@ -563,7 +728,11 @@
   }
 
   function send(name, value) {
-    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "cmd", name, value }));
+    if (ws && ws.readyState === 1 && authed) { ws.send(JSON.stringify({ type: "cmd", name, value })); return; }
+    // Hors connexion : gardée pour la reconnexion (8 s maximum)
+    offline.push({ name, value, at: Date.now() });
+    if (offline.length > 20) offline.shift();
+    reconnectNow();
   }
 
   // ---------- Appairage ----------
@@ -573,7 +742,7 @@
     $("remote").hidden = true;
     $("forget").hidden = true;
     $("q-btn").hidden = true;
-    $("cat-btn").hidden = true;
+    $("cl-btn").hidden = true;
     setOnline(true, "appairage");
     setTimeout(() => $("pin").focus(), 50);
   }
@@ -582,7 +751,7 @@
     $("remote").hidden = false;
     $("forget").hidden = false;
     $("q-btn").hidden = false;
-    $("cat-btn").hidden = false;
+    $("cl-btn").hidden = !window.CollectionCore;
     installHint();
   }
 
@@ -627,14 +796,17 @@
   function position() {
     const st = msg && msg.state;
     if (!st) return 0;
-    const t = (st.time || 0) + (st.playing ? (performance.now() - receivedAt) / 1000 : 0);
+    const t = (st.time || 0) + (st.playing && authed ? (performance.now() - receivedAt) / 1000 : 0);
     return st.duration ? Math.min(t, st.duration) : t;
   }
 
   function render() {
     const m = msg || {};
     const st = m.state;
-    setOnline(!!m.host, m.host ? "· " + (m.hostname || "PC") : "· conductor. fermé sur le PC");
+    if (authed) {
+      const v = via(base || location.origin);
+      setOnline(!!m.host, m.host ? "· " + (m.hostname || "PC") + (v ? " · via " + v : "") : "· conductor. fermé sur le PC");
+    }
     const notice = !m.host ? "Ouvrez conductor. sur le PC (le relais tourne, mais l'appli n'est pas ouverte)."
       : !st ? "Rien en lecture. Lancez un album sur le PC." : "";
     $("notice").textContent = notice;
@@ -651,7 +823,7 @@
     $("star").setAttribute("aria-pressed", String(!!(st && st.starred)));
     $("star").disabled = !st;
 
-    const url = m.cover && token ? m.cover + "&t=" + encodeURIComponent(token) : "";
+    const url = m.cover && token ? abs(m.cover) + "&t=" + encodeURIComponent(token) : "";
     if (url !== coverUrl) {
       coverUrl = url;
       $("cover").style.backgroundImage = url ? "url('" + url + "')" : "";
@@ -768,7 +940,66 @@
     try { localStorage.setItem(LYR_KEY, on ? "1" : "0"); } catch (e) {}
     renderLyrics();
     renderVols();
+    keepAwake(on);
   }
+
+  // ---------- Écran allumé pendant les paroles ----------
+  // Wake Lock API quand le navigateur l'offre (HTTPS seulement) ; sinon, comme NoSleep.js : une vidéo noire
+  // minuscule avec une piste son silencieuse, NON coupée (iOS ne garde l'écran allumé que pour un média
+  // « avec du son »), relancée toutes les demi-secondes pour ne jamais finir.
+
+  const NOSLEEP_MP4 = "data:video/mp4;base64,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";
+  let awakeWanted = false, wakeLock = null, nsVideo = null;
+  async function keepAwake(on) {
+    awakeWanted = on;
+    if (!on) {
+      if (wakeLock) { try { await wakeLock.release(); } catch (e) {} wakeLock = null; }
+      if (nsVideo) nsVideo.pause();
+      return;
+    }
+    if (document.visibilityState !== "visible") return;
+    if ("wakeLock" in navigator && window.isSecureContext) {
+      try {
+        if (!wakeLock) {
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => { wakeLock = null; });
+        }
+        return;
+      } catch (e) { /* refusé : on passe à la vidéo */ }
+    }
+    nsCreate();
+    if (nsVideo.paused) nsVideo.play().catch(() => {});
+  }
+  function nsCreate() {
+    if (!nsVideo) {
+      nsVideo = document.createElement("video");
+      nsVideo.setAttribute("playsinline", "");
+      nsVideo.setAttribute("title", "conductor.");
+      nsVideo.setAttribute("aria-hidden", "true");
+      // Android (Chrome) ne garde l'écran allumé que pour une vidéo visible et assez grande : en plein
+      // écran, derrière tout, quasi transparente. iPhone : un pixel suffit.
+      nsVideo.style.cssText = /Android/.test(navigator.userAgent)
+        ? "position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;opacity:0.01;pointer-events:none;z-index:-1;"
+        : "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
+      nsVideo.src = NOSLEEP_MP4;
+      // Jamais jusqu'au bout : une vidéo terminée (ou qui boucle) laisse iOS se mettre en veille
+      nsVideo.addEventListener("timeupdate", () => { if (nsVideo.currentTime > 0.5) nsVideo.currentTime = Math.random() * 0.4; });
+      document.body.appendChild(nsVideo);
+    }
+  }
+  // Retour sur la page (écran rallumé, autre appli) : le verrou est perdu, on le reprend
+  document.addEventListener("visibilitychange", () => { if (awakeWanted && document.visibilityState === "visible") keepAwake(true); });
+  // Une vidéo avec du son ne démarre qu'après un toucher. Ouvrir les paroles (bouton micro) en est un ;
+  // si elles étaient restées affichées au chargement, le premier toucher, n'importe où, la lance. Ensuite,
+  // iOS la laisse repartir seule (retour sur la page, écran rallumé). Paroles fermées : rien ne joue, la
+  // musique d'une autre appli du téléphone n'est pas interrompue.
+  function nsGesture() {
+    if (!awakeWanted || wakeLock) return;
+    nsCreate();
+    if (nsVideo.paused) nsVideo.play().catch(() => {});
+  }
+  for (const ev of ["touchend", "click"]) document.addEventListener(ev, nsGesture, { capture: true, passive: true });
+  if (lyOn) keepAwake(true);   // paroles restées affichées depuis la dernière fois
   $("lyr-btn").addEventListener("click", () => { vibrate(); setLyrics(!lyOn); });
 
   function lineAt(lines, t) {
@@ -858,7 +1089,7 @@
   const ROW_H = 64;
   const ICON_Q_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
   const ICON_Q_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
-  const coverUrl2 = path => path && token ? path + "&t=" + encodeURIComponent(token) : "";
+  const coverUrl2 = path => path && token ? abs(path) + "&t=" + encodeURIComponent(token) : "";
 
   function openSheet(on) {
     $("sheet").classList.toggle("is-open", on);
@@ -966,66 +1197,166 @@
     window.addEventListener("pointercancel", up);
   }
 
-  // ---------- Catalogue (recherche dans la collection) ----------
-  // Un seul champ : titre, artiste, genre, styles, ressenti, label, année… Tous les mots
-  // doivent correspondre. ▶ lance l'album (la file est gardée), ≡+ l'ajoute à la file.
+  // ---------- Collection (tri et filtres, sans pochettes) ----------
+  // Fiches légères envoyées par le PC ; tri et filtres faits ici, avec js/collection-core.js
+  // (le même fichier que la page collection du PC, servi par le relais).
 
-  const catInput = $("cat-input");
-  let catSeq = 0, catTimer = 0;
-  const ICON_CAT_QUEUE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h12M4 11.5h12M4 16.5h7"/><path d="M17.5 14v6M14.5 17h6"/></svg>';
-
-  function openCatalog(on) {
-    $("cat-sheet").classList.toggle("is-open", on);
-    $("cat-sheet").setAttribute("aria-hidden", String(!on));
-    if (on) setTimeout(() => { catInput.focus(); catInput.select(); }, 250);
-    else catInput.blur();
+  const CL_KEY = "conductor-remote-collection";
+  const CL_PAGE = 80;
+  let collection = null;
+  const cl = { q: "", sort: "added-desc", intensities: new Set(), decades: new Set(), genres: new Set(), open: new Set(), filtersOpen: false, shown: CL_PAGE };
+  try {
+    const sv = JSON.parse(localStorage.getItem(CL_KEY) || "{}");
+    if (typeof sv.sort === "string") cl.sort = sv.sort;
+    (sv.intensities || []).forEach(n => cl.intensities.add(n));
+    (sv.decades || []).forEach(d => cl.decades.add(d));
+    (sv.genres || []).forEach(k => cl.genres.add(k));
+    (sv.open || []).forEach(f => cl.open.add(f));
+  } catch (e) {}
+  function clSave() {
+    try {
+      localStorage.setItem(CL_KEY, JSON.stringify({ sort: cl.sort, intensities: [...cl.intensities], decades: [...cl.decades],
+        genres: [...cl.genres], open: [...cl.open] }));
+    } catch (e) {}
   }
-  $("cat-btn").addEventListener("click", () => { vibrate(); openCatalog(true); });
-  $("cat-close").addEventListener("click", () => openCatalog(false));
-  $("cat-sheet").addEventListener("click", e => { if (e.target === $("cat-sheet")) openCatalog(false); });
 
-  function runSearch() {
-    const q = catInput.value.trim();
-    if (!q) { $("cat-list").replaceChildren(); $("cat-status").textContent = ""; return; }
-    $("cat-status").textContent = "recherche…";
-    send("search", { q, id: ++catSeq });
+  const Core = window.CollectionCore;
+  if (Core) {
+    if (!Core.SORTS.some(x => x.id === cl.sort)) cl.sort = "added-desc";
+    $("cl-sort").replaceChildren(...Core.SORTS.map(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.label; return o; }));
+    $("cl-sort").value = cl.sort;
   }
-  catInput.addEventListener("input", () => { clearTimeout(catTimer); catTimer = setTimeout(runSearch, 220); });
-  catInput.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); clearTimeout(catTimer); runSearch(); catInput.blur(); } });
 
-  function showResults(m) {
-    if (m.id !== catSeq) return;   // réponse d'une recherche plus ancienne
-    const items = m.items || [];
-    $("cat-status").textContent = items.length ? items.length + (items.length >= 40 ? "+" : "") + " album" + (items.length > 1 ? "s" : "")
-      : "Aucun album ne correspond à « " + m.q + " ».";
-    $("cat-list").replaceChildren(...items.map(item => {
-      const li = document.createElement("li");
-      li.className = "q-row";
-      const cover = document.createElement("span");
-      cover.className = "q-cover";
-      const url = coverUrl2(item.cover);
-      if (url) cover.style.backgroundImage = "url('" + url + "')";
-      const text = document.createElement("div");
-      text.className = "q-text";
-      const t = document.createElement("p"); t.className = "q-title"; t.textContent = item.title;
-      const a = document.createElement("p"); a.className = "q-artist";
-      a.append(document.createTextNode(item.artist + (item.year ? " · " + item.year : "")));
-      text.append(t, a);
-      const play = document.createElement("button");
-      play.className = "q-act"; play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer " + item.title);
-      play.addEventListener("click", () => { vibrate(15); send("playAlbum", { id: item.id }); openCatalog(false); });
-      const queueBtn = document.createElement("button");
-      queueBtn.className = "q-act"; queueBtn.innerHTML = ICON_CAT_QUEUE; queueBtn.setAttribute("aria-label", "Ajouter " + item.title + " à la file");
-      queueBtn.addEventListener("click", () => {
+  function openCollection(on) {
+    $("cl-sheet").classList.toggle("is-open", on);
+    $("cl-sheet").setAttribute("aria-hidden", String(!on));
+    if (on) { cl.shown = CL_PAGE; renderCollection(); }
+  }
+  $("cl-btn").addEventListener("click", () => { vibrate(); openCollection(true); });
+  $("cl-close").addEventListener("click", () => openCollection(false));
+  $("cl-sheet").addEventListener("click", e => { if (e.target === $("cl-sheet")) openCollection(false); });
+  $("cl-sort").addEventListener("change", () => { cl.sort = $("cl-sort").value; cl.shown = CL_PAGE; clSave(); renderCollection(); $("cl-body").scrollTop = 0; });
+  $("cl-ftoggle").addEventListener("click", () => { cl.filtersOpen = !cl.filtersOpen; renderCollection(); });
+  $("cl-reset").addEventListener("click", () => {
+    vibrate();
+    cl.intensities.clear(); cl.decades.clear(); cl.genres.clear(); cl.open.clear();
+    cl.shown = CL_PAGE; clSave(); renderCollection();
+  });
+  $("cl-more").addEventListener("click", () => { cl.shown += CL_PAGE; renderCollection(); });
+  // Recherche : mêmes règles que la page collection du PC (« + » = et, « / » = ou)
+  let clTimer = 0;
+  $("cl-q").addEventListener("input", () => {
+    clearTimeout(clTimer);
+    clTimer = setTimeout(() => { cl.q = $("cl-q").value; cl.shown = CL_PAGE; renderCollection(); $("cl-body").scrollTop = 0; }, 150);
+  });
+  $("cl-q").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("cl-q").blur(); } });
+
+  function clToggle(set, v) { set.has(v) ? set.delete(v) : set.add(v); cl.shown = CL_PAGE; clSave(); vibrate(6); renderCollection(); }
+
+  const clEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  function clChip(label, n, on, onClick) {
+    const b = clEl("button", "cl-chip" + (on ? " is-on" : ""), label);
+    b.appendChild(clEl("small", null, String(n)));
+    b.disabled = !n && !on;
+    b.setAttribute("aria-pressed", String(on));
+    b.addEventListener("click", onClick);
+    return b;
+  }
+  const fmtMin = sec => { const m = Math.round(sec / 60); return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min"; };
+  // Une info de plus selon le tri choisi
+  function clExtra(a) {
+    if (/^aggro/.test(cl.sort)) return a.aggressivity ? a.aggressivity + "/10" : "";
+    if (/^length/.test(cl.sort)) return a.duration ? fmtMin(a.duration) : "";
+    if (/^plays/.test(cl.sort)) return a.playCount + " écoute" + (a.playCount > 1 ? "s" : "");
+    return "";
+  }
+
+  function renderCollection() {
+    if (!Core || !$("cl-sheet").classList.contains("is-open")) return;
+    const all = collection || [];
+    const q = Core.normalize(cl.q.trim());
+    const base = q ? all.filter(a => Core.matchesSearch(a, q)) : all;
+    const match = (a, skip) => Core.matches(a, cl, skip);
+    const fc = Core.facets(all, base, match);
+    const nf = cl.intensities.size + cl.decades.size + cl.genres.size;
+    $("cl-fcount").hidden = !nf;
+    $("cl-fcount").textContent = String(nf);
+    $("cl-ftoggle").classList.toggle("is-on", cl.filtersOpen);
+    $("cl-ftoggle").setAttribute("aria-expanded", String(cl.filtersOpen));
+    $("cl-reset").hidden = !nf;
+    $("cl-filters").hidden = !cl.filtersOpen;
+
+    if (cl.filtersOpen) {
+      $("cl-int").replaceChildren(...Core.INTENSITIES.map(n =>
+        clChip(String(n), fc.intensities.get(n) || 0, cl.intensities.has(n), () => clToggle(cl.intensities, n))));
+      $("cl-dec").replaceChildren(...fc.decadeList.map(d =>
+        clChip(Core.decadeLabel(d), fc.decades.get(d) || 0, cl.decades.has(d), () => clToggle(cl.decades, d))));
+      $("cl-gen").replaceChildren(...fc.families.map(({ name, keys, total }) => {
+        const open = cl.open.has(name);
+        const picked = keys.filter(k => cl.genres.has(k)).length;
+        const box = clEl("div", "cl-fam" + (open ? " is-open" : ""));
+        const head = clEl("div", "cl-fam-head");
+        const pick = clEl("button", "cl-fam-pick");
+        const mark = clEl("span", "cl-box" + (picked && picked === keys.length ? " is-on" : picked ? " is-part" : ""), picked && picked === keys.length ? "✓" : picked ? "–" : "");
+        pick.append(mark, clEl("span", null, name), clEl("span", "cl-n", String(total)));
+        pick.disabled = !total && !picked;
+        pick.setAttribute("aria-pressed", String(picked === keys.length && picked > 0));
+        // Toute la famille : cochée si rien ou une partie ne l'est, décochée sinon
+        pick.addEventListener("click", () => {
+          const all2 = picked === keys.length;
+          keys.forEach(k => all2 ? cl.genres.delete(k) : cl.genres.add(k));
+          cl.shown = CL_PAGE; clSave(); vibrate(6); renderCollection();
+        });
+        const chev = clEl("button", "cl-chev", "›");
+        chev.setAttribute("aria-label", (open ? "Replier " : "Voir les genres de ") + name);
+        chev.setAttribute("aria-expanded", String(open));
+        chev.addEventListener("click", () => { open ? cl.open.delete(name) : cl.open.add(name); clSave(); renderCollection(); });
+        head.append(pick, chev);
+        box.appendChild(head);
+        if (open) {
+          const g = clEl("div", "cl-chips cl-fam-genres");
+          g.append(...keys.map(k => clChip(k.slice(k.indexOf("|") + 1), fc.genres.get(k) || 0, cl.genres.has(k), () => clToggle(cl.genres, k))));
+          box.appendChild(g);
+        }
+        return box;
+      }));
+      if (!fc.families.length) $("cl-gen").replaceChildren(clEl("p", "cl-n", "Pas encore de genres."));
+    }
+
+    if (!collection) {
+      $("cl-count").textContent = "chargement…";
+      $("cl-list").replaceChildren();
+      $("cl-more").hidden = true;
+      return;
+    }
+    const list = base.filter(a => match(a)).sort(Core.sortById(cl.sort));
+    $("cl-count").textContent = !list.length && q ? "Aucun album ne correspond à « " + cl.q.trim() + " »."
+      : list.length + " album" + (list.length > 1 ? "s" : "") + (nf || q ? " sur " + all.length : "");
+    $("cl-list").replaceChildren(...list.slice(0, cl.shown).map(a => {
+      const li = clEl("li", "q-row cl-row");
+      const text = clEl("div", "q-text");
+      const extra = clExtra(a);
+      text.append(clEl("p", "q-title", a.title), clEl("p", "q-artist", a.artist + (a.year ? " · " + a.year : "") + (extra ? " · " + extra : "")));
+      const play = clEl("button", "q-act");
+      play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer " + a.title);
+      play.addEventListener("click", () => { vibrate(15); send("playAlbum", { id: a.id }); openCollection(false); });
+      const add = clEl("button", "q-act");
+      add.innerHTML = ICON_CAT_QUEUE; add.setAttribute("aria-label", "Ajouter " + a.title + " à la file");
+      add.addEventListener("click", () => {
         vibrate(12);
-        send("queueAlbum", { id: item.id });
-        queueBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-        queueBtn.style.color = "var(--ok)";
+        send("queueAlbum", { id: a.id });
+        add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+        add.style.color = "var(--ok)";
       });
-      li.append(cover, text, play, queueBtn);
+      li.append(text, play, add);
       return li;
     }));
+    $("cl-more").hidden = list.length <= cl.shown;
+    $("cl-more").textContent = "Afficher plus (" + (list.length - cl.shown) + ")";
   }
+
+  // Icône « ajouter à la file » (collection)
+  const ICON_CAT_QUEUE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h12M4 11.5h12M4 16.5h7"/><path d="M17.5 14v6M14.5 17h6"/></svg>';
 
   // ---------- Thoughts (réflexions datées sur l'album en cours) ----------
   // Comme sur la page album du PC : ajoutées au moment de l'écoute, avec le morceau et
@@ -1215,6 +1546,24 @@
   }
   stage.addEventListener("pointerup", endGesture);
   stage.addEventListener("pointercancel", endGesture);
+
+  // ---------- Bouton « retour » (Android) : ferme la fenêtre ouverte au lieu de quitter ----------
+  // Chaque fenêtre (file, thoughts, collection) ouverte ajoute une étape à l'historique ; « retour »
+  // la ferme. Fermée autrement (×, toucher à côté) : l'étape est retirée.
+  const SHEETS = { "sheet": () => openSheet(false), "th-sheet": () => openThoughts(false), "cl-sheet": () => openCollection(false) };
+  Object.keys(SHEETS).forEach(id => {
+    new MutationObserver(() => {
+      const open = $(id).classList.contains("is-open");
+      const mine = history.state && history.state.sheet === id;
+      if (open && !mine) history.pushState({ sheet: id }, "");
+      else if (!open && mine) history.back();
+    }).observe($(id), { attributes: true, attributeFilter: ["class"] });
+  });
+  window.addEventListener("popstate", () => {
+    Object.keys(SHEETS).forEach(id => {
+      if ($(id).classList.contains("is-open") && !(history.state && history.state.sheet === id)) SHEETS[id]();
+    });
+  });
 
   // ---------- Démarrage ----------
 

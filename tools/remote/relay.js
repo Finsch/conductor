@@ -69,7 +69,7 @@ function log(msg) {
 
 // ---------- Adresses du PC ----------
 
-// Classées : wifi d'abord, puis Tailscale, puis le reste. Ignorées : adresses 169.254.x
+// Classées : wifi d'abord, puis le point d'accès du PC (Windows 192.168.137.x, Linux 10.42.x.x), puis Tailscale, puis le reste. Ignorées : adresses 169.254.x
 // (réseau non configuré) et la carte VirtualBox (192.168.56.x).
 function addresses() {
   const list = [];
@@ -82,12 +82,14 @@ function addresses() {
       if (x === 192 && y === 168 && z === 56) continue;
       const tailscale = x === 100 && y >= 64 && y <= 127;
       const wifi = /wi-?fi|wlan|wireless|wlp|wlo/i.test(name);
-      const kind = tailscale ? "tailscale" : wifi ? "wifi" : "autre";
-      const label = tailscale ? "Tailscale (4G, autre wifi)" : wifi ? "Wifi" : name;
-      list.push({ name, ip: a.address, tailscale, kind, label, url: "http://" + a.address + ":" + PORT });
+      // Point d'accès du PC : Windows (192.168.137.x), Linux / NetworkManager (10.42.x.x)
+      const hotspot = (x === 192 && y === 168 && z === 137) || (x === 10 && y === 42);
+      const kind = tailscale ? "tailscale" : hotspot ? "hotspot" : wifi ? "wifi" : "autre";
+      const label = tailscale ? "Tailscale (4G, autre wifi)" : hotspot ? "Point d'accès du PC" : wifi ? "Wifi" : name;
+      list.push({ name, ip: a.address, tailscale, hotspot, kind, label, url: "http://" + a.address + ":" + PORT });
     }
   }
-  const rank = { wifi: 0, tailscale: 1, autre: 2 };
+  const rank = { wifi: 0, hotspot: 1, tailscale: 2, autre: 3 };
   return list.sort((a, b) => rank[a.kind] - rank[b.kind]);
 }
 
@@ -124,9 +126,10 @@ class Peer {
     socket.on("close", () => this.onClose());
     socket.on("error", () => {});
   }
-  send(obj) {
+  send(obj) { this.sendRaw(JSON.stringify(obj)); }
+  sendRaw(text) {
     if (this.socket.destroyed) return;
-    try { this.socket.write(wsFrame(1, Buffer.from(JSON.stringify(obj)))); } catch (e) {}
+    try { this.socket.write(wsFrame(1, Buffer.from(text))); } catch (e) {}
   }
   ping() { if (!this.socket.destroyed) try { this.socket.write(wsFrame(9, Buffer.alloc(0))); } catch (e) {} }
   close() { try { this.socket.write(wsFrame(8, Buffer.alloc(0))); } catch (e) {} this.socket.destroy(); }
@@ -176,6 +179,7 @@ let coverVer = "";
 let lyrics = null;               // paroles du morceau en cours (envoyées par conductor.)
 let queue = [];                  // file d'attente (albums à suivre), pochettes à part
 let thoughts = null;             // thoughts de l'album en cours
+let collection = null;           // fiches légères de la collection (texte JSON prêt à envoyer)
 const searchCovers = new Map();  // albumId → pochette, pour les résultats du catalogue
 const queueCovers = new Map();   // albumId → pochette (chemin local ou adresse http)
 let sysVol = null;               // volume du PC, 0..100 (null : indisponible)
@@ -187,8 +191,17 @@ function relayInfo() {
     remotes: [...remotes].filter(r => r.authed).map(r => r.info.device || "téléphone") };
 }
 
+// Adresses du PC que le téléphone peut essayer si celle de sa page ne répond plus (wifi ↔ Tailscale…)
+function phoneAddrs() { return addresses().map(a => a.url); }
+
+// conductor. rechargé sur le PC : il se déconnecte une seconde. Pendant ce court délai, les téléphones
+// ne voient rien (pas de « conductor. fermé ») et leurs commandes attendent qu'il revienne.
+const HOST_GRACE = 5000;
+let hostGrace = null;            // minuterie pendant le délai de grâce
+const hostWaiting = [];          // commandes reçues pendant ce délai : { msg, at }
+
 function remoteState() {
-  return { type: "state", host: !!host, hostname: os.hostname(), state, cover: coverVer ? "/cover?v=" + coverVer : "",
+  return { type: "state", host: !!host || !!hostGrace, hostname: os.hostname(), state, cover: coverVer ? "/cover?v=" + coverVer : "",
     sysVolume: sysVol, sysMuted };
 }
 
@@ -228,6 +241,9 @@ function onMessage(peer, msg) {
       });
       if (searchCovers.size > 2000) searchCovers.clear();
       remotes.forEach(r => { if (r.authed) r.send({ type: "results", id: msg.id, q: msg.q, items }); });
+    } else if (msg.type === "collection") {
+      collection = JSON.stringify({ type: "collection", items: Array.isArray(msg.items) ? msg.items : [] });
+      remotes.forEach(r => { if (r.authed) r.sendRaw(collection); });
     } else if (msg.type === "thoughts") {
       thoughts = msg.thoughts || null;
       remotes.forEach(r => { if (r.authed) r.send({ type: "thoughts", thoughts }); });
@@ -263,11 +279,12 @@ function onMessage(peer, msg) {
       peer.info.device = tokens[msg.token].device;
       tokens[msg.token].lastSeen = new Date().toISOString();
       saveTokens();
-      peer.send({ type: "welcome" });
+      peer.send({ type: "welcome", addrs: phoneAddrs() });
       peer.send(remoteState());
       if (lyrics) peer.send({ type: "lyrics", lyrics });
       peer.send({ type: "queue", queue });
       if (thoughts) peer.send({ type: "thoughts", thoughts });
+      if (collection) peer.sendRaw(collection);
       log("téléphone connecté : " + peer.info.device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -292,11 +309,12 @@ function onMessage(peer, msg) {
       saveTokens();
       peer.authed = true;
       peer.info.device = device;
-      peer.send({ type: "paired", token });
+      peer.send({ type: "paired", token, addrs: phoneAddrs() });
       peer.send(remoteState());
       if (lyrics) peer.send({ type: "lyrics", lyrics });
       peer.send({ type: "queue", queue });
       if (thoughts) peer.send({ type: "thoughts", thoughts });
+      if (collection) peer.sendRaw(collection);
       log("téléphone appairé : " + device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -316,18 +334,26 @@ function onMessage(peer, msg) {
     "queuePlay", "queueRemove", "queueMove", "queueClear", "thoughtAdd", "thoughtDelete", "thoughtEdit",
     "search", "playAlbum", "queueAlbum"];
   if (!allowed.includes(name)) return;
-  if (host) host.send({ type: "cmd", name, value: msg.value });
+  const cmd = { type: "cmd", name, value: msg.value };
+  if (host) host.send(cmd);
+  else if (hostGrace) { hostWaiting.push({ msg: cmd, at: Date.now() }); if (hostWaiting.length > 30) hostWaiting.shift(); }
 }
 
 function onClose(peer) {
   if (peer === host) {
     host = null;
-    lyrics = null;
-    queue = [];
-    queueCovers.clear();
-    thoughts = null;
-    log("conductor. déconnecté");
-    broadcast();
+    clearTimeout(hostGrace);
+    hostGrace = setTimeout(() => {
+      hostGrace = null;
+      hostWaiting.length = 0;
+      lyrics = null;
+      queue = [];
+      queueCovers.clear();
+      thoughts = null;
+      collection = null;
+      log("conductor. déconnecté");
+      broadcast();
+    }, HOST_GRACE);
   }
   if (remotes.delete(peer) && peer.authed) {
     log("téléphone déconnecté : " + (peer.info.device || "téléphone"));
@@ -502,6 +528,15 @@ const server = http.createServer((req, res) => {
     sendCover(res, a ? queueCovers.get(a) || searchCovers.get(a) || "" : coverSrc);
     return;
   }
+  // Fichier commun avec la page collection du PC : tris et filtres
+  if (url.pathname === "/collection-core.js") {
+    fs.readFile(path.join(APP, "js", "collection-core.js"), (err, data) => {
+      if (err) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(data);
+    });
+    return;
+  }
   const name = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
   if (!/^[a-z0-9._-]+$/i.test(name)) { res.writeHead(404); res.end(); return; }
   const file = path.join(PUBLIC, name);
@@ -524,16 +559,21 @@ server.on("upgrade", (req, socket) => {
   if (role === "host") {
     if (host) host.close();
     host = peer;
-    log("conductor. connecté");
+    const back = !!hostGrace;
+    clearTimeout(hostGrace);
+    hostGrace = null;
+    log(back ? "conductor. reconnecté" : "conductor. connecté");
     host.send(relayInfo());
     host.send({ type: "hello" });
+    const now = Date.now();
+    hostWaiting.splice(0).forEach(c => { if (now - c.at < HOST_GRACE + 1000) host.send(c.msg); });
     broadcast();
   } else {
     remotes.add(peer);
   }
 });
 
-// Connexions mortes (téléphone en veille, 4G coupée…) : ping toutes les 20 s
+// Connexions mortes (téléphone en veille, 4G coupée…) : ping toutes les 10 s
 setInterval(() => {
   [host, ...remotes].forEach(p => {
     if (!p) return;
@@ -541,7 +581,7 @@ setInterval(() => {
     p.alive = false;
     p.ping();
   });
-}, 20000);
+}, 10000);
 
 server.on("error", e => {
   if (e.code === "EADDRINUSE") console.error("\n  Le port " + PORT + " est déjà utilisé : le relais tourne peut-être déjà.\n");

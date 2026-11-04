@@ -15,7 +15,7 @@
 // Lire : le site charge collection.js avec une simple balise <script>,
 //        aucune autorisation n'est nécessaire.
 // Écrire : le navigateur (Chrome ou Edge) doit avoir accès au dossier. On le
-//          choisit une fois ; ensuite un clic « Autoriser » suffit à chaque session.
+//          choisit une fois ; ensuite, à chaque session, l'accès est demandé au premier clic (ou bouton « Autoriser »).
 
 // Site sur une seule page : seule l'enveloppe (conductor.html) écrit sur le
 // disque — Chrome interdit le choix d'un dossier depuis une page affichée dans
@@ -457,6 +457,7 @@ const Disk = window.top !== window ? frameDisk() : (function () {
   }
 
   async function allow() {
+    autoAsked = true;
     try {
       const perm = await handle.requestPermission({ mode: "readwrite" });
       if (perm === "granted") await connected();
@@ -465,6 +466,18 @@ const Disk = window.top !== window ? frameDisk() : (function () {
       render();
     }
   }
+
+  // Dès l'ouverture : Chrome n'accepte la demande d'accès qu'après un geste (clic, touche). On la
+  // fait donc au tout premier clic ou à la première touche, n'importe où : dans l'enveloppe, ou dans
+  // la page du cadre (qui prévient l'enveloppe, voir frameDisk). Une seule fois par session ; si elle
+  // est refusée, le bouton du bandeau reste là.
+  let autoAsked = false;
+  function onGesture() {
+    if (autoAsked || state !== "needs-permission" || !handle) return;
+    allow();
+  }
+  ["click", "keydown"].forEach(t => window.addEventListener(t, onGesture, true));
+  window.addEventListener("message", e => { if (e.data && e.data.conductor && e.data.type === "disk-gesture") onGesture(); });
 
   async function init() {
     dirty = Store.savedAt() > ((window.CONDUCTOR_DATA && window.CONDUCTOR_DATA.savedAt) || "") ||
@@ -509,8 +522,10 @@ const Disk = window.top !== window ? frameDisk() : (function () {
     } else if (state === "none") {
       parts.push("Vos données ne sont que dans le navigateur.", button("Choisir le dossier datastorage", choose));
     } else if (state === "needs-permission") {
-      if (dirty) parts.push("Modifications pas encore enregistrées dans datastorage.", button("Autoriser l'accès", allow));
-      else show = false;   // rien à écrire : inutile de déranger
+      // Toujours affiché (pas seulement quand il y a quelque chose à écrire) ; la demande part aussi
+      // toute seule au premier clic ou à la première touche
+      parts.push(dirty ? "Modifications pas encore enregistrées dans datastorage." : "Dossier datastorage pas encore autorisé.",
+        button("Autoriser l'accès", allow));
     } else if (busy) {
       parts.push(busy);
     } else if (dirty) {
@@ -554,6 +569,13 @@ function frameDisk() {
   const PENDING_KEY = "conductor01.lyricsPending";
   const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || {}; } catch (e) { return {}; } };
   const safeName = id => String(id).replace(/[^a-z0-9_-]/gi, "_");
+  // Premier clic / première touche dans la page : l'enveloppe peut demander l'accès au dossier
+  // (le geste compte aussi pour elle). Une seule fois par page.
+  const gesture = () => {
+    ["click", "keydown"].forEach(t => window.removeEventListener(t, gesture, true));
+    try { parent.postMessage({ conductor: true, type: "disk-gesture" }, "*"); } catch (e) {}
+  };
+  ["click", "keydown"].forEach(t => window.addEventListener(t, gesture, true));
   return {
     init() {},
     coverBlob: () => Promise.resolve(""),

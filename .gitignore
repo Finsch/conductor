@@ -9,5 +9,6 @@ desktop.ini
 # Télécommande : jetons des téléphones appairés
 tools/remote/.remote-tokens.json
 tools/remote/.remote-key.json
+tools/remote/.hotspot-password
 tools/remote/relay.log
 tools/remote/relay-errors.log

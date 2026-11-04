@@ -476,7 +476,7 @@ const MANUALS = [
         steps: [
           {
             title: "Le relais sous Linux",
-            body: "<p>Installez Node.js (<code>sudo apt install nodejs</code>), puis lancez <code>tools/remote/start-remote.sh</code> (ou le bouton du pied de page après <code>install-linux.sh</code>). <kbd>Alt</kbd> + <kbd>R</kbd> affiche le QR code. Le volume du PC passe par <code>pactl</code> (PipeWire / PulseAudio) ou <code>amixer</code>. Le reste est dans le guide <b>Télécommande</b>.</p>"
+            body: "<p>Installez Node.js (<code>sudo apt install nodejs</code>), puis lancez <code>tools/remote/start-remote.sh</code> (ou le bouton du pied de page après <code>install-linux.sh</code>). <kbd>Alt</kbd> + <kbd>R</kbd> affiche le QR code. Le volume du PC passe par <code>pactl</code> (PipeWire / PulseAudio) ou <code>amixer</code>. Le reste est dans le guide <b>Télécommande</b>. Sans wifi : <code>tools/remote/point-acces.sh</code> (NetworkManager) crée un wifi « conductor » pour le téléphone, adresse <code>http://10.42.0.1:8765</code> ; <code>point-acces.sh stop</code> l'éteint.</p>"
           }
         ]
       }
@@ -528,6 +528,32 @@ const MANUALS = [
         ]
       },
       {
+        title: "Sans internet du tout",
+        steps: [
+          {
+            title: "Ce qui marche hors ligne",
+            body: "<p>Tout le système : téléphone de musique en USB, conductor., relais et page de la télécommande (rien n'est chargé depuis internet). Seul compte le lien entre le téléphone qui pilote et le PC :</p><table class=\"mn-table\"><tr><th>Lien</th><th>Sans internet</th></tr><tr><td>même wifi (box allumée)</td><td>oui : onglet <b>Wifi</b> du QR code</td></tr><tr><td>Tailscale</td><td><b>non</b> : il a besoin d'internet</td></tr><tr><td>point d'accès du PC</td><td>oui : le PC crée son propre wifi</td></tr></table>"
+          },
+          {
+            title: "Allumer le point d'accès du PC",
+            body: "<p>Branchez d'abord le téléphone de musique en USB (partage USB activé) : Windows a besoin d'une connexion à partager, même sans internet. Puis <b>Paramètres → Réseau et Internet → Point d'accès mobile</b> → activez (nom et mot de passe du wifi affichés là).</p><p>Si Windows refuse faute d'internet : double-clic sur <code>tools/remote/point-acces.bat</code>, qui allume le même point d'accès en partageant le câble USB. Pour l'éteindre : <code>point-acces.bat stop</code>.</p>"
+          },
+          {
+            title: "Connecter l'iPhone",
+            body: "<p><b>Réglages → Wi-Fi</b> → le wifi du PC (« Pas de connexion à internet » : normal, restez connecté ; désactivez Tailscale). Sur le PC, <kbd>Alt</kbd> + <kbd>R</kbd> : l'onglet <b>Point d'accès du PC</b> est sélectionné (<code>http://192.168.137.1:8765</code>, toujours la même adresse). Scannez le QR code.</p><p>Autre adresse = autre site pour l'iPhone : appairez une fois, puis ajoutez-la à l'écran d'accueil comme <b>2e icône</b> (« conductor. hors ligne »).</p>"
+          }
+        ]
+      },
+      {
+        title: "Téléphone Android",
+        steps: [
+          {
+            title: "Les différences avec l'iPhone",
+            body: "<p>Tout marche pareil, dans Chrome. <b>Appli</b> : menu <b>⋮</b> → <b>Ajouter à l'écran d'accueil</b>. <b>Retour</b> : ferme la fenêtre ouverte (file, thoughts, collection) au lieu de quitter. <b>Paroles</b> : l'écran reste allumé (vidéo silencieuse invisible) ; Android peut alors afficher « conductor. » dans les notifications de lecture et mettre en pause une autre appli de musique. Point d'accès sans internet : « Rester connecté » si Android signale « Pas d'accès à internet ».</p>"
+          }
+        ]
+      },
+      {
         title: "Appairer le téléphone (une fois par téléphone)",
         steps: [
           {
@@ -547,17 +573,23 @@ const MANUALS = [
         steps: [
           {
             title: "Les commandes",
-            body: "<table class=\"mn-table\"><tr><th>Geste / bouton</th><th>Effet</th></tr><tr><td>⏯ ⏮ ⏭</td><td>lecture / pause, titre précédent / suivant</td></tr><tr><td>★</td><td>morceau préféré</td></tr><tr><td>glisser ← → sur la pochette</td><td>titre suivant / précédent</td></tr><tr><td>glisser ↑ ↓ sur la pochette</td><td>volume de conductor., sur 20 (un cran tous les 2 cm environ)</td></tr><tr><td>réglette <b>PC</b></td><td>volume de Windows (ou de Linux)</td></tr><tr><td>micro (à côté de ★)</td><td>paroles à la place de la pochette : la ligne chantée est mise en avant et suit la musique ; toucher une ligne y amène la lecture. Micro de nouveau : retour à la pochette</td></tr><tr><td>bulle (à côté du micro)</td><td><b>thoughts</b> de l'album en cours : écrire une réflexion (le morceau et la seconde sont notés), relire, modifier et supprimer les précédentes. Elles s'ajoutent à la page album et au journal du PC</td></tr><tr><td>loupe (en haut)</td><td><b>catalogue</b> : une seule barre de recherche — titre, artiste, genre, style, ressenti, label, année… (tous les mots doivent correspondre). ▶ lance l'album (la file est gardée), ≡+ l'ajoute à la file</td></tr><tr><td>icône file (en haut, avec le nombre d'albums)</td><td>la file d'attente : ▶ lance un album tout de suite (le reste est gardé), × le retire, ⠿ glisser pour le déplacer, « Vider la file »</td></tr></table><p>Sur le PC, <kbd>Alt</kbd> + <kbd>R</kbd> ouvre la fenêtre Télécommande (QR code).</p><p>Tout est synchronisé dans les deux sens : un changement sur le PC s'affiche aussitôt sur le téléphone. Le point vert en haut indique que le PC répond.</p>"
+            body: "<table class=\"mn-table\"><tr><th>Geste / bouton</th><th>Effet</th></tr><tr><td>⏯ ⏮ ⏭</td><td>lecture / pause, titre précédent / suivant</td></tr><tr><td>★</td><td>morceau préféré</td></tr><tr><td>glisser ← → sur la pochette</td><td>titre suivant / précédent</td></tr><tr><td>glisser ↑ ↓ sur la pochette</td><td>volume de conductor., sur 20 (un cran tous les 2 cm environ)</td></tr><tr><td>réglette <b>PC</b></td><td>volume de Windows (ou de Linux)</td></tr><tr><td>micro (à côté de ★)</td><td>paroles à la place de la pochette : la ligne chantée est mise en avant et suit la musique ; toucher une ligne y amène la lecture ; l'écran du téléphone reste allumé tant que les paroles sont affichées. Micro de nouveau : retour à la pochette</td></tr><tr><td>bulle (à côté du micro)</td><td><b>thoughts</b> de l'album en cours : écrire une réflexion (le morceau et la seconde sont notés), relire, modifier et supprimer les précédentes. Elles s'ajoutent à la page album et au journal du PC</td></tr><tr><td>grille (en haut)</td><td><b>collection</b> : une barre de recherche (titre, artiste, genre, label, styles, ressentis, tags ; « + » = et, « / » = ou), les 12 tris du PC et les filtres intensité, décennies et genres (par famille, dépliables), avec le nombre d'albums sur chaque choix. Mêmes règles que la page collection du PC, sans pochettes. ▶ lance l'album, ≡+ l'ajoute à la file</td></tr><tr><td>icône file (en haut, avec le nombre d'albums)</td><td>la file d'attente : ▶ lance un album tout de suite (le reste est gardé), × le retire, ⠿ glisser pour le déplacer, « Vider la file »</td></tr></table><p>Sur le PC, <kbd>Alt</kbd> + <kbd>R</kbd> ouvre la fenêtre Télécommande (QR code).</p><p>Tout est synchronisé dans les deux sens : un changement sur le PC s'affiche aussitôt sur le téléphone. Le point vert en haut indique que le PC répond.</p>"
           },
           {
             title: "Au quotidien",
             body: "<p>PC : conductor. (relais lancé au démarrage de Windows, ou bouton <b>Démarrer la télécommande</b>). Téléphone : l'icône de l'écran d'accueil (Tailscale activé en 4G). Le QR code ne sert qu'à appairer un <b>nouveau</b> téléphone. Pour arrêter le relais : icône téléphone → <b>Arrêter le relais</b>.</p>"
+          },
+          {
+            title: "Connexion : ce qui se passe tout seul",
+            body: "<p><b>Réseau changé</b> (wifi → 4G, sortie de veille) : une connexion muette est remplacée en 7 s au plus (2,5 s au retour sur la page). Le point clignote, l'écran passe en retrait, « reconnexion… » ; toucher l'état en haut relance un essai.</p><p><b>Plusieurs adresses</b> : le téléphone retient celles du PC (wifi, Tailscale, point d'accès) et bascule sur celle qui répond (« · via Tailscale » en haut), tant que la page est ouverte.</p><p><b>Commandes pendant une coupure</b> : gardées 8 s, envoyées à la reconnexion. <b>conductor. rechargé</b> : 5 s de grâce, rien ne s'interrompt sur le téléphone. <b>Relais redémarré</b> : conductor. le retrouve en 10 s au plus.</p>"
           }
         ]
       }
     ],
     trouble: [
       ["La page ne s'ouvre pas sur le téléphone", "Le relais tourne-t-il (fenêtre ouverte) ? Bonne adresse ? Pare-feu : autorisez Node.js (réseaux privés et publics). Wifi de résidence : passez par l'adresse Tailscale."],
+      ["Sans internet, la page ne s'ouvre pas", "Tailscale ne marche pas hors ligne : même wifi, ou point d'accès du PC (onglet <b>Point d'accès du PC</b> du QR code)."],
+      ["Point d'accès : Windows refuse (pas d'internet)", "Téléphone de musique branché en USB, puis <code>tools/remote/point-acces.bat</code>."],
       ["« conductor. fermé sur le PC »", "Le relais tourne mais conductor. n'est pas ouvert : ouvrez-le (il se relie tout seul en quelques secondes)."],
       ["« Démarrer la télécommande » ne fait rien", "Lancez une fois <code>install-button.bat</code> ; Node.js doit être installé. Le détail des erreurs est dans <code>tools/remote/relay-errors.log</code>."],
       ["« Code incorrect » ou « QR code périmé »", "Le code a été renouvelé (« Nouveau code ») : scannez le QR code affiché maintenant. 5 erreurs : attente de 30 secondes."],

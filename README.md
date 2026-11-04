@@ -134,7 +134,7 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 **audio-files** page.
 
 **Local storage** — SD card, USB stick, external drive or any PC folder; add as many folders as you like.
-- Pick each folder once with the Chrome/Edge folder picker (browsers don't allow a typed path); one "Autoriser" click per session afterwards.
+- Pick each folder once with the Chrome/Edge folder picker (browsers don't allow a typed path); afterwards, write access is requested at the first click or key press of each session (choose "Allow on every visit" in Chrome's prompt to stop being asked).
 - Each folder is scanned: title, artist, album, year, track and disc numbers and duration from FLAC/MP3 tags, otherwise from folder and file names (`Artist - Album (1997)/01 - Title.flac`). One folder = one album; `CD1`, `Disc 2`… subfolders are merged. Unchanged files are not re-read.
 - Albums are matched to your collection by title and artist (ignoring "Deluxe", "Remastered"…), or linked by hand.
 - Albums found in your folders but not in the collection are listed with their cover, ready to add (collection or next up).
@@ -146,7 +146,7 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - Albums split by Navidrome (one track with different tags) are merged back; album covers, embedded lyrics and exact durations come from the phone.
 - Albums on the phone but not in the collection are listed, ready to add.
 
-**Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, ★, PC volume, gestures on the cover (swipe ← → for tracks, ↑ ↓ for the app volume out of 20), synced both ways; **lyrics** on the phone (microphone button): the karaoke's synced lyrics follow the music, tap a line to jump there; the **queue** (play an album now, remove, reorder by dragging, clear); **thoughts** on the current album (write, read, edit, delete — saved with the album, shown in the journal); a minimal **catalog** — one search bar over title, artist, genre, style, mood, label, year — to play an album or add it to the queue. `Alt + R` opens the remote window (QR code). Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. On 4G or another network, **Tailscale** links the phone to the PC. See `docs/telecommande.md`.
+**Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, ★, PC volume, gestures on the cover (swipe ← → for tracks, ↑ ↓ for the app volume out of 20), synced both ways; **lyrics** on the phone (microphone button): the karaoke's synced lyrics follow the music, tap a line to jump there, the screen stays on while they are shown; the **queue** (play an album now, remove, reorder by dragging, clear); **thoughts** on the current album (write, read, edit, delete — saved with the album, shown in the journal); the **collection** — a search bar, the PC's 12 sorts and the intensity, decade and genre filters (same rules as the PC collection, from the shared `js/collection-core.js`; no covers) — to play an album or add it to the queue. `Alt + R` opens the remote window (QR code). Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. Robust connection: dead connections are replaced within seconds, the phone remembers all the PC's addresses (Wi-Fi, Tailscale, hotspot) and switches to whichever answers, commands made during a drop are sent on reconnect, and reloading conductor. doesn't interrupt the phone. On 4G or another network, **Tailscale** links the phone to the PC; with no internet at all, the phone joins the PC's own Wi-Fi hotspot (`tools/remote/point-acces.bat` turns it on even offline; Linux: `point-acces.sh`, NetworkManager). Android phones work like the iPhone, in Chrome (the back button closes the open panel). See `docs/telecommande.md`.
 
 **From YouTube to conductor.** — a typical path for a new album:
 
@@ -265,7 +265,7 @@ Once albums are in the collection and your files are on a local drive (or the ph
 - playback of local files and Navidrome over Wi-Fi / hotspot / USB (local network only);
 - full screen, karaoke and lyrics already loaded or synced;
 - journal, notes, insights, wrapped, next up, exports and backups;
-- the phone remote control, when the phone is on the same Wi-Fi as the PC (from 4G or another network, Tailscale needs internet).
+- the phone remote control, when the phone is on the same Wi-Fi as the PC or on the PC's own hotspot (Tailscale, for 4G or another network, needs internet).
 
 Needs internet: adding an album through the search (Deezer, Discogs) and completing sheets (genres, styles, tracklists), Deezer previews, lyrics never loaded before, covers whose site refused the copy (see *fiches à compléter*), Genius / Wikipedia links. Adding an album from your local folders works offline.
 
@@ -283,12 +283,13 @@ conductor/
 │   ├── css/style.css
 │   ├── js/                 one file per page, plus shared modules:
 │   │                       data (store), disk (datastorage), playback (engine), sdcard (local folders),
-│   │                       navidrome (phone), lyrics / karaoke, cover-actions, shortcuts, volume…
+│   │                       navidrome (phone), lyrics / karaoke, cover-actions, shortcuts, volume,
+│   │                       collection-core (sorts and filters, shared with the phone remote)…
 │   ├── assets/
 │   ├── tools/              conductor-usb.bat / .ps1 (phone over USB cable: finds its address, opens conductor.),
 │   │                       telecharger_albums.ps1 (downloads album playlists with yt-dlp, one folder per album),
 │   │                       Linux: conductor-usb.sh, telecharger_albums.sh, install-linux.sh (app menu entries),
-│   │                       remote/ (phone remote control: relay.js, start-remote.bat / .sh, public/ page)
+│   │                       remote/ (phone remote control: relay.js, start-remote.bat / .sh, point-acces.bat / .sh, public/ page)
 │   └── docs/               navidrome-man.md, telecommande.md, daily-tel-usb.md, linux.md, youtube-a-conductor.md, calage-paroles.md, tier-guide.md, toolkit.md
 └── datastorage/            your data, outside the repo
     ├── collection.js       collection, notes, listening time
@@ -308,7 +309,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 ## Getting started
 
 1. Open `app/index.html` in **Chrome or Edge** (it opens the single-page shell). On Linux, run `bash app/tools/install-linux.sh` once: it adds **conductor.** and **conductor USB** to the applications menu.
-2. Bottom left: **Choisir le dossier datastorage** → `conductor/datastorage`. Afterwards, one "Autoriser" click per session.
+2. Bottom left: **Choisir le dossier datastorage** → `conductor/datastorage`. Afterwards, write access is requested at the first click or key press of each session.
 3. Optional: copy `js/config.example.js` to `js/config.js` and add a Discogs token (more search results).
 4. Optional, **audio-files** page:
    - **Ajouter un dossier…** for your SD card, USB stick or music folder;
@@ -321,7 +322,7 @@ Keep both folders side by side: the app reads and writes `../datastorage/`.
 | File | Content |
 |---|---|
 | `docs/navidrome-man.md` | Navidrome on the phone: installation, finding the phone's address (Wi-Fi, hotspot, iPhone sharing, **USB cable**, USB without SIM via ADB), sending music folders to the phone with WinSCP (SFTP over the USB cable), troubleshooting, tagging tips; one-click USB shortcut (`tools/conductor-usb.bat`) and Termux:Widget launcher |
-| `docs/telecommande.md` | Remote control from a phone: relay (`tools/remote`), Tailscale for 4G, pairing, gestures, lyrics, queue, thoughts, catalog |
+| `docs/telecommande.md` | Remote control from a phone: relay (`tools/remote`), Tailscale for 4G, pairing, gestures, lyrics, queue, thoughts, collection |
 | `docs/daily-tel-usb.md` | Daily routine over the USB cable, in 5 steps: start (cable, USB tethering, Termux widget, `conductor-usb`) and stop |
 | `docs/linux.md` | Running conductor. on Linux: browser (snap / Flatpak notes), `tools/install-linux.sh` (app menu entries), USB cable (`conductor-usb.sh`, `ip route`, ADB), sending files over `sftp://`, yt-dlp + Kid3 |
 | `docs/youtube-a-conductor.md` | The full path for a new album: YouTube → yt-dlp (`tools/telecharger_albums.ps1`) → **TagScanner** (fix tags) → WinSCP → Navidrome → USB cable → conductor. |
