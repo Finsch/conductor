@@ -344,6 +344,7 @@
     moveInQueue: (a, b) => moveInQueue(a, b),
     clearQueue: () => clearQueue(),
     playId: (id, keep) => playId(id, keep),
+    sleep: v => setSleep(v),
     volume: (v, m) => { audio.volume = Math.max(0, Math.min(1, v)); audio.muted = !!m; }
   };
 
@@ -500,8 +501,57 @@
     const i = firstPlayable(state ? state.index + 1 : 0, 1);
     if (i > -1 && swapTo(i)) return;
     if (i > -1) loadTrack(i, 0, true);
+    else if (sleep && sleep.album) sleepNow();   // minuterie « fin de l'album » : on s'arrête là
     else playNextAlbum();
   });
+
+  // ---------- Minuterie d'arrêt ----------
+  // 15 / 30 / 45 / 60 min, ou « fin de l'album » (à la fin de son dernier titre, au lieu de passer à la
+  // file). À l'heure dite : pause. Pour la session seulement (rien n'est gardé à la fermeture).
+  let sleep = null;          // { until: horodatage } ou { album: true }
+  let sleepTimer = 0;
+  function setSleep(v) {
+    clearTimeout(sleepTimer);
+    sleep = null;
+    if (v === "album") sleep = { album: true };
+    else if (Number(v) > 0) {
+      const ms = Number(v) * 60000;
+      sleep = { until: Date.now() + ms };
+      sleepTimer = setTimeout(sleepNow, ms);
+    }
+    sleepChanged();
+  }
+  function sleepNow() {
+    clearTimeout(sleepTimer);
+    sleep = null;
+    if (!audio.paused) audio.pause();
+    sleepChanged();
+    sleepFlash("Minuterie d'arrêt : lecture en pause");
+  }
+  // { mode: "time", left: secondes } | { mode: "album" } | null
+  function sleepState() {
+    if (!sleep) return null;
+    if (sleep.album) return { mode: "album" };
+    return { mode: "time", left: Math.max(0, Math.round((sleep.until - Date.now()) / 1000)) };
+  }
+  function sleepChanged() {
+    renderSleep();
+    document.dispatchEvent(new CustomEvent("sleep:changed"));
+  }
+  function sleepFlash(text) {
+    let box = document.getElementById("kb-flash");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "kb-flash";
+      box.className = "kb-flash";
+      box.setAttribute("role", "status");
+      document.body.appendChild(box);
+    }
+    box.textContent = text;
+    box.classList.add("is-on");
+    clearTimeout(sleepFlash.t);
+    sleepFlash.t = setTimeout(() => box.classList.remove("is-on"), 3000);
+  }
 
   // ---------- File d'attente ----------
 
@@ -748,6 +798,7 @@
 
   const ICON = {
     play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>',
     prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.2v14H6zM19 5.5v13L9.5 12z" fill="currentColor"/></svg>',
     next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5H18v14h-2.2zM5 5.5v13l9.5-6.5z" fill="currentColor"/></svg>',
@@ -813,6 +864,58 @@
     return b;
   }
 
+  // Menu de la minuterie (bouton lune du lecteur)
+  let sleepMenuEl = null, sleepTick = 0;
+  const SLEEP_CHOICES = [[15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "1 h"], ["album", "fin de l'album"]];
+  function sleepLabel() {
+    const s = sleepState();
+    if (!s) return "";
+    if (s.mode === "album") return "à la fin de l'album";
+    const m = Math.ceil(s.left / 60);
+    return "dans " + (m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min");
+  }
+  function sleepMenu(open) {
+    if (!sleepMenuEl) {
+      sleepMenuEl = el("div", "mp-sleep-menu");
+      sleepMenuEl.setAttribute("role", "menu");
+      document.body.appendChild(sleepMenuEl);
+      document.addEventListener("click", e => {
+        if (!sleepMenuEl.hidden && !e.composedPath().includes(sleepMenuEl)) sleepMenu(false);
+      });
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && !sleepMenuEl.hidden) sleepMenu(false); });
+    }
+    sleepMenuEl.hidden = !open;
+    if (!open) return;
+    const s = sleepState();
+    sleepMenuEl.replaceChildren(
+      el("p", "mp-sleep-title", "Minuterie d'arrêt" + (s ? " · " + sleepLabel() : "")),
+      ...SLEEP_CHOICES.map(([v, label]) => {
+        const b = el("button", "mp-sleep-opt" + (s && ((v === "album" && s.mode === "album")) ? " is-on" : ""), label);
+        b.type = "button";
+        b.setAttribute("role", "menuitem");
+        b.addEventListener("click", () => { setSleep(v); sleepMenu(false); });
+        return b;
+      }),
+      ...(s ? [(() => { const b = el("button", "mp-sleep-opt mp-sleep-off", "désactiver"); b.type = "button";
+        b.addEventListener("click", () => { setSleep(0); sleepMenu(false); }); return b; })()] : []));
+    const r = mp.querySelector(".mp-sleep").getBoundingClientRect();
+    sleepMenuEl.style.right = Math.max(8, innerWidth - r.right) + "px";
+    sleepMenuEl.style.bottom = Math.max(8, innerHeight - r.top + 8) + "px";
+  }
+  // Bouton : allumé pendant la minuterie, minutes restantes (« ♪ » : fin de l'album)
+  function renderSleep() {
+    if (!mp) return;
+    const btn = mp.querySelector(".mp-sleep");
+    const s = sleepState();
+    btn.classList.toggle("is-on", !!s);
+    btn.title = "Minuterie d'arrêt" + (s ? " : " + sleepLabel() : "");
+    const left = btn.querySelector(".mp-sleep-left");
+    left.hidden = !s;
+    left.textContent = !s ? "" : s.mode === "album" ? "♪" : String(Math.ceil(s.left / 60));
+    clearInterval(sleepTick);
+    if (s && s.mode === "time") sleepTick = setInterval(renderSleep, 15000);
+  }
+
   function build() {
     mp = el("div", "mp");
     mp.hidden = true;
@@ -830,7 +933,11 @@
     qBtn.appendChild(badge);
     const fsBtn = iconBtn("mp-full", "Plein écran (P)", ICON.expand);
     const closeBtn = iconBtn("mp-close", "Fermer le lecteur", ICON.close);
-    tools.append(toAlbum, qBtn, fsBtn, closeBtn);
+    const sleepBtn = iconBtn("mp-sleep", "Minuterie d'arrêt", ICON.moon);
+    const sleepLeft = el("span", "mp-sleep-left");
+    sleepLeft.hidden = true;
+    sleepBtn.appendChild(sleepLeft);
+    tools.append(toAlbum, sleepBtn, qBtn, fsBtn, closeBtn);
     const head = el("div", "mp-head");
     head.append(cover, star, tools);
 
@@ -863,6 +970,7 @@
     closeBtn.addEventListener("click", () => { panelOpen(false); close(); });
     qBtn.addEventListener("click", () => panelOpen(!(panel && !panel.hidden)));
     fsBtn.addEventListener("click", () => fsOpen(true));
+    sleepBtn.addEventListener("click", e => { e.stopPropagation(); sleepMenu(!sleepMenuEl || sleepMenuEl.hidden); });
     star.addEventListener("click", toggleTrackStar);
     bar.addEventListener("click", e => {
       const r = bar.getBoundingClientRect();
@@ -1929,7 +2037,9 @@
       return !!a && (a.favorites || []).includes(currentTrackKey());
     },
     isAlbum: id => !!state && state.albumId === id,
-    index: () => (state ? state.index : -1)
+    index: () => (state ? state.index : -1),
+    sleep: v => setSleep(v),          // 15 / 30 / 45 / 60 (minutes), "album", 0 = désactiver
+    sleepState: () => sleepState()
   };
 
   // =====================================================================

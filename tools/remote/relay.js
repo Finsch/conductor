@@ -336,7 +336,7 @@ function onMessage(peer, msg) {
   if (name === "sysVolume") { setSysVolume(Number(msg.value)); return; }
   if (name === "sysVolumeStep") { if (sysVol != null) setSysVolume(sysVol + Number(msg.value || 0)); return; }
   if (name === "sysMute") { setSysMute(!sysMuted); return; }
-  const allowed = ["toggle", "next", "prev", "star", "volume", "volumeStep", "mute", "seek",
+  const allowed = ["toggle", "next", "prev", "star", "sleep", "volume", "volumeStep", "mute", "seek",
     "queuePlay", "queueRemove", "queueMove", "queueClear", "thoughtAdd", "thoughtDelete", "thoughtEdit",
     "search", "playAlbum", "queueAlbum", "bacAdd", "bacRemove", "bacMove"];
   if (!allowed.includes(name)) return;

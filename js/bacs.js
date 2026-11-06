@@ -78,19 +78,14 @@
   let sort = "az";
   try { const v = localStorage.getItem(SORT_KEY); if (v === "recent" || v === "intensity") sort = v; } catch (e) {}
 
-  // Durée d'un bac sur sa carte : « 1j 2h 5min », « 3h 18min », « 45min »
-  function formatTotal(sec) {
-    const m = Math.round((sec || 0) / 60);
-    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
-    return d ? d + "j " + h + "h " + min + "min" : h ? h + "h " + min + "min" : min + "min";
-  }
+  // Durée d'un bac sur sa carte : « 1j 2h 5min » (fichier commun, comme la télécommande)
+  const formatTotal = sec => CollectionCore.formatTotal(sec);
   // Carte : albums · durée (· intensité moyenne, juste la valeur, dans le tri « intensité »)
   function cardMeta(albums) {
     const sec = albums.reduce((s, a) => s + durationOf(a), 0);
     const avg = sort === "intensity" ? CollectionCore.avgIntensity(albums) : null;
     return plural(albums.length, "album") + (sec ? " · " + formatTotal(sec) : "") + (avg != null ? " · " + String(avg).replace(".", ",") : "");
   }
-  const byName = (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true });
   $("bc-sort").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
     sort = b.dataset.sort;
     try { localStorage.setItem(SORT_KEY, sort); } catch (e) {}
@@ -98,16 +93,8 @@
   }));
 
   function renderIndex() {
-    const avg = new Map();   // intensité moyenne de chaque bac (null : aucun album noté → à la fin)
-    Store.bacs().forEach(b => avg.set(b.id, CollectionCore.avgIntensity(albumsOf(b))));
-    const bacs = Store.bacs().slice().sort(
-      sort === "recent" ? (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")
-      : sort === "intensity" ? (a, b) => {
-          const x = avg.get(a.id), y = avg.get(b.id);
-          if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
-          return x - y || byName(a, b);
-        }
-      : byName);
+    // A → Z, intensité moyenne (douce → forte) ou récents : fichier commun (aussi sur la télécommande)
+    const bacs = CollectionCore.sortBacList(Store.bacs(), sort, albumsOf);
     $("bc-sort").querySelectorAll(".chip").forEach(b => {
       b.classList.toggle("is-active", b.dataset.sort === sort);
       b.setAttribute("aria-checked", String(b.dataset.sort === sort));

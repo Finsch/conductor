@@ -97,6 +97,7 @@ All their albums by release date (with the same ▶ / queue buttons on covers), 
 
 - **One engine for the whole site**: the music continues across pages and resumes after a reload, at the same track and second.
 - **Mini player** (bottom right): cover, track, ★, previous / next, play / pause, progress, go to the album, queue, full screen, close.
+- **Sleep timer** (🌙 on the mini player, or on the phone remote): pause after 15, 30, 45 or 60 minutes, or at the end of the current album (instead of moving on to the queue). The button shows the minutes left; for the session only.
 - **Queue** of albums: add the same album several times, reorder by drag and drop, remove, total and remaining time ("En cours (6/11)").
 - **Gapless playback**: the next track is preloaded 30 s before the end and starts exactly when the current one ends.
 - **Listen counting**: an album counts as listened when **90 % of its length** was actually played (pauses and skips don't count) **and 90 % of its tracks** were heard (each at least halfway). The **last album of a session** (when the app is closed) counts from 60 % / 60 %, to leave a trace in the history. An album's progress lasts for the session: kept if the page is reloaded, reset when the app is closed. Listening time per day feeds the journal.

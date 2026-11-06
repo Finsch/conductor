@@ -83,6 +83,8 @@
       starred: Playback.starred ? Playback.starred() : false,
       volume: readVol().level,
       muted: !!audio.muted,
+      // Minuterie d'arrêt : { mode: "time", left: secondes } | { mode: "album" } | null
+      sleep: Playback.sleepState ? Playback.sleepState() : null,
       coverSrc: coverSrc(st)
     };
   }
@@ -285,6 +287,7 @@
     else if (name === "next") { if (st) Playback.next(); }
     else if (name === "prev") { if (st) Playback.prev(); }
     else if (name === "star") { if (st && Playback.star) Playback.star(); }
+    else if (name === "sleep") { if (Playback.sleep && (value === "album" || [0, 15, 30, 45, 60].includes(Number(value)))) Playback.sleep(value); }
     else if (name === "volume") setVol(Number(value));
     else if (name === "volumeStep") setVol(readVol().level + Number(value || 0));
     else if (name === "mute") { Playback.audio.muted = !Playback.audio.muted; }
@@ -484,6 +487,7 @@
 
   // Changements côté PC → téléphone, aussitôt
   document.addEventListener("playback:change", () => { send(); sendLyrics(); sendQueue(); sendThoughts(); });
+  document.addEventListener("sleep:changed", send);
   document.addEventListener("albums:changed", () => { sendQueue(); sendThoughts(); });
   document.addEventListener("albums:changed", send);
   window.addEventListener("storage", e => { if (e.key === VOL_KEY) send(); });

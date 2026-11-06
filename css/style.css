@@ -3359,6 +3359,62 @@ body.has-mini-player {
   display: none;
 }
 
+/* Minuterie d'arrêt : minutes restantes sur le bouton lune, et son menu */
+.mp-sleep-left {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  color: #1b1b1b;
+  background: var(--text);
+  border-radius: 8px;
+}
+
+.mp-sleep-left[hidden] { display: none; }
+
+.mp-sleep-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 6px;
+  background: #262626;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.mp-sleep-menu[hidden] { display: none; }
+
+.mp-sleep-title {
+  margin: 4px 8px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.mp-sleep-opt {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mp-sleep-opt:hover { background: var(--hover); }
+.mp-sleep-opt.is-on { font-weight: 700; }
+.mp-sleep-off { color: var(--text-muted); border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; margin-top: 4px; }
+
 .mp-mid {
   display: flex;
   align-items: flex-end;

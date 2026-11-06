@@ -279,6 +279,15 @@
   .bc-chev { width: 32px; text-align: center; font-size: 20px; color: var(--muted); flex: none; }
 
 
+  /* Minuterie d'arrêt */
+  .sl-btn { position: relative; }
+  .sl-btn.is-on { color: var(--text); }
+  .sl-status { margin: 0 20px 14px; font-size: 14px; color: var(--muted); }
+  .sl-opts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 20px 6px; }
+  .sl-opts .cl-chip { height: 40px; padding: 0 16px; font-size: 15px; }
+  .sl-off { display: block; margin: 14px 20px 4px; padding: 10px 0; font-size: 15px; color: var(--muted); text-decoration: underline; }
+  .sl-off[hidden] { display: none; }
+
   /* Réglette du volume pendant le geste */
   .osd {
     position: absolute; left: 50%; top: 50%;
@@ -477,6 +486,7 @@
     <div class="bc-bar" id="bc-bar" hidden>
       <div class="bc-sorts" id="bc-sorts">
         <button class="cl-chip" data-sort="az">A → Z</button>
+        <button class="cl-chip" data-sort="intensity">Intensité</button>
         <button class="cl-chip" data-sort="recent">Récents</button>
       </div>
       <div class="bc-head" id="bc-head" hidden>
@@ -509,6 +519,27 @@
       <ul class="q-list" id="cl-list"></ul>
       <button class="cl-more" id="cl-more" hidden>Afficher plus</button>
     </div>
+  </div>
+</div>
+<!-- Minuterie d'arrêt -->
+<div class="sheet" id="sl-sheet" aria-hidden="true">
+  <div class="sheet-panel" role="dialog" aria-label="Minuterie d'arrêt">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2 class="sheet-title">minuterie d'arrêt</h2>
+      <button class="icon-btn" id="sl-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </div>
+    <p class="sl-status" id="sl-status"></p>
+    <div class="sl-opts" id="sl-opts">
+      <button class="cl-chip" data-v="15">15 min</button>
+      <button class="cl-chip" data-v="30">30 min</button>
+      <button class="cl-chip" data-v="45">45 min</button>
+      <button class="cl-chip" data-v="60">1 h</button>
+      <button class="cl-chip" data-v="album">fin de l'album</button>
+    </div>
+    <button class="sl-off" id="sl-off" hidden>Désactiver</button>
   </div>
 </div>
 <!-- Thoughts de l'album en cours -->
@@ -558,6 +589,10 @@
   <header class="top">
     <span class="dot" id="dot"></span>
     <span class="grow"><span class="brand">conductor.</span> <span id="where">connexion…</span></span>
+    <button class="icon-btn sl-btn" id="sl-btn" title="Minuterie d'arrêt" aria-label="Minuterie d'arrêt" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></svg>
+      <span class="q-badge" id="sl-badge" hidden></span>
+    </button>
     <button class="icon-btn" id="cl-btn" title="Collection" aria-label="Collection : trier et filtrer" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>
     </button>
@@ -801,6 +836,7 @@
       msg = m;
       receivedAt = performance.now();
       if (m.state && m.state.playing) m.state.time = (m.state.time || 0) + latency();   // compensation du trajet réseau
+      sleepFrom(m.state && m.state.sleep);
       render();
     }
     else if (m.type === "time") syncTime(m.time);
@@ -878,6 +914,7 @@
     $("forget").hidden = true;
     $("q-btn").hidden = true;
     $("cl-btn").hidden = true;
+    $("sl-btn").hidden = true;
     setOnline(true, "appairage");
     setTimeout(() => $("pin").focus(), 50);
   }
@@ -887,6 +924,7 @@
     $("forget").hidden = false;
     $("q-btn").hidden = false;
     $("cl-btn").hidden = !window.CollectionCore;
+    $("sl-btn").hidden = false;
     installHint();
   }
 
@@ -1499,7 +1537,7 @@
   try {
     const sv = JSON.parse(localStorage.getItem("conductor-remote-bacs") || "{}");
     if (sv.tab === "bacs") bc.tab = "bacs";
-    if (sv.sort === "recent") bc.sort = "recent";
+    if (sv.sort === "recent" || sv.sort === "intensity") bc.sort = sv.sort;
     if (Core && Core.BAC_SORTS && Core.BAC_SORTS.some(x => x.id === sv.content)) bc.content = sv.content;
   } catch (e) {}
   const bcSave = () => { try { localStorage.setItem("conductor-remote-bacs", JSON.stringify({ tab: bc.tab, sort: bc.sort, content: bc.content })); } catch (e) {} };
@@ -1641,14 +1679,18 @@
       $("bc-empty").textContent = "Ce bac est vide : ajoutez des albums avec la barre ci-dessus.";
       return;
     }
-    const sorted = list.slice().sort(bc.sort === "recent"
-      ? (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")
-      : (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true }));
+    // A → Z, intensité moyenne (douce → forte) ou récents : comme la page bacs du PC (fichier commun)
+    const albumsIn = b => b.albums.map(id => byId.get(id)).filter(Boolean);
+    const sorted = Core.sortBacList(list, bc.sort, albumsIn);
     $("bc-list").replaceChildren(...sorted.map(b => {
-      const albums = b.albums.map(id => byId.get(id)).filter(Boolean);
+      const albums = albumsIn(b);
       const li = clEl("li", "q-row cl-row bc-row");
       const text = clEl("div", "q-text");
-      text.append(clEl("p", "q-title", b.name), clEl("p", "q-artist", bacMeta(albums)));
+      // albums · « 1j 2h 5min » (· intensité moyenne, juste la valeur, dans le tri « Intensité »)
+      const sec = albums.reduce((s, a) => s + (a.duration || 0), 0);
+      const avg = bc.sort === "intensity" ? Core.avgIntensity(albums) : null;
+      text.append(clEl("p", "q-title", b.name), clEl("p", "q-artist",
+        plural(albums.length, "album") + (sec ? " · " + Core.formatTotal(sec) : "") + (avg != null ? " · " + String(avg).replace(".", ",") : "")));
       li.append(text, clEl("span", "bc-chev", "›"));
       li.setAttribute("role", "button");
       li.addEventListener("click", () => { vibrate(6); openBac(b.id); });
@@ -1924,10 +1966,53 @@
   stage.addEventListener("pointerup", endGesture);
   stage.addEventListener("pointercancel", endGesture);
 
+  // ---------- Minuterie d'arrêt (lune, en haut) ----------
+  // Réglée sur le PC (15 / 30 / 45 min, 1 h, fin de l'album) : à l'heure dite, la lecture se met en pause.
+  // Le badge de la lune montre les minutes restantes (« ♪ » : fin de l'album).
+  let sleep = null;   // { album: true } | { until: performance.now() + reste }
+  function sleepFrom(s) {
+    sleep = !s ? null : s.mode === "album" ? { album: true } : { until: performance.now() + (s.left || 0) * 1000 };
+    renderSleep();
+  }
+  function sleepText() {
+    if (!sleep) return "";
+    if (sleep.album) return "à la fin de l'album";
+    const m = Math.max(0, Math.ceil((sleep.until - performance.now()) / 60000));
+    return "dans " + (m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min");
+  }
+  function renderSleep() {
+    const m = sleep && !sleep.album ? Math.max(0, Math.ceil((sleep.until - performance.now()) / 60000)) : 0;
+    $("sl-btn").classList.toggle("is-on", !!sleep);
+    $("sl-badge").hidden = !sleep;
+    $("sl-badge").textContent = !sleep ? "" : sleep.album ? "♪" : String(m);
+    $("sl-status").textContent = sleep ? "Pause " + sleepText() + "." : "La lecture se mettra en pause au bout de :";
+    $("sl-off").hidden = !sleep;
+    $("sl-opts").querySelectorAll("[data-v]").forEach(b => b.classList.toggle("is-on", !!sleep && sleep.album && b.dataset.v === "album"));
+  }
+  setInterval(() => { if (sleep && !sleep.album) renderSleep(); }, 10000);
+  function openSleep(on) {
+    $("sl-sheet").classList.toggle("is-open", on);
+    $("sl-sheet").setAttribute("aria-hidden", String(!on));
+    if (on) renderSleep();
+  }
+  $("sl-btn").addEventListener("click", () => { vibrate(); openSleep(true); });
+  $("sl-close").addEventListener("click", () => openSleep(false));
+  $("sl-sheet").addEventListener("click", e => { if (e.target === $("sl-sheet")) openSleep(false); });
+  $("sl-opts").addEventListener("click", e => {
+    const b = e.target.closest("[data-v]");
+    if (!b) return;
+    vibrate(12);
+    const v = b.dataset.v === "album" ? "album" : Number(b.dataset.v);
+    send("sleep", v);
+    sleepFrom(v === "album" ? { mode: "album" } : { mode: "time", left: v * 60 });   // affiché tout de suite
+    setTimeout(() => openSleep(false), 250);
+  });
+  $("sl-off").addEventListener("click", () => { vibrate(); send("sleep", 0); sleepFrom(null); openSleep(false); });
+
   // ---------- Bouton « retour » (Android) : ferme la fenêtre ouverte au lieu de quitter ----------
   // Chaque fenêtre (file, thoughts, collection) ouverte ajoute une étape à l'historique ; « retour »
   // la ferme. Fermée autrement (×, toucher à côté) : l'étape est retirée.
-  const SHEETS = { "sheet": () => openSheet(false), "th-sheet": () => openThoughts(false), "cl-sheet": () => openCollection(false) };
+  const SHEETS = { "sheet": () => openSheet(false), "th-sheet": () => openThoughts(false), "cl-sheet": () => openCollection(false), "sl-sheet": () => openSleep(false) };
   Object.keys(SHEETS).forEach(id => {
     new MutationObserver(() => {
       const open = $(id).classList.contains("is-open");

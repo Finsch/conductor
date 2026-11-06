@@ -211,10 +211,33 @@
     return m == null ? "" : "intensité " + String(m).replace(".", ",");
   };
 
+  // ---------- Liste des bacs ----------
+  // Durée d'un bac : « 1j 2h 5min », « 3h 18min », « 45min »
+  function formatTotal(sec) {
+    const m = Math.round((sec || 0) / 60);
+    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
+    return d ? d + "j " + h + "h " + min + "min" : h ? h + "h " + min + "min" : min + "min";
+  }
+  // Tri des bacs : "az" (nom), "intensity" (moyenne, douce → forte ; sans album noté : à la fin),
+  // "recent" (modifiés récemment). albumsOf(bac) : ses albums (fiches Store ou fiches légères).
+  function sortBacList(bacs, sort, albumsOf) {
+    const byName = (a, b) => (a.name || "").localeCompare(b.name || "", "fr", { sensitivity: "base", numeric: true });
+    if (sort === "recent") return bacs.slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+    if (sort === "intensity") {
+      const avg = new Map(bacs.map(b => [b.id, avgIntensity(albumsOf(b))]));
+      return bacs.slice().sort((a, b) => {
+        const x = avg.get(a.id), y = avg.get(b.id);
+        if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
+        return x - y || byName(a, b);
+      });
+    }
+    return bacs.slice().sort(byName);
+  }
+
   const decadeLabel = d => d === "avant" ? "avant 1950" : d.slice(2) + "s";
 
   root.CollectionCore = {
     addedAt, yearOf, decadeOf, durationOf, playCount, lastPlay, familyName, genreKey, normalize, matchesSearch,
-    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel, avgIntensity, intensityLabel, BAC_SORTS, sortBac, whenLabel, sortInfo
+    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel, avgIntensity, intensityLabel, BAC_SORTS, sortBac, whenLabel, sortInfo, formatTotal, sortBacList
   };
 })(typeof window !== "undefined" ? window : globalThis);
