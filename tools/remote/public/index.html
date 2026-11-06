@@ -278,6 +278,7 @@
   .bc-arow .q-act { width: 36px; }
   .bc-chev { width: 32px; text-align: center; font-size: 20px; color: var(--muted); flex: none; }
 
+
   /* Réglette du volume pendant le geste */
   .osd {
     position: absolute; left: 50%; top: 50%;
@@ -376,6 +377,85 @@
   .install svg { width: 22px; height: 22px; flex: none; }
   .install span { flex: 1; }
   .install button { color: var(--muted); font-size: 20px; width: 28px; height: 28px; flex: none; }
+
+  /* ---------- Tablette (iPad) ---------- */
+  .side { display: contents; }   /* téléphone : rien ne change */
+  :root { --track-max: 27px; }
+  /* Portrait (iPad : 820 px de large) : colonne plus large, textes plus grands, fenêtres centrées */
+  @media (min-width: 700px) {
+    :root { --track-max: 36px; }
+    .app { max-width: 680px; padding-left: 32px; padding-right: 32px; }
+    .kicker { font-size: 12px; }
+    .artist { font-size: 21px; }
+    .album { font-size: 16px; }
+    .times { font-size: 13px; }
+    .hint { font-size: 12px; }
+    .sheet-panel { width: min(720px, 100%); margin: 0 auto; }
+  }
+  /* Paysage (iPad : 1180 × 820).
+     Normal (comme le plein écran du PC) : grande pochette à gauche ; à droite TITRE n / N, titre, artiste,
+     album · année, barre, ⏮ ⏯ ⏭ puis thoughts, micro et ★ au bout de la ligne, volume du PC en dessous.
+     Karaoké (inspiré d'Apple Music) : colonne à gauche (pochette, titre et artiste avec thoughts, micro et ★ à
+     droite, barre, commandes centrées, volume) ; paroles en grand à droite, qui s'estompent en s'éloignant. */
+  @media (min-width: 900px) and (orientation: landscape) {
+    :root { --track-max: 44px; }
+    .app { max-width: 1180px; padding-left: 40px; padding-right: 40px; }
+    #remote { flex-direction: row !important; align-items: center; justify-content: center; gap: 7vw; }
+    #remote > .stage { flex: 0 0 auto; width: min(40vw, 58vh); height: min(40vw, 58vh); margin: 0; }
+    .side { display: flex; flex-direction: column; justify-content: center; flex: 0 1 460px; min-width: 0; }
+    .track { margin: 10px 0 6px; }
+    .progress { margin-top: 30px; }
+    .controls { justify-content: flex-start; gap: 22px; margin: 22px 0 6px -8px; }
+    .controls .th-btn { margin: 0 0 0 auto; }
+    .controls .lyr-btn, .controls .star { margin: 0; }
+    .controls .th-btn, .controls .lyr-btn, .controls .star { width: 44px; height: 44px; }
+    .hint { text-align: left; margin-top: 18px; }
+    /* Volume du PC, comme Apple Music : 🔈 ——— 🔊 25 % (les boutons font −5 / +5) */
+    .vols { margin-top: 18px; }
+    .vol { grid-template-columns: 32px 1fr 32px 46px; gap: 10px; }
+    .vol-label { display: none; }
+    .vol-value { font-size: 13px; }   /* valeur du volume du PC (« 25 % », « muet ») */
+    .vol-btn { width: 32px; height: 32px; }
+    .vol-btn svg { width: 20px; height: 20px; }
+    .vol-bar::before, .vol-fill { height: 5px; top: 11.5px; border-radius: 3px; }
+    .vol-knob { width: 12px; height: 12px; margin-left: -6px; top: 8px; }
+    .vol:not(.is-active) .vol-knob { opacity: 0; }
+    .vol-knob { transition: opacity 0.15s; }
+
+    /* Karaoké */
+    #remote.is-ly { align-items: stretch; gap: 5vw; --track-max: 26px; }
+    #remote.is-ly > .stage { order: 2; flex: 1 1 0; width: auto; height: auto; margin: 3vh 0; }
+    #remote.is-ly .side { order: 1; flex: 0 0 min(36vw, 420px); }
+    /* Pochette un peu plus petite : de l'air sous l'en-tête, et la place pour TITRE n / N */
+    .side > .cover { width: 100%; max-width: 40vh; flex: none; margin: 3vh auto 20px 0; visibility: visible; }
+    #remote.is-ly .track { margin: 6px 0 2px; }
+    #remote.is-ly .artist { font-size: 18px; }
+    #remote.is-ly .album { font-size: 14px; }
+    #remote.is-ly .meta-row { align-items: center; }
+    #remote.is-ly .meta-row .th-btn, #remote.is-ly .meta-row .lyr-btn, #remote.is-ly .meta-row .star { margin-top: 0; }
+    #remote.is-ly .progress { margin-top: 18px; }
+    #remote.is-ly .controls { justify-content: center; gap: 42px; margin: 18px 0 4px; }
+    /* ⏮ ⏸ ⏭ comme Apple Music : de grands symboles, sans rond blanc */
+    #remote.is-ly .ctl svg { width: 34px; height: 34px; }
+    #remote.is-ly .play { width: 64px; height: 64px; background: none; color: var(--text); }
+    #remote.is-ly .play svg { width: 46px; height: 46px; }
+    #remote.is-ly .hint { display: none; }
+    /* Paroles : grandes, alignées à gauche ; la ligne chantée nette, les autres plus floues en s'éloignant */
+    /* Flou des lignes éloignées : texte transparent + ombre floue de la même couleur. (Un vrai « filter:
+       blur » faisait apparaître des barres violettes dans Safari sur iPad : défaut d'affichage de WebKit.) */
+    #remote.is-ly .ly-line { font-size: 36px; line-height: 1.2; margin-bottom: 26px; opacity: 0.28;
+      color: transparent; text-shadow: 0 0 calc(var(--d, 0) * 0.6px) var(--text);
+      transition: opacity 0.3s, transform 0.3s, text-shadow 0.3s; }
+    #remote.is-ly .ly-line.is-past { opacity: 0.38; }
+    #remote.is-ly .ly-line.is-now { opacity: 1; color: var(--text); text-shadow: none; transform: none; }
+    #remote.is-ly .ly-line.is-gap { font-size: 28px; }
+    #remote.is-ly .ly-plain { font-size: 24px; }
+    .sheet-panel { max-height: 92%; }
+  }
+  /* Tablette : l'en-tête un peu plus bas (sous la barre d'état de l'iPad) */
+  @media (min-width: 700px) {
+    .app { padding-top: calc(max(14px, env(safe-area-inset-top)) + 30px); }
+  }
 </style>
 </head>
 <body>
@@ -507,6 +587,8 @@
       <div class="osd" id="osd"><b id="osd-value">14</b><span id="osd-label">volume · sur 20</span></div>
     </div>
 
+    <!-- Infos et commandes : sous la pochette (téléphone, iPad en portrait), à côté (iPad en paysage) -->
+    <div class="side">
     <p class="notice" id="notice" hidden></p>
     <p class="install" id="install" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M8.5 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7.5A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-1.5-1.5h-2.5"/></svg>
@@ -561,6 +643,7 @@
       </div>
     </div>
     <p class="hint" id="hint">glisser sur la pochette ← → : titre · ↑ ↓ : volume de l'appli</p>
+    </div>
   </main>
 </div>
 
@@ -583,7 +666,9 @@
   let appVol = null, pcVol = null;   // valeurs affichées (optimistes pendant un réglage)
   let appHold = 0, pcHold = 0;       // jusqu'à quand garder la valeur locale (réglage en cours)
 
-  const device = /iPhone/.test(navigator.userAgent) ? "iPhone" : /iPad/.test(navigator.userAgent) ? "iPad"
+  // iPad : Safari s'y présente comme un Mac (« Macintosh »), reconnaissable à son écran tactile
+  const IS_IPAD = /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  const device = /iPhone/.test(navigator.userAgent) ? "iPhone" : IS_IPAD ? "iPad"
     : /Android/.test(navigator.userAgent) ? "Android" : "navigateur";
 
   function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} }
@@ -811,7 +896,7 @@
     let seen = false;
     try { seen = localStorage.getItem("conductor-remote-install-hint") === "1"; } catch (e) {}
     if (standalone || seen) return;
-    const ios = /iPhone|iPad/.test(navigator.userAgent);
+    const ios = /iPhone/.test(navigator.userAgent) || IS_IPAD;
     $("install-text").innerHTML = ios
       ? "Pour l'ouvrir comme une appli : <b>Partager</b> puis <b>Sur l'écran d'accueil</b>."
       : "Pour l'ouvrir comme une appli : menu <b>⋮</b> puis <b>Ajouter à l'écran d'accueil</b>.";
@@ -895,7 +980,9 @@
   // Titre sur une ligne : de 27 px jusqu'à 17 px au plus petit
   function fitTitle() {
     const el = $("track");
-    let size = 27;
+    // Taille de départ : 27 px sur téléphone, plus sur tablette (variable CSS --track-max)
+    const max = parseFloat(getComputedStyle(el).getPropertyValue("--track-max")) || 27;
+    let size = max;
     el.style.fontSize = size + "px";
     while (el.scrollWidth > el.clientWidth && size > 17) {
       size -= 1;
@@ -1008,9 +1095,11 @@
   function bindVol(box, max, setter, get) {
     const bar = box.querySelector(".vol-bar");
     const at = e => { const r = bar.getBoundingClientRect(); return (e.clientX - r.left) / r.width * max; };
-    bar.addEventListener("pointerdown", e => { bar.setPointerCapture(e.pointerId); setter(at(e)); });
+    // is-active : le rond n'apparaît que pendant le glisser (iPad en paysage)
+    bar.addEventListener("pointerdown", e => { bar.setPointerCapture(e.pointerId); box.classList.add("is-active"); setter(at(e)); });
     bar.addEventListener("pointermove", e => { if (bar.hasPointerCapture(e.pointerId)) setter(at(e)); });
-    bar.addEventListener("pointerup", e => { setter(at(e), true); vibrate(); });
+    bar.addEventListener("pointerup", e => { box.classList.remove("is-active"); setter(at(e), true); vibrate(); });
+    bar.addEventListener("pointercancel", () => box.classList.remove("is-active"));
     box.querySelectorAll(".vol-btn").forEach(b => b.addEventListener("click", () => {
       vibrate();
       setter((get() || 0) + Number(b.dataset.step), true);
@@ -1031,8 +1120,42 @@
     try { localStorage.setItem(LYR_KEY, on ? "1" : "0"); } catch (e) {}
     renderLyrics();
     renderVols();
+    relayout();
     keepAwake(on);
   }
+
+  // ---------- iPad en paysage : mêmes places que le plein écran du PC ----------
+  // ★ au bout de la ligne ⏮ ⏯ ⏭, micro et thoughts dans l'en-tête ; en karaoké, la pochette passe en
+  // haut de la colonne de gauche. Ailleurs (téléphone, portrait) : tout reste à sa place d'origine.
+  const WIDE = matchMedia("(min-width: 900px) and (orientation: landscape)");
+  const homes = new Map();   // élément → marque de sa place d'origine
+  function moveTo(el, parent, before) {
+    if (!homes.has(el)) { const mark = document.createComment(el.id); el.before(mark); homes.set(el, mark); }
+    parent.insertBefore(el, before || null);
+  }
+  function goHome(el) { const mark = homes.get(el); if (mark && el.previousSibling !== mark) mark.after(el); }
+  const SPEAKER_LOW = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const SPEAKER_HIGH = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9.5h3.5L11 5.5v13l-4.5-4H3z"/><path d="M14 9.5a3.5 3.5 0 0 1 0 5M16.5 7a7 7 0 0 1 0 10M19 4.6a10.4 10.4 0 0 1 0 14.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  function relayout() {
+    const wide = WIDE.matches;
+    $("remote").classList.toggle("is-ly", wide && lyOn);
+    const controls = document.querySelector(".controls");
+    // Normal : thoughts, micro et ★ ensemble au bout de la ligne ⏮ ⏯ ⏭ ;
+    // karaoké : à droite du titre (leur place d'origine, comme ☆ ··· dans Apple Music)
+    const trio = ["th-btn", "lyr-btn", "star"];
+    if (wide && !lyOn) trio.forEach(id => moveTo($(id), controls));
+    else trio.forEach(id => goHome($(id)));
+    if (wide && lyOn) moveTo($("cover"), document.querySelector(".side"), document.querySelector(".side").firstChild);
+    else goHome($("cover"));
+    // Volume du PC : haut-parleurs à la place de − / +
+    document.querySelectorAll("#vol-pc .vol-btn").forEach(b => {
+      if (!b.dataset.text) b.dataset.text = b.textContent;
+      if (wide) b.innerHTML = Number(b.dataset.step) < 0 ? SPEAKER_LOW : SPEAKER_HIGH;
+      else b.textContent = b.dataset.text;
+    });
+    fitTitle();
+  }
+  (WIDE.addEventListener ? WIDE.addEventListener("change", relayout) : WIDE.addListener(relayout));
 
   // ---------- Écran allumé pendant les paroles ----------
   // Wake Lock API quand le navigateur l'offre (HTTPS seulement) ; sinon, comme NoSleep.js : une vidéo noire
@@ -1091,6 +1214,7 @@
   }
   for (const ev of ["touchend", "click"]) document.addEventListener(ev, nsGesture, { capture: true, passive: true });
   if (lyOn) keepAwake(true);   // paroles restées affichées depuis la dernière fois
+  relayout();                  // iPad en paysage : disposition du plein écran du PC
   $("lyr-btn").addEventListener("click", () => { vibrate(); setLyrics(!lyOn); });
 
   function lineAt(lines, t) {
@@ -1156,6 +1280,7 @@
     for (let n = 0; n < L.lines.length; n++) {
       kids[n].classList.toggle("is-now", n === i);
       kids[n].classList.toggle("is-past", n < i);
+      kids[n].style.setProperty("--d", String(Math.min(Math.abs(n - i), 5)));   // flou selon la distance (iPad, karaoké)
     }
     if (Date.now() - lyUserScroll > 4000) {
       const el = kids[Math.max(0, i)];

@@ -74,6 +74,22 @@ ou l'autre.
 passe affiché, gardé pour les fois suivantes) ; adresse `http://10.42.0.1:8765`, onglet **Point d'accès du PC**.
 `./point-acces.sh stop` l'éteint. La carte wifi quitte alors le wifi auquel elle était connectée.
 
+## iPad
+
+Même télécommande que sur iPhone, dans Safari (appli : **Partager** → **Sur l'écran d'accueil**), mise en
+page pour la tablette :
+
+- **Portrait** : une colonne plus large, pochette et textes plus grands.
+- **Paysage** : la disposition du plein écran du PC. Grande pochette à gauche ; à droite TITRE n / N,
+  titre, artiste, album · année, barre de lecture, ⏮ ⏯ ⏭ puis thoughts, micro et ★ au bout de la ligne,
+  et le volume du PC (🔈 ——— 🔊).
+  En karaoké, inspiré d'Apple Music : colonne à gauche (pochette, titre et artiste avec thoughts, micro et
+  ★, barre, ⏮ ⏸ ⏭, volume) ; paroles en grand à droite, la ligne chantée nette, les autres estompées.
+- Les fenêtres (file, thoughts, collection, bacs) restent centrées, sans s'étirer sur tout l'écran.
+
+Même appairage (QR code ou code), même réseau (wifi, Tailscale, point d'accès), même écran allumé pendant
+les paroles. Le PC l'affiche comme « iPad » parmi les appareils appairés.
+
 ## Téléphone Android
 
 Tout marche comme sur iPhone, dans Chrome :

@@ -545,6 +545,15 @@ const MANUALS = [
         ]
       },
       {
+        title: "iPad",
+        steps: [
+          {
+            title: "Sur tablette",
+            body: "<p>Même télécommande, dans Safari (appli : <b>Partager</b> → <b>Sur l'écran d'accueil</b>), mise en page pour l'iPad : en <b>portrait</b>, une colonne plus large ; en <b>paysage</b>, la disposition du plein écran du PC (grande pochette à gauche ; infos, barre, ⏮ ⏯ ⏭ avec thoughts, micro et ★, volume à droite) ; en karaoké, comme Apple Music (colonne à gauche, paroles en grand à droite). Les fenêtres restent centrées. Appairage, réseau et écran allumé pendant les paroles : comme sur iPhone.</p>"
+          }
+        ]
+      },
+      {
         title: "Téléphone Android",
         steps: [
           {
