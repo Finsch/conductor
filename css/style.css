@@ -8397,11 +8397,32 @@ a.wr-rec:hover {
   max-width: 520px;
 }
 
-.bc-add {
-  position: relative;
-  max-width: 640px;
+.bc-tools {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 18px;
 }
+
+.bc-add {
+  position: relative;
+  flex: 1 1 360px;
+  max-width: 640px;
+}
+
+.bc-content-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bc-content-sort .field { width: auto; }
+
+/* Trié autrement que « Ordre du bac » : pas de poignée */
+.bc-list.is-sorted .bc-row .bc-grip { visibility: hidden !important; }
 
 .bc-add-results {
   position: absolute;

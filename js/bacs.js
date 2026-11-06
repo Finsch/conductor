@@ -1,6 +1,6 @@
 // conductor. — page « bacs » : des sélections d'albums ordonnées (comme des playlists d'albums)
 //   bacs.html         : tous les bacs (mosaïque des pochettes, nombre d'albums, durée)
-//   bacs.html?id=…    : un bac — lire, ajouter à la file, renommer, supprimer, changer la
+//   bacs.html?id=…    : un bac — lire, copier son contenu (texte), renommer, supprimer, changer la
 //                       pochette, ajouter des albums de la collection, réordonner (glisser),
 //                       lancer un album ou l'ajouter à la file, retirer
 // Données : Store.bacs() (js/data.js), écrites dans datastorage/collection.js
@@ -54,10 +54,18 @@
     box.replaceChildren(...(four.length ? four : [null]).map(a => a ? coverImg(a, 300) : el("span", "bc-nocover", "♪")));
     box.dataset.n = String(Math.max(1, four.length));
   }
-  function meta(albums) {
+  // withIntensity : intensité moyenne (page d'un bac seulement) — fichier commun, comme la télécommande
+  function meta(albums, withIntensity) {
     const sec = albums.reduce((s, a) => s + durationOf(a), 0);
-    return plural(albums.length, "album") + (sec ? " · " + formatLength(sec) : "");
+    const int = withIntensity ? CollectionCore.intensityLabel(albums) : "";
+    return plural(albums.length, "album") + (sec ? " · " + formatLength(sec) : "") + (int ? " · " + int : "");
   }
+
+  // Tri du contenu d'un bac (fichier commun) ; « Ordre du bac » = ordre à la main, seul où l'on glisse
+  const CONTENT_SORT_KEY = "conductor01.bacContentSort";
+  let contentSort = "manual";
+  try { const v = localStorage.getItem(CONTENT_SORT_KEY); if (CollectionCore.BAC_SORTS.some(s => s.id === v)) contentSort = v; } catch (e) {}
+  const shownAlbums = bac => CollectionCore.sortBac(albumsOf(bac), bac, contentSort);
 
   const id = new URLSearchParams(location.search).get("id");
 
@@ -65,10 +73,24 @@
   // Tous les bacs
   // =====================================================================
 
-  // Tri : A → Z (par défaut) ou récemment modifiés ; gardé dans le navigateur
+  // Tri : A → Z (par défaut), intensité moyenne (douce → forte) ou récemment modifiés ; gardé dans le navigateur
   const SORT_KEY = "conductor01.bacs.sort";
   let sort = "az";
-  try { sort = localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "az"; } catch (e) {}
+  try { const v = localStorage.getItem(SORT_KEY); if (v === "recent" || v === "intensity") sort = v; } catch (e) {}
+
+  // Durée d'un bac sur sa carte : « 1j 2h 5min », « 3h 18min », « 45min »
+  function formatTotal(sec) {
+    const m = Math.round((sec || 0) / 60);
+    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
+    return d ? d + "j " + h + "h " + min + "min" : h ? h + "h " + min + "min" : min + "min";
+  }
+  // Carte : albums · durée (· intensité moyenne, juste la valeur, dans le tri « intensité »)
+  function cardMeta(albums) {
+    const sec = albums.reduce((s, a) => s + durationOf(a), 0);
+    const avg = sort === "intensity" ? CollectionCore.avgIntensity(albums) : null;
+    return plural(albums.length, "album") + (sec ? " · " + formatTotal(sec) : "") + (avg != null ? " · " + String(avg).replace(".", ",") : "");
+  }
+  const byName = (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true });
   $("bc-sort").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
     sort = b.dataset.sort;
     try { localStorage.setItem(SORT_KEY, sort); } catch (e) {}
@@ -76,9 +98,16 @@
   }));
 
   function renderIndex() {
-    const bacs = Store.bacs().slice().sort(sort === "recent"
-      ? (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")
-      : (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true }));
+    const avg = new Map();   // intensité moyenne de chaque bac (null : aucun album noté → à la fin)
+    Store.bacs().forEach(b => avg.set(b.id, CollectionCore.avgIntensity(albumsOf(b))));
+    const bacs = Store.bacs().slice().sort(
+      sort === "recent" ? (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")
+      : sort === "intensity" ? (a, b) => {
+          const x = avg.get(a.id), y = avg.get(b.id);
+          if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
+          return x - y || byName(a, b);
+        }
+      : byName);
     $("bc-sort").querySelectorAll(".chip").forEach(b => {
       b.classList.toggle("is-active", b.dataset.sort === sort);
       b.setAttribute("aria-checked", String(b.dataset.sort === sort));
@@ -93,7 +122,7 @@
       card.href = "bacs.html?id=" + encodeURIComponent(bac.id);
       const m = el("div", "bc-mosaic");
       mosaic(m, albums, bac);
-      card.append(m, el("p", "bc-card-name", bac.name), el("p", "bc-card-meta", meta(albums)));
+      card.append(m, el("p", "bc-card-name", bac.name), el("p", "bc-card-meta", cardMeta(albums)));
       return card;
     }));
   }
@@ -121,12 +150,13 @@
   function renderOne() {
     const bac = Store.bac(id);
     if (!bac) { location.replace("bacs.html"); return; }
-    const albums = albumsOf(bac);
+    const albums = shownAlbums(bac);
     document.title = bac.name + " · bacs · conductor.";
     if (!$("bc-name").querySelector("input")) $("bc-name").textContent = bac.name;
-    $("bc-meta").textContent = meta(albums);
+    $("bc-meta").textContent = meta(albums, true);
+    $("bc-list").classList.toggle("is-sorted", contentSort !== "manual");
     mosaic($("bc-mosaic"), albums, bac);
-    $("bc-play").disabled = $("bc-queue").disabled = !albums.length;
+    $("bc-play").disabled = $("bc-copy").disabled = !albums.length;
     $("bc-one-empty").hidden = albums.length > 0;
     $("bc-list").replaceChildren(...albums.map((a, i) => row(a, i)));
   }
@@ -158,7 +188,9 @@
     const cover = el("span", "bc-row-cover");
     cover.appendChild(coverImg(a, 100));
     const text = el("span", "bc-row-text");
-    text.append(el("span", "bc-row-title", a.title), el("span", "bc-row-artist", a.artist + (a.year ? " · " + a.year : "")));
+    // Selon le tri : intensité, dernière écoute, nombre d'écoutes (fichier commun, comme la télécommande)
+    const info = CollectionCore.sortInfo(a, contentSort);
+    text.append(el("span", "bc-row-title", a.title), el("span", "bc-row-artist", a.artist + (a.year ? " · " + a.year : "") + (info ? " · " + info : "")));
     link.append(el("span", "bc-row-num", String(i + 1)), cover, text);
     const play = el("button", "bc-row-act");
     play.type = "button";
@@ -182,7 +214,7 @@
       Store.updateBac(id, { albums: bac.albums.filter(x => x !== a.id) });
     });
     li.append(grip, link, play, queue, dur, del);
-    dragRow(li);
+    if (contentSort === "manual") dragRow(li);   // trié autrement : pas de glisser
     return li;
   }
 
@@ -336,20 +368,53 @@
   });
   document.addEventListener("click", e => { if (!e.composedPath().some(n => n.classList && n.classList.contains("bc-add"))) addList.hidden = true; });
 
-  // Lire / file d'attente
+  // Tri du contenu
+  if ($("bc-content-sort")) {
+    $("bc-content-sort").replaceChildren(...CollectionCore.BAC_SORTS.map(s => { const o = document.createElement("option"); o.value = s.id; o.textContent = s.label; return o; }));
+    $("bc-content-sort").value = contentSort;
+    $("bc-content-sort").addEventListener("change", () => {
+      contentSort = $("bc-content-sort").value;
+      try { localStorage.setItem(CONTENT_SORT_KEY, contentSort); } catch (e) {}
+      renderOne();
+    });
+  }
+
+  // Lire / copier
   $("bc-play").addEventListener("click", () => {
-    const albums = albumsOf(Store.bac(id));
+    const albums = shownAlbums(Store.bac(id));   // dans l'ordre affiché
     if (!albums.length || typeof Playback === "undefined") return;
     Playback.playId(albums[0].id, false);
     albums.slice(1).forEach(a => Playback.addToQueue(a.id));
   });
-  $("bc-queue").addEventListener("click", () => {
-    const albums = albumsOf(Store.bac(id));
-    if (typeof Playback === "undefined") return;
-    albums.forEach(a => Playback.addToQueue(a.id));
-    const b = $("bc-queue");
-    b.textContent = "Ajouté ✓";
-    setTimeout(() => { b.textContent = "Ajouter à la file"; }, 1800);
+  // Copier le contenu en texte (à coller dans un message, une note…), une ligne par album :
+  //   1. Artiste — Titre (année)
+  function bacText(bac) {
+    const lines = shownAlbums(bac).map((a, i) => {   // dans l'ordre affiché
+      const y = a.releaseDate ? String(a.releaseDate).slice(0, 4) : a.year;
+      return (i + 1) + ". " + (a.artist || "?") + " — " + (a.title || "?") + (y ? " (" + y + ")" : "");
+    });
+    return lines.join("\n");
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+    // Secours : ancienne méthode du presse-papiers
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+    return ok;
+  }
+  $("bc-copy").addEventListener("click", async () => {
+    const bac = Store.bac(id);
+    if (!bac) return;
+    const ok = await copyText(bacText(bac));
+    const b = $("bc-copy");
+    b.textContent = ok ? "Copié ✓" : "Copie impossible";
+    setTimeout(() => { b.textContent = "Copier"; }, 1800);
   });
 
   // Renommer (sur place)

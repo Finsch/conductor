@@ -221,6 +221,24 @@
     colSent = json;
     ws.send('{"type":"collection","items":' + json + "}");
   }
+  // Bacs : nom et liste d'albums (les fiches viennent de la collection ci-dessus)
+  let bacsSent = "", bacsTimer = 0;
+  function sendBacs(force) {
+    if (!(ws && ws.readyState === 1) || !lastRemotes || typeof Store === "undefined" || !Store.bacs) return;
+    const known = new Set(Store.raw().map(a => a.id));
+    const bacs = Store.bacs().map(b => {
+      const albums = (b.albums || []).filter(id => known.has(id));
+      const added = {};   // date d'entrée dans le bac (tri « ajouts récents / anciens »)
+      albums.forEach(id => { if (b.added && b.added[id]) added[id] = b.added[id]; });
+      return { id: b.id, name: b.name || "", updatedAt: b.updatedAt || "", albums, added };
+    });
+    const json = JSON.stringify(bacs);
+    if (json === bacsSent && !force) return;
+    bacsSent = json;
+    ws.send('{"type":"bacs","bacs":' + json + "}");
+  }
+  document.addEventListener("bacs:changed", () => { clearTimeout(bacsTimer); bacsTimer = setTimeout(sendBacs, 800); });
+
   // Une écoute, une fiche modifiée… : renvoyée (regroupé, au plus toutes les 2 s)
   document.addEventListener("albums:changed", () => { clearTimeout(colTimer); colTimer = setTimeout(sendCollection, 2000); });
 
@@ -278,6 +296,24 @@
       if (value && Store.get(value.id)) Playback.playId(value.id, !!Playback.state());
     }
     else if (name === "queueAlbum") { if (value && Store.get(value.id)) Playback.addToQueue(value.id); }
+    // Ajouter un album de la collection à un bac (comme la barre « ajouter » de la page du bac)
+    else if (name === "bacAdd") {
+      if (value && Store.bac(value.bac) && Store.get(value.album)) Store.toggleInBac(value.bac, value.album, true);
+    }
+    else if (name === "bacRemove") {
+      if (value && Store.bac(value.bac)) Store.toggleInBac(value.bac, value.album, false);
+    }
+    // Réordonner : l'album glissé est retrouvé par son id (au cas où le bac a changé entre-temps)
+    else if (name === "bacMove") {
+      const bac = value && Store.bac(value.bac);
+      if (!bac) return;
+      const list = bac.albums.slice();
+      const from = list.indexOf(value.album);
+      if (from < 0) return;
+      list.splice(from, 1);
+      list.splice(Math.max(0, Math.min(list.length, Number(value.to) || 0)), 0, value.album);
+      Store.updateBac(bac.id, { albums: list });
+    }
     else if (name === "thoughtDelete") deleteThought(value);
     else if (name === "thoughtEdit") editThought(value);
     else if (name === "queuePlay") {
@@ -300,7 +336,7 @@
     clearTimeout(timer);
     try { ws = new WebSocket("ws://127.0.0.1:" + PORT + "/ws?role=host"); }
     catch (e) { retry(); return; }
-    ws.onopen = () => { wait = 1500; lyKey = ""; queueSent = ""; thSent = ""; colSent = ""; send(); };
+    ws.onopen = () => { wait = 1500; lyKey = ""; queueSent = ""; thSent = ""; colSent = ""; bacsSent = ""; send(); };
     ws.onmessage = e => {
       let m = null;
       try { m = JSON.parse(e.data); } catch (err) { return; }
@@ -312,7 +348,7 @@
         const more = n > lastRemotes;
         lastPin = m.pin;
         lastRemotes = n;
-        if (more) { sendLyrics(true); sendQueue(true); sendThoughts(true); sendCollection(true); }   // nouveau téléphone : paroles, file, thoughts
+        if (more) { sendLyrics(true); sendQueue(true); sendThoughts(true); sendCollection(true); sendBacs(true); }   // nouveau téléphone : paroles, file, thoughts
         info = m;
         renderPanel();
       }

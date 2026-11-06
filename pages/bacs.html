@@ -40,6 +40,7 @@
       </div>
       <div class="chip-list bc-sort" id="bc-sort" role="radiogroup" aria-label="Tri">
         <button type="button" class="chip" data-sort="az" role="radio">A → Z</button>
+        <button type="button" class="chip" data-sort="intensity" role="radio" title="Intensité moyenne, de la plus douce à la plus forte">intensité</button>
         <button type="button" class="chip" data-sort="recent" role="radio">récemment modifiés</button>
       </div>
       <form class="bc-create" id="bc-create" hidden autocomplete="off">
@@ -65,15 +66,18 @@
           <p class="album-facts" id="bc-meta"></p>
           <div class="bc-actions">
             <button type="button" class="btn" id="bc-play">▶ Lire le bac</button>
-            <button type="button" class="btn btn-ghost" id="bc-queue">Ajouter à la file</button>
+            <button type="button" class="btn btn-ghost" id="bc-copy" title="Copier la liste des albums (texte)">Copier</button>
             <button type="button" class="btn btn-ghost" id="bc-rename">Renommer</button>
             <button type="button" class="btn btn-ghost" id="bc-delete">Supprimer</button>
           </div>
         </div>
       </div>
-      <div class="bc-add">
-        <input type="search" class="field" id="bc-add-input" placeholder="Ajouter un album de la collection : titre ou artiste…" autocomplete="off">
-        <ul class="bc-add-results" id="bc-add-results" hidden></ul>
+      <div class="bc-tools">
+        <div class="bc-add">
+          <input type="search" class="field" id="bc-add-input" placeholder="Ajouter un album de la collection : titre ou artiste…" autocomplete="off">
+          <ul class="bc-add-results" id="bc-add-results" hidden></ul>
+        </div>
+        <label class="bc-content-sort">trier <select class="field" id="bc-content-sort" aria-label="Trier le contenu du bac"></select></label>
       </div>
       <p class="empty" id="bc-one-empty" hidden>Ce bac est vide. Ajoutez des albums ci-dessus, ou depuis leur page (bouton « bacs »).</p>
       <ol class="bc-list" id="bc-list"></ol>
@@ -86,6 +90,7 @@
   <script src="../js/data.js"></script>
   <script src="../js/navidrome.js"></script>
   <script src="../js/disk.js"></script>
+  <script src="../js/collection-core.js"></script>
   <script src="../js/bacs.js"></script>
   <script src="../js/volume.js"></script>
   <script src="../js/playback.js"></script>

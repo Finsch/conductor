@@ -180,6 +180,7 @@ let lyrics = null;               // paroles du morceau en cours (envoyées par c
 let queue = [];                  // file d'attente (albums à suivre), pochettes à part
 let thoughts = null;             // thoughts de l'album en cours
 let collection = null;           // fiches légères de la collection (texte JSON prêt à envoyer)
+let bacs = null;                 // bacs : noms et listes d'albums (texte JSON prêt à envoyer)
 const searchCovers = new Map();  // albumId → pochette, pour les résultats du catalogue
 const queueCovers = new Map();   // albumId → pochette (chemin local ou adresse http)
 let sysVol = null;               // volume du PC, 0..100 (null : indisponible)
@@ -241,6 +242,9 @@ function onMessage(peer, msg) {
       });
       if (searchCovers.size > 2000) searchCovers.clear();
       remotes.forEach(r => { if (r.authed) r.send({ type: "results", id: msg.id, q: msg.q, items }); });
+    } else if (msg.type === "bacs") {
+      bacs = JSON.stringify({ type: "bacs", bacs: Array.isArray(msg.bacs) ? msg.bacs : [] });
+      remotes.forEach(r => { if (r.authed) r.sendRaw(bacs); });
     } else if (msg.type === "collection") {
       collection = JSON.stringify({ type: "collection", items: Array.isArray(msg.items) ? msg.items : [] });
       remotes.forEach(r => { if (r.authed) r.sendRaw(collection); });
@@ -285,6 +289,7 @@ function onMessage(peer, msg) {
       peer.send({ type: "queue", queue });
       if (thoughts) peer.send({ type: "thoughts", thoughts });
       if (collection) peer.sendRaw(collection);
+      if (bacs) peer.sendRaw(bacs);
       log("téléphone connecté : " + peer.info.device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -315,6 +320,7 @@ function onMessage(peer, msg) {
       peer.send({ type: "queue", queue });
       if (thoughts) peer.send({ type: "thoughts", thoughts });
       if (collection) peer.sendRaw(collection);
+      if (bacs) peer.sendRaw(bacs);
       log("téléphone appairé : " + device + " (" + ip + ")");
       if (host) host.send(relayInfo());
       refreshSysVolume();
@@ -332,7 +338,7 @@ function onMessage(peer, msg) {
   if (name === "sysMute") { setSysMute(!sysMuted); return; }
   const allowed = ["toggle", "next", "prev", "star", "volume", "volumeStep", "mute", "seek",
     "queuePlay", "queueRemove", "queueMove", "queueClear", "thoughtAdd", "thoughtDelete", "thoughtEdit",
-    "search", "playAlbum", "queueAlbum"];
+    "search", "playAlbum", "queueAlbum", "bacAdd", "bacRemove", "bacMove"];
   if (!allowed.includes(name)) return;
   const cmd = { type: "cmd", name, value: msg.value };
   if (host) host.send(cmd);
@@ -351,6 +357,7 @@ function onClose(peer) {
       queueCovers.clear();
       thoughts = null;
       collection = null;
+      bacs = null;
       log("conductor. déconnecté");
       broadcast();
     }, HOST_GRACE);

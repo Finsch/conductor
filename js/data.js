@@ -546,6 +546,9 @@ const Store = (function () {
       const now = new Date().toISOString();
       const bac = { id: "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
         name: String(name || "").trim() || "Nouveau bac", albums: [...new Set(albumIds || [])], createdAt: now, updatedAt: now };
+      // Date d'entrée de chaque album dans le bac (tri « ajouts récents / anciens »)
+      bac.added = {};
+      bac.albums.forEach(a => { bac.added[a] = now; });
       list.push(bac);
       saveCrates(list);
       return bac;
@@ -556,7 +559,19 @@ const Store = (function () {
       const bac = list.find(c => c.id === id);
       if (!bac) return null;
       if (patch.name != null) bac.name = String(patch.name).trim() || bac.name;
-      if (Array.isArray(patch.albums)) bac.albums = [...new Set(patch.albums)];
+      if (Array.isArray(patch.albums)) {
+        // Date d'entrée dans le bac : notée pour les nouveaux albums, oubliée pour les retirés
+        // (les albums mis avant cette fonction n'en ont pas : ils comptent comme les plus anciens)
+        const now = new Date().toISOString();
+        const before = new Set(bac.albums || []);
+        const added = bac.added || {};
+        bac.albums = [...new Set(patch.albums)];
+        bac.added = {};
+        bac.albums.forEach(a => {
+          if (added[a]) bac.added[a] = added[a];
+          else if (!before.has(a)) bac.added[a] = now;
+        });
+      }
       if ("cover" in patch) { if (patch.cover) bac.cover = patch.cover; else delete bac.cover; }
       if ("coverAlbum" in patch) { if (patch.coverAlbum) bac.coverAlbum = patch.coverAlbum; else delete bac.coverAlbum; }
       bac.updatedAt = new Date().toISOString();

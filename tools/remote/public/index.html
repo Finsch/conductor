@@ -259,6 +259,25 @@
   .cl-row { padding-left: 20px; }
   .cl-more { display: block; margin: 12px auto 4px; padding: 9px 18px; font-size: 14px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
 
+  /* Onglets collection | bacs */
+  .cl-tabs { flex: 1; display: flex; gap: 18px; }
+  .cl-tab { padding: 4px 0; font-size: 17px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; }
+  .cl-tab.is-on { color: var(--text); border-bottom-color: var(--text); }
+  .bc-bar { padding: 0 20px 10px; }
+  .bc-sorts { display: flex; gap: 6px; }
+  .bc-back { padding: 4px 0 8px; font-size: 14px; color: var(--muted); }
+  .bc-name { margin: 0; font-size: 20px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bc-meta { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
+  .bc-csort { display: block; width: 100%; margin: 0 0 8px; }
+  .bc-found { margin-top: 6px; background: #262626; border-radius: 12px; max-height: 42vh; overflow-y: auto; }
+  .bc-found .q-row { padding-left: 14px; }
+  .bc-found .bc-none { padding: 12px 14px; font-size: 14px; color: var(--muted); }
+  .bc-plus { width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px; font-weight: 300; color: var(--text); flex: none; }
+  .bc-row { cursor: pointer; }
+  .bc-arow { padding-right: 0; gap: 4px; }
+  .bc-arow .q-act { width: 36px; }
+  .bc-chev { width: 32px; text-align: center; font-size: 20px; color: var(--muted); flex: none; }
+
   /* Réglette du volume pendant le geste */
   .osd {
     position: absolute; left: 50%; top: 50%;
@@ -292,9 +311,17 @@
   .star.is-on { color: var(--gold); }
   .star.is-on svg { fill: currentColor; }
 
-  /* Progression (lecture seule) */
+  /* Progression : glisser (ou toucher) pour avancer / reculer */
   .progress { margin-top: 16px; }
-  .bar { position: relative; height: 4px; background: var(--line); border-radius: 2px; }
+  .bar-hit { padding: 12px 0; margin: -12px 0; touch-action: none; cursor: pointer; }
+  .bar { position: relative; height: 4px; background: var(--line); border-radius: 2px; transition: height 0.12s; }
+  .bar-knob {
+    position: absolute; top: 50%; left: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    background: var(--text); border-radius: 50%; transition: transform 0.12s; pointer-events: none;
+  }
+  .progress.is-scrub .bar { height: 6px; }
+  .progress.is-scrub .bar-knob { transform: scale(1.5); }
+  .progress.is-scrub #cur { color: var(--text); font-weight: 600; }
   .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); border-radius: 2px; }
   .times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
@@ -358,15 +385,37 @@
   <div class="sheet-panel cat-panel" role="dialog" aria-label="Collection">
     <div class="sheet-grab"></div>
     <div class="sheet-head">
-      <h2 class="sheet-title">collection</h2>
+      <div class="cl-tabs" role="tablist">
+        <button class="cl-tab" id="tab-albums" role="tab">collection</button>
+        <button class="cl-tab" id="tab-bacs" role="tab">bacs</button>
+      </div>
       <button class="icon-btn" id="cl-close" aria-label="Fermer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
       </button>
     </div>
-    <div class="cat-search">
+    <!-- Bacs : liste, ou un bac ouvert -->
+    <div class="bc-bar" id="bc-bar" hidden>
+      <div class="bc-sorts" id="bc-sorts">
+        <button class="cl-chip" data-sort="az">A → Z</button>
+        <button class="cl-chip" data-sort="recent">Récents</button>
+      </div>
+      <div class="bc-head" id="bc-head" hidden>
+        <button class="bc-back" id="bc-back" aria-label="Retour aux bacs">‹ bacs</button>
+        <h3 class="bc-name" id="bc-name"></h3>
+        <p class="bc-meta" id="bc-meta"></p>
+        <select class="cl-sort bc-csort" id="bc-csort" aria-label="Trier le contenu du bac"></select>
+        <input class="cat-input" id="bc-add" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Ajouter un album de la collection…">
+        <ul class="q-list bc-found" id="bc-found" hidden></ul>
+      </div>
+    </div>
+    <div class="sheet-body" id="bc-body" hidden>
+      <ul class="q-list" id="bc-list"></ul>
+      <p class="cl-status" id="bc-empty" hidden></p>
+    </div>
+    <div class="cat-search" id="cl-search">
       <input class="cat-input" id="cl-q" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Rechercher : album, artiste, genre, style…">
     </div>
-    <div class="cl-bar">
+    <div class="cl-bar" id="cl-bar">
       <select class="cl-sort" id="cl-sort" aria-label="Trier"></select>
       <button class="cl-ftoggle" id="cl-ftoggle" aria-expanded="false">filtres<span class="cl-fcount" id="cl-fcount" hidden></span></button>
     </div>
@@ -485,7 +534,7 @@
         </button>
       </div>
       <div class="progress">
-        <div class="bar"><div class="bar-fill" id="fill"></div></div>
+        <div class="bar-hit" id="bar-hit" role="slider" aria-label="Position dans le morceau"><div class="bar"><div class="bar-fill" id="fill"></div><div class="bar-knob" id="knob"></div></div></div>
         <div class="times"><span id="cur">0:00</span><span id="left">0:00</span></div>
       </div>
     </div>
@@ -675,6 +724,7 @@
     else if (m.type === "queue") { queue = Array.isArray(m.queue) ? m.queue : []; renderQueue(); }
     else if (m.type === "thoughts") { thoughts = m.thoughts || null; renderThoughts(); }
     else if (m.type === "collection") { collection = Array.isArray(m.items) ? m.items : []; renderCollection(); }
+    else if (m.type === "bacs") { bacs = Array.isArray(m.bacs) ? m.bacs : []; renderCollection(); }
   }
 
   function schedule() {
@@ -857,12 +907,53 @@
   function tick() {
     const st = msg && msg.state;
     const dur = st ? st.duration || 0 : 0;
-    const t = position();
-    $("fill").style.width = dur ? (t / dur * 100) + "%" : "0";
+    const t = scrub != null ? scrub : position();
+    const pct = dur ? Math.max(0, Math.min(100, t / dur * 100)) : 0;
+    $("fill").style.width = pct + "%";
+    $("knob").style.left = pct + "%";
+    $("knob").hidden = !dur;
     $("cur").textContent = mmss(t);
     $("left").textContent = dur ? "−" + mmss(dur - t) : "";
   }
   setInterval(tick, 500);
+
+  // Glisser sur la barre : la position suit le doigt (temps affiché), la lecture y va au lâcher.
+  // Un simple toucher y va aussi.
+  let scrub = null;
+  (function () {
+    const hit = $("bar-hit");
+    const at = e => {
+      const st = msg && msg.state, dur = st ? st.duration || 0 : 0;
+      const r = hit.getBoundingClientRect();
+      return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur;
+    };
+    hit.addEventListener("pointerdown", e => {
+      const st = msg && msg.state;
+      if (!st || !st.duration) return;
+      e.preventDefault();
+      try { hit.setPointerCapture(e.pointerId); } catch (err) {}
+      scrub = at(e);
+      $("bar-hit").parentElement.classList.add("is-scrub");
+      vibrate(6);
+      tick();
+    });
+    hit.addEventListener("pointermove", e => { if (scrub == null) return; scrub = at(e); tick(); });
+    const end = e => {
+      if (scrub == null) return;
+      const t = e.type === "pointercancel" ? null : at(e);
+      scrub = null;
+      $("bar-hit").parentElement.classList.remove("is-scrub");
+      if (t != null && msg && msg.state) {
+        send("seek", Math.round(t * 10) / 10);
+        msg.state.time = t;                 // affiché tout de suite ; le PC confirme
+        receivedAt = performance.now();
+        vibrate(10);
+      }
+      tick();
+    };
+    hit.addEventListener("pointerup", end);
+    hit.addEventListener("pointercancel", end);
+  })();
 
   function renderVols() {
     $("hint").textContent = lyOn ? "toucher une ligne : la lecture y va · micro : retour à la pochette"
@@ -1156,11 +1247,20 @@
     setTimeout(() => { delete b.dataset.armed; b.classList.remove("is-armed"); b.textContent = "Vider la file"; }, 3000);
   });
 
-  // Glisser avec la poignée : la ligne suit le doigt, les autres s'écartent
+  // Glisser avec la poignée : la ligne suit le doigt, les autres s'écartent.
+  // Servi à la file d'attente et aux bacs (onDrop(de, vers) à la fin).
   let qDrag = null;
   function startQDrag(e, li, from) {
+    startDrag(e, li, from, $("q-list"), (a, b) => {
+      const item = queue[a];
+      send("queueMove", { i: a, id: item.id, to: b });
+      queue.splice(a, 1);
+      queue.splice(b, 0, item);
+    }, renderQueue);
+  }
+  function startDrag(e, li, from, listEl, onDrop, done) {
     e.preventDefault();
-    const rows = [...$("q-list").children];
+    const rows = [...listEl.children];
     qDrag = { li, from, to: from, y: e.clientY, rows };
     li.classList.add("is-dragging");
     vibrate(10);
@@ -1184,13 +1284,8 @@
       qDrag = null;
       d.rows.forEach(r => { r.style.transform = ""; });
       li.classList.remove("is-dragging");
-      if (d.to !== d.from) {
-        const item = queue[d.from];
-        send("queueMove", { i: d.from, id: item.id, to: d.to });
-        queue.splice(d.from, 1);
-        queue.splice(d.to, 0, item);
-      }
-      renderQueue();
+      if (d.to !== d.from) onDrop(d.from, d.to);
+      done();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -1228,6 +1323,7 @@
   }
 
   function openCollection(on) {
+    if (!on) bc.open = null;
     $("cl-sheet").classList.toggle("is-open", on);
     $("cl-sheet").setAttribute("aria-hidden", String(!on));
     if (on) { cl.shown = CL_PAGE; renderCollection(); }
@@ -1265,14 +1361,188 @@
   const fmtMin = sec => { const m = Math.round(sec / 60); return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min"; };
   // Une info de plus selon le tri choisi
   function clExtra(a) {
-    if (/^aggro/.test(cl.sort)) return a.aggressivity ? a.aggressivity + "/10" : "";
     if (/^length/.test(cl.sort)) return a.duration ? fmtMin(a.duration) : "";
-    if (/^plays/.test(cl.sort)) return a.playCount + " écoute" + (a.playCount > 1 ? "s" : "");
-    return "";
+    return Core.sortInfo(a, cl.sort);   // intensité, dernière écoute, écoutes (fichier commun)
+  }
+
+
+  // ---------- Bacs (onglet de la fenêtre collection) ----------
+  // Liste des bacs (A → Z ou récents, comme sur le PC) ; un bac ouvert : ses albums, dans son ordre.
+  // Les fiches des albums viennent de la collection.
+  let bacs = null;
+  const bc = { tab: "albums", sort: "az", content: "manual", open: null };
+  try {
+    const sv = JSON.parse(localStorage.getItem("conductor-remote-bacs") || "{}");
+    if (sv.tab === "bacs") bc.tab = "bacs";
+    if (sv.sort === "recent") bc.sort = "recent";
+    if (Core && Core.BAC_SORTS && Core.BAC_SORTS.some(x => x.id === sv.content)) bc.content = sv.content;
+  } catch (e) {}
+  const bcSave = () => { try { localStorage.setItem("conductor-remote-bacs", JSON.stringify({ tab: bc.tab, sort: bc.sort, content: bc.content })); } catch (e) {} };
+  // Tri du contenu d'un bac : mêmes choix que la page du bac sur le PC (fichier commun)
+  if (Core && Core.BAC_SORTS) {
+    $("bc-csort").replaceChildren(...Core.BAC_SORTS.map(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.label; return o; }));
+    $("bc-csort").value = bc.content;
+    $("bc-csort").addEventListener("change", () => { bc.content = $("bc-csort").value; bcSave(); renderBacs(); $("bc-body").scrollTop = 0; });
+  }
+
+  function setTab(t) {
+    if (bc.open) closeBac();
+    bc.tab = t; bcSave(); vibrate(6); renderCollection();
+  }
+  $("tab-albums").addEventListener("click", () => setTab("albums"));
+  $("tab-bacs").addEventListener("click", () => setTab("bacs"));
+  $("bc-sorts").addEventListener("click", e => {
+    const b = e.target.closest("[data-sort]");
+    if (b) { bc.sort = b.dataset.sort; bcSave(); vibrate(6); renderBacs(); }
+  });
+  // Un bac ouvert = une étape d'historique : « retour » (Android) revient à la liste des bacs
+  function openBac(id) {
+    bc.open = id;
+    $("bc-add").value = "";
+    $("bc-found").hidden = true;
+    history.pushState({ sheet: "cl-sheet", bac: id }, "");
+    $("bc-body").scrollTop = 0;
+    renderBacs();
+  }
+  function closeBac() {
+    if (history.state && history.state.bac) { history.back(); return; }   // popstate referme
+    bc.open = null; renderBacs();
+  }
+  $("bc-back").addEventListener("click", () => { vibrate(6); closeBac(); });
+  window.addEventListener("popstate", () => { if (bc.open && !(history.state && history.state.bac)) { bc.open = null; renderBacs(); } });
+  // Ajouter un album de la collection au bac ouvert : titre ou artiste, 8 résultats, comme sur le PC
+  let bcFound = [];
+  function bcSearch() {
+    const q = Core.normalize($("bc-add").value.trim());
+    const bac = bc.open && (bacs || []).find(b => b.id === bc.open);
+    if (!q || !bac) { $("bc-found").hidden = true; bcFound = []; return; }
+    bcFound = (collection || []).filter(a => !bac.albums.includes(a.id) && Core.normalize(a.title + " " + a.artist).includes(q)).slice(0, 8);
+    $("bc-found").replaceChildren(...(bcFound.length ? bcFound.map(a => {
+      const li = clEl("li", "q-row");
+      li.setAttribute("role", "button");
+      const text = clEl("div", "q-text");
+      text.append(clEl("p", "q-title", a.title), clEl("p", "q-artist", a.artist + (a.year ? " · " + a.year : "")));
+      li.append(text, clEl("span", "bc-plus", "+"));
+      li.addEventListener("click", () => bcAdd(a));
+      return li;
+    }) : [clEl("li", "bc-none", "Aucun album de la collection ne correspond.")]));
+    $("bc-found").hidden = false;
+  }
+  function bcAdd(a) {
+    const bac = bc.open && (bacs || []).find(b => b.id === bc.open);
+    if (!bac) return;
+    vibrate(12);
+    send("bacAdd", { bac: bac.id, album: a.id });
+    bac.albums = bac.albums.concat(a.id);   // affiché tout de suite ; le PC renverra les bacs
+    $("bc-add").value = "";
+    $("bc-found").hidden = true;
+    renderBacs();
+  }
+  $("bc-add").addEventListener("input", bcSearch);
+  $("bc-add").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); if (bcFound.length && $("bc-add").value.trim()) bcAdd(bcFound[0]); else $("bc-add").blur(); }
+  });
+
+  function albumRow(a) {
+    const li = clEl("li", "q-row cl-row");
+    const text = clEl("div", "q-text");
+    const extra = bc.tab === "albums" ? clExtra(a) : bc.open ? Core.sortInfo(a, bc.content) : "";
+    text.append(clEl("p", "q-title", a.title), clEl("p", "q-artist", a.artist + (a.year ? " · " + a.year : "") + (extra ? " · " + extra : "")));
+    const play = clEl("button", "q-act");
+    play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer " + a.title);
+    play.addEventListener("click", () => { vibrate(15); send("playAlbum", { id: a.id }); openCollection(false); });
+    const add = clEl("button", "q-act");
+    add.innerHTML = ICON_CAT_QUEUE; add.setAttribute("aria-label", "Ajouter " + a.title + " à la file");
+    add.addEventListener("click", () => {
+      vibrate(12);
+      send("queueAlbum", { id: a.id });
+      add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+      add.style.color = "var(--ok)";
+    });
+    li.append(text, play, add);
+    return li;
+  }
+  // Album d'un bac : ▶ ≡+, × retirer du bac, ⠿ glisser pour réordonner
+  function bacAlbumRow(bac, a, i) {
+    const li = albumRow(a);
+    li.classList.add("bc-arow");
+    const del = clEl("button", "q-act");
+    del.innerHTML = ICON_Q_DEL; del.setAttribute("aria-label", "Retirer " + a.title + " du bac");
+    del.addEventListener("click", () => {
+      vibrate();
+      send("bacRemove", { bac: bac.id, album: a.id });
+      bac.albums = bac.albums.filter(id => id !== a.id);   // affiché tout de suite ; le PC renverra les bacs
+      renderBacs();
+    });
+    li.append(del);
+    if (bc.content !== "manual") return li;   // trié autrement : pas de glisser (seulement dans « Ordre du bac »)
+    const grip = clEl("span", "q-grip", "⠿");
+    grip.setAttribute("aria-hidden", "true");
+    grip.addEventListener("pointerdown", e => startDrag(e, li, i, $("bc-list"), (from, to) => {
+      const shown = [...$("bc-list").children].length;
+      if (shown !== bac.albums.length) return;   // albums inconnus du téléphone : on ne touche à rien
+      const id = bac.albums[from];
+      send("bacMove", { bac: bac.id, album: id, to });
+      bac.albums.splice(from, 1);
+      bac.albums.splice(to, 0, id);
+    }, renderBacs));
+    li.append(grip);
+    return li;
+  }
+  const plural = (n, w) => n + " " + w + (n > 1 ? "s" : "");
+  // withIntensity : intensité moyenne, sur la page d'un bac seulement
+  function bacMeta(albums, withIntensity) {
+    const sec = albums.reduce((s, a) => s + (a.duration || 0), 0);
+    const int = withIntensity ? Core.intensityLabel(albums) : "";
+    return plural(albums.length, "album") + (sec ? " · " + fmtMin(sec) : "") + (int ? " · " + int : "");
+  }
+
+  function renderBacs() {
+    if (qDrag) return;   // pas pendant un glisser
+    const byId = new Map((collection || []).map(a => [a.id, a]));
+    const list = bacs || [];
+    const bac = bc.open && list.find(b => b.id === bc.open);
+    if (bc.open && !bac && bacs) bc.open = null;   // bac supprimé sur le PC
+    $("bc-sorts").hidden = !!bc.open;
+    $("bc-head").hidden = !bc.open;
+    $("bc-sorts").querySelectorAll("[data-sort]").forEach(b => b.classList.toggle("is-on", b.dataset.sort === bc.sort));
+    if (bc.open && bac) {
+      const inOrder = bac.albums.map(id => byId.get(id)).filter(Boolean);
+      const albums = Core.sortBac ? Core.sortBac(inOrder, bac, bc.content) : inOrder;
+      $("bc-name").textContent = bac.name;
+      $("bc-meta").textContent = bacMeta(albums, true);
+        $("bc-list").replaceChildren(...albums.map((a, i) => bacAlbumRow(bac, a, i)));
+      $("bc-empty").hidden = albums.length > 0;
+      $("bc-empty").textContent = "Ce bac est vide : ajoutez des albums avec la barre ci-dessus.";
+      return;
+    }
+    const sorted = list.slice().sort(bc.sort === "recent"
+      ? (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")
+      : (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true }));
+    $("bc-list").replaceChildren(...sorted.map(b => {
+      const albums = b.albums.map(id => byId.get(id)).filter(Boolean);
+      const li = clEl("li", "q-row cl-row bc-row");
+      const text = clEl("div", "q-text");
+      text.append(clEl("p", "q-title", b.name), clEl("p", "q-artist", bacMeta(albums)));
+      li.append(text, clEl("span", "bc-chev", "›"));
+      li.setAttribute("role", "button");
+      li.addEventListener("click", () => { vibrate(6); openBac(b.id); });
+      return li;
+    }));
+    $("bc-empty").hidden = sorted.length > 0;
+    $("bc-empty").textContent = bacs ? "Pas encore de bac : créez-en sur le PC (page bacs)." : "chargement…";
   }
 
   function renderCollection() {
     if (!Core || !$("cl-sheet").classList.contains("is-open")) return;
+    const onBacs = bc.tab === "bacs";
+    $("tab-albums").classList.toggle("is-on", !onBacs);
+    $("tab-bacs").classList.toggle("is-on", onBacs);
+    $("tab-albums").setAttribute("aria-selected", String(!onBacs));
+    $("tab-bacs").setAttribute("aria-selected", String(onBacs));
+    ["cl-search", "cl-bar", "cl-body"].forEach(id => { $(id).hidden = onBacs; });
+    ["bc-bar", "bc-body"].forEach(id => { $(id).hidden = !onBacs; });
+    if (onBacs) { renderBacs(); return; }
     const all = collection || [];
     const q = Core.normalize(cl.q.trim());
     const base = q ? all.filter(a => Core.matchesSearch(a, q)) : all;
@@ -1332,25 +1602,7 @@
     const list = base.filter(a => match(a)).sort(Core.sortById(cl.sort));
     $("cl-count").textContent = !list.length && q ? "Aucun album ne correspond à « " + cl.q.trim() + " »."
       : list.length + " album" + (list.length > 1 ? "s" : "") + (nf || q ? " sur " + all.length : "");
-    $("cl-list").replaceChildren(...list.slice(0, cl.shown).map(a => {
-      const li = clEl("li", "q-row cl-row");
-      const text = clEl("div", "q-text");
-      const extra = clExtra(a);
-      text.append(clEl("p", "q-title", a.title), clEl("p", "q-artist", a.artist + (a.year ? " · " + a.year : "") + (extra ? " · " + extra : "")));
-      const play = clEl("button", "q-act");
-      play.innerHTML = ICON_Q_PLAY; play.setAttribute("aria-label", "Lancer " + a.title);
-      play.addEventListener("click", () => { vibrate(15); send("playAlbum", { id: a.id }); openCollection(false); });
-      const add = clEl("button", "q-act");
-      add.innerHTML = ICON_CAT_QUEUE; add.setAttribute("aria-label", "Ajouter " + a.title + " à la file");
-      add.addEventListener("click", () => {
-        vibrate(12);
-        send("queueAlbum", { id: a.id });
-        add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-        add.style.color = "var(--ok)";
-      });
-      li.append(text, play, add);
-      return li;
-    }));
+    $("cl-list").replaceChildren(...list.slice(0, cl.shown).map(albumRow));
     $("cl-more").hidden = list.length <= cl.shown;
     $("cl-more").textContent = "Afficher plus (" + (list.length - cl.shown) + ")";
   }
@@ -1556,7 +1808,7 @@
       const open = $(id).classList.contains("is-open");
       const mine = history.state && history.state.sheet === id;
       if (open && !mine) history.pushState({ sheet: id }, "");
-      else if (!open && mine) history.back();
+      else if (!open && mine) history.go(history.state.bac ? -2 : -1);
     }).observe($(id), { attributes: true, attributeFilter: ["class"] });
   });
   window.addEventListener("popstate", () => {

@@ -103,6 +103,8 @@
     { id: "year-asc",     label: "Sortie ancienne",         fn: byNumber(yearOf, 1) },
     { id: "length-desc",  label: "Durée, longue → courte",  fn: byNumber(durationOf, -1) },
     { id: "length-asc",   label: "Durée, courte → longue",  fn: byNumber(durationOf, 1) },
+    // Date de la dernière écoute comptée par le lecteur ; jamais écoutés : à la fin (ajouts récents d'abord)
+    { id: "listened-desc", label: "Écouté récemment",       fn: (a, b) => (!lastPlay(a)) - (!lastPlay(b)) || lastPlay(b).localeCompare(lastPlay(a)) || addedAt(b).localeCompare(addedAt(a)) },
     // À égalité : la plus récente d'abord / l'ajout le plus ancien d'abord
     { id: "plays-desc",   label: "Le plus écouté",          fn: (a, b) => playCount(b) - playCount(a) || lastPlay(b).localeCompare(lastPlay(a)) },
     { id: "plays-asc",    label: "Le moins écouté",         fn: (a, b) => playCount(a) - playCount(b) || addedAt(a).localeCompare(addedAt(b)) }
@@ -163,10 +165,56 @@
     return { genres, families, decades, decadeList, intensities };
   }
 
+  // ---------- Info affichée selon le tri ----------
+  // « aujourd'hui », « hier », « il y a 4 j », sinon la date (« 27 oct. », l'année si ce n'est pas celle-ci)
+  function whenLabel(iso) {
+    const d = new Date(iso), today = new Date();
+    const days = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
+    if (days <= 0) return "aujourd'hui";
+    if (days === 1) return "hier";
+    if (days < 7) return "il y a " + days + " j";
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+  }
+  // Intensité « 8/10 », dernière écoute, nombre d'écoutes : selon le tri choisi ("" sinon)
+  function sortInfo(a, sortId) {
+    if (/^aggro/.test(sortId)) return a.aggressivity ? a.aggressivity + "/10" : "";
+    if (sortId === "listened-desc") { const l = lastPlay(a); return l ? whenLabel(l) : "jamais écouté"; }
+    if (/^plays/.test(sortId)) { const n = playCount(a); return n + " écoute" + (n > 1 ? "s" : ""); }
+    return "";
+  }
+
+  // ---------- Tri du contenu d'un bac ----------
+  // « Ordre du bac » = l'ordre choisi à la main (glisser) ; les autres tris ne font que l'afficher autrement.
+  // Ajouts récents / anciens : date d'entrée dans le bac (bac.added) ; sans date (albums mis avant que
+  // conductor. la note) : comptés comme les plus anciens, dans l'ordre du bac.
+  const bacAddedAt = (bac, a) => (bac && bac.added && bac.added[a.id]) || "";
+  const BAC_SORTS = [
+    { id: "manual",         label: "Ordre du bac",   fn: null },
+    { id: "bac-added-desc", label: "Ajouts récents", fn: bac => (a, b) => bacAddedAt(bac, b).localeCompare(bacAddedAt(bac, a)) },
+    { id: "bac-added-asc",  label: "Ajouts anciens", fn: bac => (a, b) => bacAddedAt(bac, a).localeCompare(bacAddedAt(bac, b)) }
+  ].concat(["artist", "aggro-asc", "aggro-desc", "length-desc", "length-asc", "listened-desc", "plays-desc", "plays-asc"]
+    .map(id => { const s = SORTS.find(x => x.id === id); return { id, label: s.label, fn: () => s.fn }; }));
+  // albums : dans l'ordre du bac ; renvoie une copie triée (tri stable : l'ordre du bac départage)
+  function sortBac(albums, bac, id) {
+    const s = BAC_SORTS.find(x => x.id === id);
+    return s && s.fn ? albums.slice().sort(s.fn(bac)) : albums.slice();
+  }
+
+  // Intensité moyenne d'une sélection (bac…) : albums notés seulement ; null si aucun.
+  // Affichée « intensité 6,4 ».
+  function avgIntensity(albums) {
+    const v = albums.map(a => Number(a.aggressivity) || 0).filter(n => n > 0);
+    return v.length ? Math.round(v.reduce((s, n) => s + n, 0) / v.length * 10) / 10 : null;
+  }
+  const intensityLabel = albums => {
+    const m = avgIntensity(albums);
+    return m == null ? "" : "intensité " + String(m).replace(".", ",");
+  };
+
   const decadeLabel = d => d === "avant" ? "avant 1950" : d.slice(2) + "s";
 
   root.CollectionCore = {
     addedAt, yearOf, decadeOf, durationOf, playCount, lastPlay, familyName, genreKey, normalize, matchesSearch,
-    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel
+    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel, avgIntensity, intensityLabel, BAC_SORTS, sortBac, whenLabel, sortInfo
   };
 })(typeof window !== "undefined" ? window : globalThis);
