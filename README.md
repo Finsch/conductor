@@ -79,9 +79,13 @@ The interface is in French.
 - From an album page: **Bacs** button (`B`) — tick the bacs it belongs to, or create a new one with the album in it.
 - Saved in `datastorage/collection.js` (so in backups and the archive).
 
+<p align="center"><img src="assets/about/bacs.jpg" alt="The bacs page: one card per bac with its cover, number of albums and total length" width="900"></p>
+
 ### Artist page
 
 All their albums by release date (with the same ▶ / queue buttons on covers), total length, average intensity, genres, years, favourite tracks, copy of the album list. Artist names link to it everywhere.
+
+<p align="center"><img src="assets/about/artist.jpg" alt="An artist page: albums by release date, total length, average intensity, genres, years" width="900"></p>
 
 ### Next up
 
@@ -148,6 +152,8 @@ Both the album page (plain text) and karaoke (synced) look in your files first, 
 - Albums on the phone but not in the collection are listed, ready to add.
 
 **Remote control from a phone** — iPhone or Android, on Wi-Fi or 4G, no app to install. A small relay runs on the PC (`tools/remote/start-remote.bat`, Node.js, no dependencies); the phone opens its page and controls conductor.: cover, track, play / pause, previous / next, a draggable progress bar, ★, PC volume, gestures on the cover (swipe ← → for tracks, ↑ ↓ for the app volume out of 20), synced both ways; **lyrics** on the phone (microphone button): the karaoke's synced lyrics follow the music, tap a line to jump there, the screen stays on while they are shown; the **queue** (play an album now, remove, reorder by dragging, clear); **thoughts** on the current album (write, read, edit, delete — saved with the album, shown in the journal); the **collection** — a search bar, all the PC's sorts and the intensity, decade and genre filters (same rules as the PC collection, from the shared `js/collection-core.js`; no covers) — to play an album or add it to the queue, with a **bacs** tab (browse a bac, play or queue its albums, add albums from the collection, remove them, drag to reorder). `Alt + R` opens the remote window (QR code). Started from conductor. (phone icon in the footer → *Démarrer la télécommande*, after running `tools/remote/install-button.bat` once; optional start with Windows) and paired once by scanning a **QR code** with the phone camera (or a 4-digit code); add it to the home screen to use it like an app. Robust connection: dead connections are replaced within seconds, the phone remembers all the PC's addresses (Wi-Fi, Tailscale, hotspot) and switches to whichever answers, commands made during a drop are sent on reconnect, and reloading conductor. doesn't interrupt the phone. On 4G or another network, **Tailscale** links the phone to the PC; with no internet at all, the phone joins the PC's own Wi-Fi hotspot (`tools/remote/point-acces.bat` turns it on even offline; Linux: `point-acces.sh`, NetworkManager). Android phones work like the iPhone, in Chrome (the back button closes the open panel); on an iPad the layout adapts (wider column in portrait, the PC full-screen layout in landscape, karaoke included). See `docs/telecommande.md`.
+
+<p align="center"><img src="assets/about/remote-iphone.jpg" alt="The remote on an iPhone: cover, track, progress, controls, PC volume" width="250"> &nbsp; <img src="assets/about/remote-ipad.jpg" alt="The remote on an iPad in landscape: the PC full-screen layout" width="560"></p>
 
 **From YouTube to conductor.** — a typical path for a new album:
 
