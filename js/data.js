@@ -362,6 +362,11 @@ const Store = (function () {
     if (typeof Disk !== "undefined") Disk.changed();
   }
 
+  // Ancien bac automatique « Jamais écoutés » (retiré) : on l'efface s'il a été créé
+  setTimeout(() => {
+    try { const c = loadCrates(); if (c.some(b => b.id === "auto-never")) saveCrates(c.filter(b => b.id !== "auto-never")); } catch (e) {}
+  }, 0);
+
   function loadListening() {
     try { return JSON.parse(localStorage.getItem(LISTEN_KEY)) || {}; } catch (e) { return {}; }
   }

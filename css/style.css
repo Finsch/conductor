@@ -2239,7 +2239,7 @@ body.has-mini-player .filters {
 
 .album-row {
   display: grid;
-  grid-template-columns: 48px minmax(0, 2fr) 52px minmax(110px, 1fr) 72px 96px 64px;
+  grid-template-columns: 48px minmax(0, 2fr) 52px minmax(110px, 1fr) 96px 64px 92px;
   align-items: center;
   gap: 16px;
   padding: 8px;
@@ -2315,9 +2315,20 @@ a.album-row:hover .row-title {
   letter-spacing: 0;
 }
 
+.list-head .label-short { display: none; }
+
+/* Dernière colonne : écoutes ; + dernière écoute avec le tri « Écouté récemment » */
+.has-extra .album-row {
+  grid-template-columns: 48px minmax(0, 2fr) 52px minmax(110px, 1fr) 96px 64px 92px 92px;
+}
+
 @media (max-width: 1000px) {
   .album-row {
-    grid-template-columns: 48px minmax(0, 1fr) 52px 72px 96px 64px;
+    grid-template-columns: 48px minmax(0, 1fr) 52px 96px 64px 92px;
+  }
+
+  .has-extra .album-row {
+    grid-template-columns: 48px minmax(0, 1fr) 52px 96px 64px 92px 92px;
   }
 
   .row-genre {
@@ -2364,12 +2375,20 @@ a.album-row:hover .row-title {
 }
 
 @media (max-width: 560px) {
-  .album-row {
-    grid-template-columns: 48px minmax(0, 1fr) 40px 58px;
+  .album-row,
+  .has-extra .album-row {
+    grid-template-columns: 48px minmax(0, 1fr) 40px 50px 90px;
     gap: 10px;
   }
 
-  .row-tracks,
+  .list-head .label-long { display: none; }
+  .list-head .label-short { display: inline; }
+
+  /* Petit écran : une seule colonne d'écoute (la dernière écoute quand c'est le tri) */
+  .has-extra .row-plays {
+    display: none;
+  }
+
   .row-length {
     display: none;
   }

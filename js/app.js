@@ -34,6 +34,7 @@
           colors: [...state.colors],
           colorsOpen: state.colorsOpen,
           filesOnly: state.filesOnly,
+          neverOnly: state.neverOnly,
           intensities: [...state.intensities],
           tiers: [...state.tiers],
           letter: state.letter
@@ -54,6 +55,7 @@
     colors: new Set(list(saved.colors).slice(0, 1)),   // couleur de pochette choisie (une seule)
     colorsOpen: !!saved.colorsOpen,               // section « Couleurs » dépliée
     filesOnly: !!saved.filesOnly,
+    neverOnly: !!saved.neverOnly,   // « Jamais écouté » : aucune écoute enregistrée
     favOnly: false,   // « Albums favoris » : jamais repris d'une visite à l'autre (touche F)
     intensities: new Set(list(saved.intensities)),
     tiers: new Set(list(saved.tiers).filter(t => TIERS.includes(t)).slice(0, 1)),   // un seul tier à la fois
@@ -114,6 +116,7 @@
     if (skip !== "letter" && state.letter && letterField() && letterOf(a[letterField()]) !== state.letter) return false;
     if (skip !== "files" && state.filesOnly && !onPhone(a)) return false;
     if (skip !== "fav" && state.favOnly && !a.favorite) return false;
+    if (skip !== "never" && state.neverOnly && Core.playCount(a) > 0) return false;
     if (skip !== "tier" && state.tiers.size && !state.tiers.has(a.tier)) return false;
     if (!Core.matches(a, state, skip)) return false;   // intensité, genres, décennies
     if (skip !== "color" && state.colors.size && !state.colors.has(a.coverColor)) return false;
@@ -264,6 +267,11 @@
     document.getElementById("fav-count").textContent =
       String(base.filter(a => matchesFilters(a, "fav") && a.favorite).length);
 
+    // Jamais écouté
+    document.getElementById("never-only").checked = state.neverOnly;
+    document.getElementById("never-count").textContent =
+      String(base.filter(a => matchesFilters(a, "never") && !Core.playCount(a)).length);
+
     // Tier S / A / B (un seul à la fois ; recliquer le retire)
     const tierCount = new Map();
     base.filter(a => matchesFilters(a, "tier")).forEach(a => {
@@ -321,12 +329,16 @@
     }));
 
     renderColors(base);
-    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.colors.size && !state.filesOnly && !state.favOnly &&
+    resetBtn.hidden = !state.genres.size && !state.decades.size && !state.colors.size && !state.filesOnly && !state.favOnly && !state.neverOnly &&
       !state.intensities.size && !state.tiers.size && !state.letter;
   }
 
   document.getElementById("fav-only").addEventListener("change", e => {
     state.favOnly = e.target.checked;
+    refresh();
+  });
+  document.getElementById("never-only").addEventListener("change", e => {
+    state.neverOnly = e.target.checked;
     refresh();
   });
   document.getElementById("files-only").addEventListener("change", e => {
@@ -341,6 +353,7 @@
     state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
+    state.neverOnly = false;
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
@@ -435,7 +448,6 @@
     const text = el("div", "row-text");
     text.append(el("p", "row-title", album.title), artistEl(album, "row-artist"));
 
-    const tracks = trackCountOf(album);
     const length = durationOf(album);
 
     row.append(
@@ -443,11 +455,18 @@
       text,
       el("span", "row-cell row-year", yearOf(album) ? String(yearOf(album)) : ""),
       genreCell(album),
-      el("span", "row-cell row-tracks", tracks ? formatTracks(tracks) : ""),
       el("span", "row-cell row-length", length ? formatLength(length) : ""),
       el("span", "row-cell row-num row-aggro", album.aggressivity ? album.aggressivity + "/10" : "")
     );
+    extraColumns().forEach(c => row.append(el("span", "row-cell row-num " + c.cls, c.value(album))));
     return row;
+  }
+
+  // Écoutes : toujours ; dernière écoute : en plus avec le tri « Écouté récemment »
+  const PLAYS_COL = { cls: "row-plays", label: "Écoutes", value: a => { const n = Core.playCount(a); return n ? n + (n > 1 ? " écoutes" : " écoute") : "pas d'écoute"; } };
+  const LAST_COL = { cls: "row-last", label: "Dernière écoute", short: "Dern. écoute", value: a => { const l = Core.lastPlay(a); return l ? Core.whenLabel(l) : "jamais"; } };
+  function extraColumns() {
+    return state.sort === "listened-desc" ? [PLAYS_COL, LAST_COL] : [PLAYS_COL];
   }
 
   // Genre (vue liste) : recherche dans la collection, filtres remis à zéro
@@ -477,10 +496,16 @@
       el("span", "row-text", "Album"),
       el("span", "row-cell row-year", "Année"),
       el("span", "row-cell row-genre", "Genre"),
-      el("span", "row-cell row-tracks", "Pistes"),
       el("span", "row-cell row-length", "Durée"),
       el("span", "row-cell row-num row-aggro", "Intensité")
     );
+    extraColumns().forEach(c => {
+      const h = el("span", "row-cell row-num " + c.cls);
+      // Petit écran : « Dern. écoute »
+      if (c.short) h.append(el("span", "label-long", c.label), el("span", "label-short", c.short));
+      else h.textContent = c.label;
+      head.append(h);
+    });
     return head;
   }
 
@@ -708,14 +733,14 @@
 
     // Export .txt : seulement après une recherche ou un filtre
     lastResults = albums;
-    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.colors.size || state.filesOnly || state.favOnly ||
+    exportBtn.hidden = !(q || state.genres.size || state.decades.size || state.colors.size || state.filesOnly || state.favOnly || state.neverOnly ||
       state.intensities.size || state.letter) || !albums.length;
 
     viewBtns.forEach(b => {
       b.classList.toggle("is-active", b.dataset.view === state.view);
       b.setAttribute("aria-pressed", String(b.dataset.view === state.view));
     });
-    grid.className = state.view === "list" ? "album-list" : "album-grid";
+    grid.className = state.view === "list" ? "album-list" + (extraColumns().length > 1 ? " has-extra" : "") : "album-grid";
     grid.replaceChildren(...(state.view === "list"
       ? (shown.length ? [listHeader()] : []).concat(shown.map(createRow))
       : shown.map(createCard)));
@@ -758,6 +783,7 @@
     state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
+    state.neverOnly = false;
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
@@ -798,6 +824,7 @@
     state.colors.clear();
     state.filesOnly = false;
     state.favOnly = false;
+    state.neverOnly = false;
     state.intensities.clear();
     state.tiers.clear();
     state.letter = "";
