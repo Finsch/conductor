@@ -268,7 +268,10 @@
   .bc-back { padding: 4px 0 8px; font-size: 14px; color: var(--muted); }
   .bc-name { margin: 0; font-size: 20px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bc-meta { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
-  .bc-csort { display: block; width: 100%; margin: 0 0 8px; }
+  .bc-csort-row { display: flex; gap: 8px; margin: 0 0 8px; }
+  .bc-csort { display: block; width: 100%; margin: 0; }
+  .cl-shuffle { padding: 0 12px; font-size: 18px; }
+  .cl-shuffle[hidden] { display: none; }
   .bc-found { margin-top: 6px; background: #262626; border-radius: 12px; max-height: 42vh; overflow-y: auto; }
   .bc-found .q-row { padding-left: 14px; }
   .bc-found .bc-none { padding: 12px 14px; font-size: 14px; color: var(--muted); }
@@ -493,7 +496,7 @@
         <button class="bc-back" id="bc-back" aria-label="Retour aux bacs">‹ bacs</button>
         <h3 class="bc-name" id="bc-name"></h3>
         <p class="bc-meta" id="bc-meta"></p>
-        <select class="cl-sort bc-csort" id="bc-csort" aria-label="Trier le contenu du bac"></select>
+        <div class="bc-csort-row"><select class="cl-sort bc-csort" id="bc-csort" aria-label="Trier le contenu du bac"></select><button class="cl-ftoggle cl-shuffle" id="bc-shuffle" aria-label="Nouvel ordre au hasard" hidden>↻</button></div>
         <input class="cat-input" id="bc-add" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Ajouter un album de la collection…">
         <ul class="q-list bc-found" id="bc-found" hidden></ul>
       </div>
@@ -507,6 +510,7 @@
     </div>
     <div class="cl-bar" id="cl-bar">
       <select class="cl-sort" id="cl-sort" aria-label="Trier"></select>
+      <button class="cl-ftoggle cl-shuffle" id="cl-shuffle" aria-label="Nouvel ordre au hasard" hidden>↻</button>
       <button class="cl-ftoggle" id="cl-ftoggle" aria-expanded="false">filtres<span class="cl-fcount" id="cl-fcount" hidden></span></button>
     </div>
     <div class="sheet-body" id="cl-body">
@@ -1494,7 +1498,9 @@
   $("cl-btn").addEventListener("click", () => { vibrate(); openCollection(true); });
   $("cl-close").addEventListener("click", () => openCollection(false));
   $("cl-sheet").addEventListener("click", e => { if (e.target === $("cl-sheet")) openCollection(false); });
-  $("cl-sort").addEventListener("change", () => { cl.sort = $("cl-sort").value; cl.shown = CL_PAGE; clSave(); renderCollection(); $("cl-body").scrollTop = 0; });
+  // Aléatoire : un nouvel ordre en le choisissant, puis avec ↻ (re-choisir la même option ne fait rien)
+  $("cl-shuffle").addEventListener("click", () => { if (!Core) return; Core.reshuffle(); vibrate(6); cl.shown = CL_PAGE; renderCollection(); $("cl-body").scrollTop = 0; });
+  $("cl-sort").addEventListener("change", () => { cl.sort = $("cl-sort").value; if (cl.sort === "random" && Core) Core.reshuffle(); cl.shown = CL_PAGE; clSave(); renderCollection(); $("cl-body").scrollTop = 0; });
   $("cl-ftoggle").addEventListener("click", () => { cl.filtersOpen = !cl.filtersOpen; renderCollection(); });
   $("cl-reset").addEventListener("click", () => {
     vibrate();
@@ -1545,7 +1551,8 @@
   if (Core && Core.BAC_SORTS) {
     $("bc-csort").replaceChildren(...Core.BAC_SORTS.map(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.label; return o; }));
     $("bc-csort").value = bc.content;
-    $("bc-csort").addEventListener("change", () => { bc.content = $("bc-csort").value; bcSave(); renderBacs(); $("bc-body").scrollTop = 0; });
+    $("bc-shuffle").addEventListener("click", () => { Core.reshuffle(); vibrate(6); renderBacs(); $("bc-body").scrollTop = 0; });
+    $("bc-csort").addEventListener("change", () => { bc.content = $("bc-csort").value; if (bc.content === "random") Core.reshuffle(); bcSave(); renderBacs(); $("bc-body").scrollTop = 0; });
   }
 
   function setTab(t) {
@@ -1665,6 +1672,7 @@
     const byId = new Map((collection || []).map(a => [a.id, a]));
     const list = bacs || [];
     const bac = bc.open && list.find(b => b.id === bc.open);
+    $("bc-shuffle").hidden = bc.content !== "random";
     if (bc.open && !bac && bacs) bc.open = null;   // bac supprimé sur le PC
     $("bc-sorts").hidden = !!bc.open;
     $("bc-head").hidden = !bc.open;
@@ -1703,6 +1711,7 @@
   function renderCollection() {
     if (!Core || !$("cl-sheet").classList.contains("is-open")) return;
     const onBacs = bc.tab === "bacs";
+    $("cl-shuffle").hidden = cl.sort !== "random";
     $("tab-albums").classList.toggle("is-on", !onBacs);
     $("tab-bacs").classList.toggle("is-on", onBacs);
     $("tab-albums").setAttribute("aria-selected", String(!onBacs));

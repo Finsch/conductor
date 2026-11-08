@@ -170,6 +170,7 @@
   }
 
   function save() {
+    if (!mayWrite()) return;   // un autre onglet joue : on ne réécrit pas son état
     if (state) {
       state.time = audio.currentTime || state.time || 0;
       state.playing = !audio.paused;
@@ -202,7 +203,7 @@
     try {
       if (state) {
         sessionStorage.setItem(PROGRESS_KEY, JSON.stringify({ albumId: state.albumId, heard: state.heard, done: state.done, startedAt: state.startedAt }));
-        if (heardTotal(state) > 0) write(LAST_KEY, Object.assign(progressOf(state), { savedAt: Date.now() }));
+        if (heardTotal(state) > 0) write(LAST_KEY, Object.assign(progressOf(state), { heardBy: state.heard, savedAt: Date.now() }));
       } else {
         sessionStorage.setItem(PROGRESS_KEY, JSON.stringify(null));
       }
@@ -457,6 +458,7 @@
 
   function toggle() {
     if (!state) return;
+    if (audio.paused && adoptFromOtherTab()) return;
     if (!audio.src) { loadTrack(state.index, state.time, true); return; }
     audio.paused ? start() : audio.pause();
   }
@@ -758,6 +760,77 @@
   if (typeof Server !== "undefined" && Server.isConfigured() && Server.autoSelect) Server.autoSelect();
   window.addEventListener("pagehide", () => { flushTime(); save(); });
 
+  // ---------- Plusieurs onglets ----------
+  // Un seul onglet joue (et compte les écoutes) à la fois. Ouvrir conductor. dans un nouvel onglet
+  // pendant qu'un album joue ne relance pas le son, ne compte rien, et laisse la progression à
+  // l'onglet qui joue. Appuyer sur ▶ dans un autre onglet lui passe la main : il reprend au morceau
+  // et à la seconde où en est l'autre (avec sa progression), et l'autre se met en pause.
+  const TABS_KEY = "conductor01.tabs";      // { id: dernier signe de vie }
+  const LEAD_KEY = "conductor01.player";    // { id } : l'onglet qui joue
+  const BORN_KEY = "conductor01.tabsBorn";  // { id: ouverture }
+  const TAB_ID = Math.random().toString(36).slice(2, 10);
+  const ALIVE_MS = 6000;
+  const BORN = Date.now();
+  function heartbeat() {
+    const tabs = read(TABS_KEY, {}), now = Date.now();
+    Object.keys(tabs).forEach(k => { if (now - tabs[k] > ALIVE_MS * 3) delete tabs[k]; });
+    tabs[TAB_ID] = now;
+    write(TABS_KEY, tabs);
+    const born = read(BORN_KEY, {});
+    Object.keys(born).forEach(k => { if (!tabs[k]) delete born[k]; });
+    born[TAB_ID] = BORN;
+    write(BORN_KEY, born);
+  }
+  const alive = id => { const t = read(TABS_KEY, {})[id]; return !!t && Date.now() - t < ALIVE_MS; };
+  const othersAlive = () => { const tabs = read(TABS_KEY, {}); return Object.keys(tabs).some(k => k !== TAB_ID && Date.now() - tabs[k] < ALIVE_MS); };
+  const leadId = () => (read(LEAD_KEY, {}) || {}).id || null;
+  // Peut écrire l'état de lecture : on joue, ou personne d'autre (vivant) ne joue
+  function mayWrite() {
+    try {
+      if (!audio.paused) return true;
+      const l = leadId();
+      return !l || l === TAB_ID || !alive(l);
+    } catch (e) { return true; }   // appelé avant l'initialisation de cette partie
+  }
+  // ▶ ici alors qu'un autre onglet avait la main : reprendre où il en est
+  function adoptFromOtherTab() {
+    const l = leadId();
+    if (!l || l === TAB_ID) return false;
+    const st = read(STATE_KEY, null);
+    if (!st || !st.tracks || !st.tracks.length) return false;
+    const last = read(LAST_KEY, null);
+    const same = last && last.albumId === st.albumId;
+    state = Object.assign(st, { heard: same ? last.heardBy || {} : {}, done: same ? last.done || [] : [], startedAt: same ? last.startedAt || null : null });
+    claim();
+    loadTrack(state.index, state.time || 0, true);
+    emit();
+    return true;
+  }
+  // L'onglet « principal » (celui que pilote la télécommande) : celui qui a la main ; si celui-là
+  // est fermé, le plus ancien encore ouvert
+  function isActiveTab() {
+    const l = leadId();
+    if (l && alive(l)) return l === TAB_ID;
+    const tabs = read(TABS_KEY, {}), now = Date.now();
+    const born = read(BORN_KEY, {});
+    const live = Object.keys(tabs).filter(k => k === TAB_ID || now - tabs[k] < ALIVE_MS)
+      .sort((a, b) => (born[a] || now) - (born[b] || now) || a.localeCompare(b));
+    return !live.length || live[0] === TAB_ID;
+  }
+  function claim() { if (leadId() !== TAB_ID) write(LEAD_KEY, { id: TAB_ID }); }
+  audio.addEventListener("play", claim);
+  window.addEventListener("storage", e => {
+    // Un autre onglet a lancé la lecture : pause ici
+    if (e.key === LEAD_KEY && leadId() !== TAB_ID && !audio.paused) { lastTime = null; audio.pause(); }
+  });
+  heartbeat();
+  setInterval(heartbeat, 2000);
+  window.addEventListener("pagehide", () => {
+    const tabs = read(TABS_KEY, {}); delete tabs[TAB_ID]; write(TABS_KEY, tabs);
+    const born = read(BORN_KEY, {}); delete born[TAB_ID]; write(BORN_KEY, born);
+  });
+  const otherTabOpen = othersAlive();
+
   // ---------- Reprise à l'ouverture de la page ----------
 
   state = read(STATE_KEY, null);
@@ -767,7 +840,9 @@
   // Actualisation (même session) ou nouvelle ouverture ?
   let session = undefined;
   try { const raw = sessionStorage.getItem(PROGRESS_KEY); session = raw == null ? undefined : JSON.parse(raw); } catch (e) {}
-  if (session === undefined) {
+  if (session === undefined && otherTabOpen) {
+    // Nouvel onglet alors que conductor. est déjà ouvert : la session continue ailleurs, rien à compter
+  } else if (session === undefined) {
     // Nouvelle session : le dernier album de la précédente compte dès 60 %
     const last = read(LAST_KEY, null);
     if (last && last.albumId && enough(last, LAST_SHARE)) {
@@ -785,12 +860,12 @@
     const fresh = Date.now() - (state.savedAt || 0) < RESUME_WITHIN;
     if (playable(state.index) && isSd(state.tracks[state.index].src)) {
       // Stockage local : ouvert au premier ▶ (l'accès demande souvent un clic)
-      if (state.playing && fresh) loadTrack(state.index, state.time || 0, true);
+      if (state.playing && fresh && !otherTabOpen) loadTrack(state.index, state.time || 0, true);
     } else if (playable(state.index)) {
       audio.src = srcOf(state.tracks[state.index]);
       const at = state.time || 0;
       audio.addEventListener("loadedmetadata", () => { try { audio.currentTime = at; } catch (e) {} }, { once: true });
-      if (state.playing && fresh) start();
+      if (state.playing && fresh && !otherTabOpen) start();
     }
   }
 
@@ -2039,7 +2114,8 @@
     isAlbum: id => !!state && state.albumId === id,
     index: () => (state ? state.index : -1),
     sleep: v => setSleep(v),          // 15 / 30 / 45 / 60 (minutes), "album", 0 = désactiver
-    sleepState: () => sleepState()
+    sleepState: () => sleepState(),
+    activeTab: () => isActiveTab()   // l'onglet que pilote la télécommande (plusieurs onglets ouverts)
   };
 
   // =====================================================================

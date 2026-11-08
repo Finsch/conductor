@@ -335,8 +335,17 @@
 
   // ---------- Connexion au relais ----------
 
+  // Plusieurs onglets conductor. ouverts : seul celui qui joue (Playback.activeTab) parle au relais,
+  // sinon ils se le prendraient à tour de rôle
+  const activeTab = () => !(window.Playback && Playback.activeTab) || Playback.activeTab();
+  setInterval(() => {
+    if (ws && !activeTab()) { const w = ws; ws = null; w.onclose = null; try { w.close(); } catch (e) {} info = null; renderPanel(); retry(); }
+    else if (!ws && activeTab() && wait > 2000) { wait = 1500; connect(); }
+  }, 2000);
+
   function connect() {
     clearTimeout(timer);
+    if (!activeTab()) { retry(); return; }
     try { ws = new WebSocket("ws://127.0.0.1:" + PORT + "/ws?role=host"); }
     catch (e) { retry(); return; }
     ws.onopen = () => { wait = 1500; lyKey = ""; queueSent = ""; thSent = ""; colSent = ""; bacsSent = ""; send(); };

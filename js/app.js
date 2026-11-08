@@ -176,8 +176,10 @@
       b.type = "button";
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(s.id === state.sort));
+      if (s.id === "random") b.title = "Un nouvel ordre à chaque clic";
       b.addEventListener("click", () => {
         if (state.sort !== s.id) state.letter = "";   // l'alphabet change de sens avec le tri
+        if (s.id === "random") { Core.reshuffle(); state.page = 1; }   // chaque clic : un nouvel ordre
         state.sort = s.id;
         savePrefs();
         refresh();
@@ -484,19 +486,47 @@
 
   // ---------- Pagination ----------
 
+  // Boutons numérotés : la première et la dernière page toujours, celles autour de la page en cours,
+  // « … » pour les trous. 1 2 3 4 5 … 12 · 1 … 5 6 7 … 12 · 1 … 8 9 10 11 12 (tout, jusqu'à 7 pages).
   const pager = document.getElementById("pager");
-  const pageInfo = document.getElementById("page-info");
-  const prevBtn = document.getElementById("page-prev");
-  const nextBtn = document.getElementById("page-next");
+  let pageCount = 1;
 
   function goToPage(n) {
+    n = Math.min(Math.max(1, n), pageCount);
+    if (n === state.page) return;
     state.page = n;
     render();
     window.scrollTo({ top: 0 });
   }
 
-  prevBtn.addEventListener("click", () => goToPage(state.page - 1));
-  nextBtn.addEventListener("click", () => goToPage(state.page + 1));
+  function pageList(cur, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (cur <= 4) return [1, 2, 3, 4, 5, "…", total];
+    if (cur >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total];
+    return [1, "…", cur - 1, cur, cur + 1, "…", total];
+  }
+
+  function renderPager(cur, total) {
+    pageCount = total;
+    pager.hidden = total < 2;
+    if (total < 2) { pager.replaceChildren(); return; }
+    pager.replaceChildren(...pageList(cur, total).map(p => {
+      if (p === "…") { const s = el("span", "pager-gap", "…"); s.setAttribute("aria-hidden", "true"); return s; }
+      const b = el("button", "pager-num" + (p === cur ? " is-current" : ""), String(p));
+      b.type = "button";
+      b.setAttribute("aria-label", "Page " + p);
+      if (p === cur) b.setAttribute("aria-current", "page");
+      b.addEventListener("click", () => goToPage(p));
+      return b;
+    }));
+  }
+
+  // Maj + ← / → (shortcuts.js) : page précédente / suivante
+  document.addEventListener("conductor:turn-page", e => {
+    if (pager.hidden) return;
+    const n = state.page + (e.detail && e.detail.dir < 0 ? -1 : 1);
+    if (n >= 1 && n <= pageCount) { goToPage(n); e.detail.done = true; }
+  });
 
   // La page est gardée dans l'adresse (?page=2) : le bouton Retour
   // du navigateur depuis une page album ramène à la bonne page
@@ -690,10 +720,7 @@
       ? (shown.length ? [listHeader()] : []).concat(shown.map(createRow))
       : shown.map(createCard)));
 
-    pager.hidden = pages < 2;
-    pageInfo.textContent = state.page + " / " + pages;
-    prevBtn.disabled = state.page <= 1;
-    nextBtn.disabled = state.page >= pages;
+    renderPager(state.page, pages);
     rememberPage();
 
     empty.textContent = all.length

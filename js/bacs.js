@@ -142,6 +142,7 @@
     if (!$("bc-name").querySelector("input")) $("bc-name").textContent = bac.name;
     $("bc-meta").textContent = meta(albums, true);
     $("bc-list").classList.toggle("is-sorted", contentSort !== "manual");
+    if ($("bc-reshuffle")) $("bc-reshuffle").hidden = contentSort !== "random";
     mosaic($("bc-mosaic"), albums, bac);
     $("bc-play").disabled = $("bc-copy").disabled = !albums.length;
     $("bc-one-empty").hidden = albums.length > 0;
@@ -361,9 +362,12 @@
     $("bc-content-sort").value = contentSort;
     $("bc-content-sort").addEventListener("change", () => {
       contentSort = $("bc-content-sort").value;
+      if (contentSort === "random") CollectionCore.reshuffle();
       try { localStorage.setItem(CONTENT_SORT_KEY, contentSort); } catch (e) {}
       renderOne();
     });
+    // Aléatoire : la liste déroulante ne réagit pas si on re-choisit la même option, d'où ↻
+    $("bc-reshuffle").addEventListener("click", e => { e.preventDefault(); CollectionCore.reshuffle(); renderOne(); });
   }
 
   // Lire / copier

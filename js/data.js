@@ -417,6 +417,12 @@ const Store = (function () {
       if (a.cover && a.cover.startsWith("datastorage/")) a.cover = "../" + a.cover;
       // Bacs : fonctionnalité retirée, on efface ce qui aurait été rangé
       delete a.crates;
+      // Écoutes en double (même début d'écoute : deux onglets…) : on garde la dernière, la plus complète
+      if (Array.isArray(a.plays) && a.plays.length > 1) {
+        const lastOf = {};
+        a.plays.forEach((p, i) => { if (p && p.startedAt) lastOf[p.startedAt] = i; });
+        a.plays = a.plays.filter((p, i) => !p || !p.startedAt || lastOf[p.startedAt] === i);
+      }
       // Album ajouté plusieurs fois : on garde le premier ajout (et les commentaires écrits)
       if (Array.isArray(a.logs) && a.logs.length > 1) {
         a.logs = a.logs.filter((log, i) => i === 0 || (log.review || "").trim());
@@ -795,7 +801,18 @@ const Store = (function () {
       const albums = load();
       const entry = albums.find(a => a.id === id);
       if (!entry) return null;
-      entry.plays = (entry.plays || []).concat([Object.assign({ at: new Date().toISOString() }, play)]);
+      const rec = Object.assign({ at: new Date().toISOString() }, play);
+      // Filet de sécurité (deux onglets…) : une écoute complète ne peut pas finir moins de 80 % de sa
+      // durée après la précédente du même album → doublon, ignoré
+      const prev = (entry.plays || [])[(entry.plays || []).length - 1];
+      // Même écoute déjà comptée (même début) : la nouvelle, plus complète, la remplace
+      if (prev && prev.startedAt && prev.startedAt === rec.startedAt) {
+        entry.plays = entry.plays.slice(0, -1).concat([rec]);
+        save(albums);
+        return entry;
+      }
+      if (prev && prev.at && rec.seconds > 0 && Math.abs(new Date(rec.at) - new Date(prev.at)) < rec.seconds * 800) return entry;
+      entry.plays = (entry.plays || []).concat([rec]);
       save(albums);
       return entry;
     }

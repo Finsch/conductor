@@ -266,6 +266,13 @@
     return Math.floor(m / 60) + " h" + (m % 60 ? " " + pad(m % 60) : "");
   }
 
+  // Total : « 3j 18h 48min »
+  function dhm(sec) {
+    const m = Math.round((sec || 0) / 60);
+    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
+    return d ? d + "j " + h + "h " + min + "min" : h ? h + "h " + min + "min" : min + "min";
+  }
+
   // Courbe lissée sans dépassement (interpolation monotone de Fritsch-Carlson)
   function smoothPath(pts) {
     const n = pts.length;
@@ -320,7 +327,7 @@
     const monthTotal = days.reduce((s, d) => s + d.v, 0);
     const todaySec = listening[dayKey(today)] || 0;
     $("jr-time-title").textContent = "temps d'écoute · " + MONTHS[cm] + " " + cy;
-    const sum = [el("span", null, "total : "), el("b", null, hm(monthTotal))];
+    const sum = [el("span", null, "total : "), el("b", null, dhm(monthTotal))];
     if (isNow) sum.push(el("span", null, " · aujourd'hui : "), el("b", null, hm(todaySec)));
     $("jr-time-sum").replaceChildren(...sum);
 

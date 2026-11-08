@@ -226,6 +226,10 @@
 
   // Maj + ← → : clique le bouton « page précédente / suivante » de la page
   function turnPage(dir) {
+    // Collection : la page la gère elle-même (boutons numérotés, voir app.js)
+    const detail = { dir, done: false };
+    document.dispatchEvent(new CustomEvent("conductor:turn-page", { detail }));
+    if (detail.done) return true;
     const ids = dir < 0 ? ["page-prev", "jr-hist-prev"] : ["page-next", "jr-hist-next"];
     for (const id of ids) {
       const b = document.getElementById(id);

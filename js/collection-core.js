@@ -92,6 +92,26 @@
     };
   }
 
+  // ---------- Aléatoire ----------
+  // Un ordre au hasard, mais fixe tant qu'on ne relance pas (pages, filtres, retour sur la page) :
+  // chaque album (ou bac) reçoit un rang tiré de son id et d'une graine ; reshuffle() change la graine.
+  const SEED_KEY = "conductor01.shuffleSeed";
+  let seed = 0;
+  try { seed = Number(localStorage.getItem(SEED_KEY)) || 0; } catch (e) {}
+  if (!seed) seed = Math.floor(Math.random() * 4294967295) + 1;
+  function reshuffle() {
+    seed = Math.floor(Math.random() * 4294967295) + 1;
+    try { localStorage.setItem(SEED_KEY, String(seed)); } catch (e) {}
+  }
+  function randKey(x) {
+    const s = String((x && (x.id || x.title)) || "");
+    let h = seed >>> 0;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507) >>> 0; h ^= h >>> 13; h = Math.imul(h, 3266489909) >>> 0; h ^= h >>> 16;
+    return h >>> 0;
+  }
+  const byRandom = (a, b) => randKey(a) - randKey(b);
+
   const SORTS = [
     { id: "added-desc",   label: "Ajouts récents",          fn: (a, b) => addedAt(b).localeCompare(addedAt(a)) },
     { id: "added-asc",    label: "Ajouts anciens",          fn: (a, b) => addedAt(a).localeCompare(addedAt(b)) },
@@ -107,7 +127,9 @@
     { id: "listened-desc", label: "Écouté récemment",       fn: (a, b) => (!lastPlay(a)) - (!lastPlay(b)) || lastPlay(b).localeCompare(lastPlay(a)) || addedAt(b).localeCompare(addedAt(a)) },
     // À égalité : la plus récente d'abord / l'ajout le plus ancien d'abord
     { id: "plays-desc",   label: "Le plus écouté",          fn: (a, b) => playCount(b) - playCount(a) || lastPlay(b).localeCompare(lastPlay(a)) },
-    { id: "plays-asc",    label: "Le moins écouté",         fn: (a, b) => playCount(a) - playCount(b) || addedAt(a).localeCompare(addedAt(b)) }
+    { id: "plays-asc",    label: "Le moins écouté",         fn: (a, b) => playCount(a) - playCount(b) || addedAt(a).localeCompare(addedAt(b)) },
+    // Re-cliquer (ou ↻) : reshuffle(), un nouvel ordre
+    { id: "random",       label: "Aléatoire",               fn: byRandom }
   ];
   const sortById = id => (SORTS.find(s => s.id === id) || SORTS[0]).fn;
 
@@ -192,7 +214,7 @@
     { id: "manual",         label: "Ordre du bac",   fn: null },
     { id: "bac-added-desc", label: "Ajouts récents", fn: bac => (a, b) => bacAddedAt(bac, b).localeCompare(bacAddedAt(bac, a)) },
     { id: "bac-added-asc",  label: "Ajouts anciens", fn: bac => (a, b) => bacAddedAt(bac, a).localeCompare(bacAddedAt(bac, b)) }
-  ].concat(["artist", "aggro-asc", "aggro-desc", "length-desc", "length-asc", "listened-desc", "plays-desc", "plays-asc"]
+  ].concat(["artist", "aggro-asc", "aggro-desc", "length-desc", "length-asc", "listened-desc", "plays-desc", "plays-asc", "random"]
     .map(id => { const s = SORTS.find(x => x.id === id); return { id, label: s.label, fn: () => s.fn }; }));
   // albums : dans l'ordre du bac ; renvoie une copie triée (tri stable : l'ordre du bac départage)
   function sortBac(albums, bac, id) {
@@ -238,6 +260,6 @@
 
   root.CollectionCore = {
     addedAt, yearOf, decadeOf, durationOf, playCount, lastPlay, familyName, genreKey, normalize, matchesSearch,
-    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel, avgIntensity, intensityLabel, BAC_SORTS, sortBac, whenLabel, sortInfo, formatTotal, sortBacList
+    SORTS, sortById, DECADES, INTENSITIES, matches, facets, decadeLabel, avgIntensity, intensityLabel, BAC_SORTS, sortBac, whenLabel, sortInfo, formatTotal, sortBacList, reshuffle
   };
 })(typeof window !== "undefined" ? window : globalThis);

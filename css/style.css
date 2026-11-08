@@ -2381,7 +2381,7 @@ a.album-row:hover .row-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 6px;
   margin-top: 40px;
 }
 
@@ -2389,10 +2389,38 @@ a.album-row:hover .row-title {
   display: none;
 }
 
-.pager-info {
-  font-size: 14px;
-  color: var(--text-muted);
+/* 1 2 3 4 5 … 12 : rectangles comme .btn-ghost (Surprise me), la page en cours pleine comme .btn */
+.pager-num {
+  min-width: 44px;
+  height: 30px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.pager-num:hover { border-color: var(--text-muted); }
+
+.pager-num.is-current {
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+  cursor: default;
+}
+
+.pager-gap {
+  min-width: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-muted);
+  user-select: none;
 }
 
 /* ---------- Lien "audio-files" dans le header ---------- */
