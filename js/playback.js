@@ -503,7 +503,7 @@
     const i = firstPlayable(state ? state.index + 1 : 0, 1);
     if (i > -1 && swapTo(i)) return;
     if (i > -1) loadTrack(i, 0, true);
-    else if (sleep && sleep.album) sleepNow();   // minuterie « fin de l'album » : on s'arrête là
+    else if (sleep && sleep.album) { sleepNow(); rewindToStart(); }   // minuterie « fin de l'album » : on s'arrête là
     else playNextAlbum();
   });
 
@@ -523,6 +523,14 @@
     }
     sleepChanged();
   }
+  // Album fini, rien après : on revient au premier morceau (prêt à relancer), en pause
+  function rewindToStart() {
+    audio.pause();
+    const first = state ? firstPlayable(0, 1) : -1;
+    if (first > -1) loadTrack(first, 0, false);
+    else { save(); emit(); }
+  }
+
   function sleepNow() {
     clearTimeout(sleepTimer);
     sleep = null;
@@ -616,10 +624,8 @@
 
   function playNextAlbum() {
     if (!queue.length) {
-      // fin de la file : on reste sur le dernier morceau, en pause
-      audio.pause();
-      save();
-      emit();
+      // fin de la file : retour au premier morceau de l'album, en pause
+      rewindToStart();
       return;
     }
     const id = queue.shift();
